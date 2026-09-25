@@ -1,0 +1,35 @@
+/* Medieval era (1066–1450): oak and ink panels, gilt trim, parchment, heraldic red. */
+:root,
+[data-era='medieval'] {
+  color-scheme: dark;
+  --font-display: 'Grenze Gotisch', 'UnifrakturMaguntia', Georgia, serif;
+  --font-body: 'Alegreya', 'Iowan Old Style', 'Palatino Linotype', Georgia, serif;
+  --font-caps: 'Alegreya SC', 'Alegreya', Georgia, serif;
+
+  --ground: #120e0a;
+  --panel: rgba(27, 20, 14, 0.94);
+  --panel-solid: #1c150f;
+  --panel-raised: #2a2016;
+  --panel-inset: #15100b;
+  --line: #6d5632;
+  --line-soft: rgba(205, 164, 90, 0.22);
+  --gold: #cfa65c;
+  --gold-bright: #ecd18c;
+  --gold-dim: #8f7443;
+  --text: #ecdfc5;
+  --text-dim: #ad9b7c;
+  --text-faint: #7d6d55;
+  --parchment: #e9dcbe;
+  --parchment-edge: #b99c6a;
+  --parchment-ink: #2b2016;
+  --seal: #7d231d;
+  --seal-bright: #a3322a;
+  --good: #7fa34a;
+  --bad: #c0493f;
+  --focus: #f3cc6a;
+  --radius: 3px;
+  --shadow: 0 10px 30px rgba(0, 0, 0, 0.55), 0 2px 6px rgba(0, 0, 0, 0.5);
+  --panel-texture:
+    radial-gradient(120% 80% at 10% 0%, rgba(255, 220, 160, 0.06), transparent 60%),
+    radial-gradient(90% 60% at 100% 100%, rgba(0, 0, 0, 0.35), transparent 70%);
+}

@@ -1,0 +1,11 @@
+node_modules/
+dist/
+dist-artifact/
+.cache/
+*.log
+test-results/
+playwright-report/
+.vite/
+.DS_Store
+*.tsbuildinfo
+tools/mapgen/debug/

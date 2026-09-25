@@ -1,0 +1,10 @@
+dist
+dist-artifact
+public/data
+.cache
+node_modules
+package-lock.json
+LICENSE
+tools/mapgen/curated
+src/assets/icons.ts
+src/styles/fonts.css
