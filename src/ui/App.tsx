@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { createGameState, loadWorld, type LoadProgress } from '../game/world';
+import { loadWorld, type LoadProgress } from '../game/world';
+import { createGameState } from '../sim/setup';
 import { createGame, GameContext, useGame, type Game } from './game';
 import { GameRoot } from './GameRoot';
 import { LoadingScreen } from './LoadingScreen';

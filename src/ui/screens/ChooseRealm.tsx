@@ -7,6 +7,9 @@ import { useGame } from '../game';
 import { Icon } from '../Icon';
 import { CountryFacts, CountryHeader } from '../realm';
 import { useMapInsets } from '../map/useMapInsets';
+import { toDate } from '../../sim/calendar';
+import { character } from '../../sim/characters';
+import { countryByTag } from '../../sim/queries';
 import { useStore } from '../store';
 
 const DIFFICULTY_CLASS: Record<Difficulty, string> = {
@@ -45,13 +48,13 @@ export function ChooseRealm() {
             <span aria-hidden="true">‹</span> Main menu
           </button>
           <h1 className="display choose-title">{game.scenario.name}</h1>
-          <p className="caps choose-date">{formatDate(game.state.date)}</p>
+          <p className="caps choose-date">{formatDate(toDate(game.state.day))}</p>
           <p className="choose-text">{SCENARIO_INTRO}</p>
         </div>
         <h2 className="section-title">Featured realms</h2>
         <ul className="bookmarks">
           {BOOKMARKS.map((b) => {
-            const c = game.state.byTag.get(b.tag);
+            const c = countryByTag(game.state, b.tag);
             if (!c) return null;
             return (
               <li key={b.tag}>
@@ -63,7 +66,7 @@ export function ChooseRealm() {
                   <CoatOfArms country={c} size={30} />
                   <span className="bookmark-text">
                     <span className="bookmark-name">{capitalize(c.short)}</span>
-                    <span className="bookmark-ruler">{c.ruler?.name ?? c.name}</span>
+                    <span className="bookmark-ruler">{character(game.state, c.ruler)?.name ?? c.name}</span>
                   </span>
                   <span className={`difficulty ${DIFFICULTY_CLASS[b.difficulty]}`}>{b.difficulty}</span>
                 </button>

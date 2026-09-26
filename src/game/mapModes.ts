@@ -1,7 +1,10 @@
 /** Map modes: how each region is coloured, and which data the renderer gets per region. */
 import type { Terrain } from '../shared/dataTypes';
 import { FLAG_IMPASSABLE, FLAG_LAKE, FLAG_WATER, type MapRenderer } from '../render/mapRenderer';
-import { hexToRgb, topLiege, type GameState, type StaticWorld } from './world';
+import { topLiege } from '../sim/queries';
+import { hexToRgb } from '../sim/setup';
+import type { GameState } from '../sim/types';
+import type { StaticWorld } from './world';
 
 export type MapMode = 'realms' | 'countries' | 'terrain' | 'development' | 'culture' | 'religion';
 
@@ -97,7 +100,7 @@ export function applyMapMode(r: MapRenderer, world: StaticWorld, state: GameStat
         a = 175;
         break;
       case 'development':
-        c = devColor(reg.dev ?? 1);
+        c = devColor(p?.dev ?? reg.dev ?? 1);
         a = 230;
         break;
       case 'culture':

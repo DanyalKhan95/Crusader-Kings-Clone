@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useRef } from 'react';
 import { TERRAIN_INFO } from '../../game/mapModes';
-import { topLiege } from '../../game/world';
+import { topLiege } from '../../sim/queries';
 import { CoatOfArms } from '../CoatOfArms';
 import { useGame } from '../game';
 import { moveTooltip } from '../map/MapCanvas';
@@ -58,7 +58,7 @@ export function HoverTooltip() {
           )}
           {r.kind === 'land' && (
             <div className="tt-line dim">
-              {TERRAIN_INFO[r.terrain ?? 'plains'].name} · development {r.dev ?? 0}
+              {TERRAIN_INFO[r.terrain ?? 'plains'].name} · development {p?.dev ?? r.dev ?? 0}
             </div>
           )}
           {phase === 'choose' && owner && <div className="tt-hint caps">Click to view this realm</div>}

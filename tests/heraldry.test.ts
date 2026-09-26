@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { coaSvg, CURATED, generateCoA, isMetal } from '../src/heraldry/coa';
-import { hexToRgb } from '../src/game/world';
+import { hexToRgb } from '../src/sim/setup';
 import { loadData } from './helpers';
 
 describe('coats of arms', () => {

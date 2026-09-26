@@ -3,7 +3,7 @@ import { layoutLabel } from '../src/render/labels';
 import { buildMeshBundle, type MeshBundle } from '../src/render/meshBuilder';
 import { Picker } from '../src/render/picking';
 import { Camera } from '../src/render/camera';
-import { provincesOf } from '../src/game/world';
+import { provincesOf } from '../src/sim/queries';
 import { gameState, loadData, loadGeometry, regionKinds, staticWorld } from './helpers';
 
 let bundle: MeshBundle;

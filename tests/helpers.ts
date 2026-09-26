@@ -1,7 +1,8 @@
 /** Loads the committed game data from public/data for tests. */
 import { readFileSync } from 'node:fs';
 import { gunzipSync } from 'node:zlib';
-import { createGameState, type StaticWorld } from '../src/game/world';
+import type { StaticWorld } from '../src/game/world';
+import { createGameState } from '../src/sim/setup';
 import type { RegionData, ScenarioData, WorldData } from '../src/shared/dataTypes';
 import { decodeMap, mapFilePayload, type MapGeometry } from '../src/shared/mapFormat';
 

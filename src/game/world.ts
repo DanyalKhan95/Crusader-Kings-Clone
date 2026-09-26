@@ -1,43 +1,9 @@
 /**
- * Loads the static world (regions, cultures, religions), the 1066 scenario, and the map mesh bundle,
- * and builds the initial game state.
+ * Loads the static world (regions, cultures, religions), the 1066 scenario and the map meshes.
+ * The game state itself is built by the simulation (src/sim/setup.ts).
  */
-import type { CountryData, RegionData, ScenarioData, WorldData } from '../shared/dataTypes';
+import type { RegionData, ScenarioData, WorldData } from '../shared/dataTypes';
 import type { MeshBundle } from '../render/meshBuilder';
-
-export interface Country {
-  /** 1-based index used by the renderer; 0 = none */
-  index: number;
-  tag: string;
-  name: string;
-  short: string;
-  adj: string;
-  gov: CountryData['gov'];
-  rank: CountryData['rank'];
-  color: [number, number, number];
-  colorHex: string;
-  liege: number;
-  capital: number;
-  culture: string;
-  religion: string;
-  ruler?: CountryData['ruler'];
-}
-
-export interface ProvinceState {
-  owner: number;
-  controller: number;
-  culture: string | null;
-  religion: string | null;
-}
-
-export interface GameState {
-  scenario: string;
-  date: { y: number; m: number; d: number };
-  countries: Country[]; // index 0 is a placeholder
-  byTag: Map<string, Country>;
-  /** indexed by region id (water regions have owner 0) */
-  provinces: ProvinceState[];
-}
 
 export interface StaticWorld {
   base: string;
@@ -50,10 +16,6 @@ export interface StaticWorld {
 export interface LoadProgress {
   stage: string;
   fraction: number;
-}
-
-export function hexToRgb(hex: string): [number, number, number] {
-  return [parseInt(hex.slice(1, 3), 16), parseInt(hex.slice(3, 5), 16), parseInt(hex.slice(5, 7), 16)];
 }
 
 async function fetchJSON<T>(url: string): Promise<T> {
@@ -123,71 +85,4 @@ export async function loadWorld(
     scenario,
     bundle,
   };
-}
-
-export function createGameState(world: StaticWorld, scenario: ScenarioData): GameState {
-  const countries: Country[] = [null as unknown as Country];
-  const byTag = new Map<string, Country>();
-  scenario.countries.forEach((c, i) => {
-    const country: Country = {
-      index: i + 1,
-      tag: c.tag,
-      name: c.name,
-      short: c.short,
-      adj: c.adj,
-      gov: c.gov,
-      rank: c.rank,
-      color: hexToRgb(c.color),
-      colorHex: c.color,
-      liege: 0,
-      capital: c.capital,
-      culture: c.culture,
-      religion: c.religion,
-      ruler: c.ruler,
-    };
-    countries.push(country);
-    byTag.set(c.tag, country);
-  });
-  scenario.countries.forEach((c) => {
-    if (c.liege && byTag.has(c.liege)) byTag.get(c.tag)!.liege = byTag.get(c.liege)!.index;
-  });
-  const [y, m, d] = scenario.start.split('-').map(Number);
-  const provinces: ProvinceState[] = [];
-  for (const r of world.regions) {
-    const entry = scenario.provinces[r.id];
-    const owner = entry?.[0] ? (byTag.get(entry[0])?.index ?? 0) : 0;
-    provinces[r.id] = { owner, controller: owner, culture: entry?.[1] ?? null, religion: entry?.[2] ?? null };
-  }
-  return { scenario: scenario.id, date: { y, m, d }, countries, byTag, provinces };
-}
-
-/** Top liege of a country (itself if independent). */
-export function topLiege(state: GameState, index: number): number {
-  let c = index;
-  for (let guard = 0; guard < 16 && state.countries[c]?.liege; guard++) c = state.countries[c].liege;
-  return c;
-}
-
-export function provincesOf(state: GameState, index: number): number[] {
-  const out: number[] = [];
-  state.provinces.forEach((p, id) => {
-    if (p && p.owner === index) out.push(id);
-  });
-  return out;
-}
-
-/** True if `index` is `owner` or one of its lieges. */
-export function isInRealm(state: GameState, owner: number, index: number): boolean {
-  for (let c = owner, guard = 0; c && guard < 16; c = state.countries[c]?.liege ?? 0, guard++)
-    if (c === index) return true;
-  return false;
-}
-
-/** Provinces held by a country and by its vassals (at any depth). */
-export function realmProvinces(state: GameState, index: number): number[] {
-  const out: number[] = [];
-  state.provinces.forEach((p, id) => {
-    if (p?.owner && isInRealm(state, p.owner, index)) out.push(id);
-  });
-  return out;
 }

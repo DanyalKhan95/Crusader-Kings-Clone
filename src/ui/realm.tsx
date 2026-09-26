@@ -1,5 +1,6 @@
 /** Pieces shared by every view of a country: heading with arms, key facts, names of things. */
-import type { Country } from '../game/world';
+import { age, character } from '../sim/characters';
+import type { Country } from '../sim/types';
 import { CoatOfArms } from './CoatOfArms';
 import { GOVERNMENT_NAMES, RANK_NAMES, formatNumber } from './format';
 import { countryStats, useGame, type CountryStats, type Game } from './game';
@@ -16,9 +17,10 @@ export function Swatch({ color }: { color: string }) {
   return <span className="swatch" style={{ background: color }} aria-hidden="true" />;
 }
 
-export function rulerLine(c: Country): string {
-  if (!c.ruler) return 'Ruler unrecorded';
-  return `${c.ruler.name}, aged ${c.ruler.age}`;
+export function rulerLine(game: Game, c: Country): string {
+  const r = character(game.state, c.ruler);
+  if (!r) return 'Ruler unrecorded';
+  return `${r.name}, aged ${age(game.state, r)}`;
 }
 
 export function CountryHeader({
@@ -68,7 +70,7 @@ export function CountryFacts({ country, stats }: { country: Country; stats?: Cou
     <dl className="facts">
       <div className="wide">
         <dt>Ruler</dt>
-        <dd>{rulerLine(country)}</dd>
+        <dd>{rulerLine(game, country)}</dd>
       </div>
       <div>
         <dt>Capital</dt>

@@ -1,13 +1,19 @@
 /** The running game as the UI sees it: static world, mutable state, UI store and the map. */
 import { createContext, useContext } from 'react';
 import type { MapMode } from '../game/mapModes';
-import { topLiege, type Country, type GameState, type StaticWorld } from '../game/world';
+import type { StaticWorld } from '../game/world';
+import { topLiege } from '../sim/queries';
+import type { Country, GameState } from '../sim/types';
 import type { MeshBundle } from '../render/meshBuilder';
 import type { ScenarioData } from '../shared/dataTypes';
 import type { MapController } from './map/MapController';
+import type { Runner } from './runner';
 import { createStore, type Store } from './store';
 
 export type Phase = 'menu' | 'choose' | 'playing';
+export type Panel = 'none' | 'province' | 'country' | 'army' | 'war';
+export type CountryTab = 'realm' | 'treasury' | 'military' | 'court' | 'wars';
+export type Modal = 'none' | 'credits' | 'menu' | 'declare' | 'peace' | 'offer' | 'fallen';
 
 export interface UIState {
   phase: Phase;
@@ -22,8 +28,23 @@ export interface UIState {
   selectedCountry: number;
   /** The country the player controls (0 = not chosen yet). */
   player: number;
-  panel: 'none' | 'province' | 'country';
-  modal: 'none' | 'credits';
+  panel: Panel;
+  countryTab: CountryTab;
+  modal: Modal;
+  /** 0 = paused, 1 … 5 */
+  speed: number;
+  /** bumped when the world changed, so panels re-read the state */
+  tick: number;
+  selectedArmy: number;
+  selectedWar: number;
+  /** the country a war declaration is aimed at */
+  dialogCountry: number;
+  /** the next map click orders the selected army there (touch screens) */
+  orderMode: boolean;
+  /** message ids shown as toasts */
+  toasts: number[];
+  /** a short line of feedback, e.g. why an order failed */
+  notice: string;
 }
 
 export interface Game {
@@ -33,6 +54,7 @@ export interface Game {
   bundle: MeshBundle;
   ui: Store<UIState>;
   map: MapController | null;
+  runner: Runner | null;
   /** The hover tooltip element, positioned directly by the map on pointer moves. */
   tooltipEl: HTMLElement | null;
   /** Last pointer position over the map (client px), for re-placing the tooltip. */
@@ -49,9 +71,18 @@ export function createGame(world: StaticWorld, scenario: ScenarioData, state: Ga
     selectedCountry: 0,
     player: 0,
     panel: 'none',
+    countryTab: 'realm',
     modal: 'none',
+    speed: 0,
+    tick: 0,
+    selectedArmy: 0,
+    selectedWar: 0,
+    dialogCountry: 0,
+    orderMode: false,
+    toasts: [],
+    notice: '',
   });
-  return { world, scenario, state, bundle, ui, map: null, tooltipEl: null, pointer: { x: 0, y: 0 } };
+  return { world, scenario, state, bundle, ui, map: null, runner: null, tooltipEl: null, pointer: { x: 0, y: 0 } };
 }
 
 export const GameContext = createContext<Game | null>(null);
@@ -83,18 +114,17 @@ export function countryStats(game: Game, index: number): CountryStats {
   };
   state.provinces.forEach((p, id) => {
     if (!p?.owner) return;
-    const r = world.region(id);
     if (p.owner === index) {
       out.provinces++;
-      out.development += r.dev ?? 0;
-      out.area += r.area;
+      out.development += p.dev;
+      out.area += world.region(id).area;
     }
     if (topLiege(state, p.owner) === index) {
       out.realmProvinces++;
-      out.realmDevelopment += r.dev ?? 0;
+      out.realmDevelopment += p.dev;
     }
   });
-  for (const c of state.countries) if (c?.liege === index) out.vassals.push(c);
+  for (const c of state.countries) if (c?.alive && c.liege === index) out.vassals.push(c);
   out.vassals.sort((a, b) => a.name.localeCompare(b.name));
   return out;
 }

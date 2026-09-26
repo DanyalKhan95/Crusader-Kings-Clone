@@ -1,7 +1,11 @@
 import { useEffect, useRef } from 'react';
+import { coaSvg } from '../../heraldry/coa';
+import type { UnitStyle } from '../../render/units';
 import { latToY, lonToX } from '../../shared/projection';
-import { pickRealmAt, selectProvince } from '../actions';
-import { useGame, type Game, type UIState } from '../game';
+import { orderArmy, pickRealmAt, selectArmy, selectProvince } from '../actions';
+import { coaOf } from '../CoatOfArms';
+import { religionFamily, useGame, type Game, type UIState } from '../game';
+import { attachRunner } from '../runner';
 import { MapController } from './MapController';
 
 /** Where the title screen opens: the Mediterranean and Europe. */
@@ -27,9 +31,32 @@ function outlineFor(s: UIState): number {
 }
 
 function onMapClick(game: Game, id: number) {
-  const { phase } = game.ui.get();
+  const { phase, orderMode } = game.ui.get();
   if (phase === 'choose') pickRealmAt(game, id);
-  else if (phase === 'playing') selectProvince(game, id);
+  else if (phase === 'playing') {
+    if (orderMode) orderArmy(game, id);
+    else selectProvince(game, id);
+  }
+}
+
+/** Arms as images for the army banners, drawn from the same SVG as the panels. */
+function unitStyle(game: Game, invalidate: () => void): UnitStyle {
+  const cache = new Map<number, HTMLImageElement>();
+  return {
+    arms(index) {
+      let img = cache.get(index);
+      if (!img) {
+        const c = game.state.countries[index];
+        if (!c) return null;
+        img = new Image();
+        img.onload = invalidate;
+        img.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(coaSvg(coaOf(c, religionFamily(game, c.religion)), 30))}`;
+        cache.set(index, img);
+      }
+      return img.complete && img.naturalWidth ? img : null;
+    },
+    color: (index) => game.state.countries[index]?.colorHex ?? '#8a8070',
+  };
 }
 
 /** The map canvases. Creates the MapController once and keeps it in sync with the UI store. */
@@ -38,24 +65,44 @@ export function MapCanvas({ onError }: { onError: (message: string) => void }) {
   const hostRef = useRef<HTMLDivElement>(null);
   const glRef = useRef<HTMLCanvasElement>(null);
   const labelRef = useRef<HTMLCanvasElement>(null);
+  const unitRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
     const host = hostRef.current!;
     let map: MapController;
     try {
-      map = new MapController(host, glRef.current!, labelRef.current!, game.world, game.state, game.bundle, {
-        hover: (id, x, y) => {
-          moveTooltip(game, x, y);
-          game.ui.set({ hovered: id });
+      map = new MapController(
+        host,
+        glRef.current!,
+        labelRef.current!,
+        unitRef.current!,
+        game.world,
+        game.state,
+        game.bundle,
+        {
+          hover: (id, x, y) => {
+            moveTooltip(game, x, y);
+            game.ui.set({ hovered: id });
+          },
+          hoverMove: (x, y) => moveTooltip(game, x, y),
+          click: (id) => onMapClick(game, id),
+          clickArmy: (id) => {
+            if (game.ui.get().phase === 'playing') selectArmy(game, id);
+          },
+          order: (id) => {
+            if (game.ui.get().phase === 'playing') orderArmy(game, id);
+          },
         },
-        hoverMove: (x, y) => moveTooltip(game, x, y),
-        click: (id) => onMapClick(game, id),
-      });
+      );
     } catch (e) {
       onError(e instanceof Error ? e.message : String(e));
       return;
     }
     game.map = map;
+    map.unitStyle = unitStyle(game, () => map.invalidateUnits());
+    const runner = attachRunner(game);
+    game.runner = runner;
+    map.onFrame = runner.frame;
     map.camera.x = lonToX(HOME.lon);
     map.camera.y = latToY(HOME.lat);
     map.camera.zoom = HOME.zoom;
@@ -67,6 +114,8 @@ export function MapCanvas({ onError }: { onError: (message: string) => void }) {
       const outline = outlineFor(s);
       if (!prev || s.mapMode !== prev.mapMode || outline !== outlineFor(prev)) map.setMode(s.mapMode, outline);
       map.setSelected(s.phase === 'playing' && s.panel === 'province' ? s.selectedProvince : 0);
+      map.setSelectedArmy(s.phase === 'playing' ? s.selectedArmy : 0);
+      host.classList.toggle('ordering', s.orderMode);
       map.drift = s.phase === 'menu' ? MENU_DRIFT : 0;
       prev = s;
     };
@@ -92,6 +141,7 @@ export function MapCanvas({ onError }: { onError: (message: string) => void }) {
       document.fonts?.removeEventListener('loadingdone', onFonts);
       map.dispose();
       if (game.map === map) game.map = null;
+      if (game.runner === runner) game.runner = null;
     };
   }, [game, onError]);
 
@@ -99,6 +149,7 @@ export function MapCanvas({ onError }: { onError: (message: string) => void }) {
     <div ref={hostRef} className="map-host" data-testid="map">
       <canvas ref={glRef} className="map-gl" />
       <canvas ref={labelRef} className="map-labels" />
+      <canvas ref={unitRef} className="map-labels map-units" />
     </div>
   );
 }

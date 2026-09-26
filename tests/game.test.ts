@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { applyMapMode, MAP_MODES } from '../src/game/mapModes';
-import { isInRealm, provincesOf, realmProvinces, topLiege } from '../src/game/world';
+import { toDate } from '../src/sim/calendar';
+import { countryByTag, isInRealm, provincesOf, realmProvinces, topLiege } from '../src/sim/queries';
 import type { MapRenderer } from '../src/render/mapRenderer';
 import { formatDate, ordinal, roman } from '../src/ui/format';
 import { lonToX, latToY, xToLon, yToLat, MAP_H, MAP_W, LAT_BOT } from '../src/shared/projection';
@@ -8,10 +9,10 @@ import { gameState, staticWorld } from './helpers';
 
 describe('1066 game state', () => {
   const state = gameState();
-  const tag = (t: string) => state.byTag.get(t)!.index;
+  const tag = (t: string) => countryByTag(state, t)!.index;
 
   it('starts on 15 September 1066', () => {
-    expect(state.date).toEqual({ y: 1066, m: 9, d: 15 });
+    expect(toDate(state.day)).toEqual({ y: 1066, m: 9, d: 15 });
   });
 
   it('links vassals to their lieges', () => {

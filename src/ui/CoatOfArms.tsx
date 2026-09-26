@@ -1,5 +1,5 @@
 import { memo, useMemo } from 'react';
-import type { Country } from '../game/world';
+import type { Country } from '../sim/types';
 import { coaSvg, generateCoA, type CoA } from '../heraldry/coa';
 import { religionFamily, useGame } from './game';
 

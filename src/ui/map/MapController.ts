@@ -4,12 +4,15 @@
  * callbacks, so pointer movement never has to re-render components.
  */
 import { applyMapMode, type MapMode } from '../../game/mapModes';
-import { topLiege, type GameState, type StaticWorld } from '../../game/world';
+import type { StaticWorld } from '../../game/world';
+import { topLiege } from '../../sim/queries';
+import type { GameState } from '../../sim/types';
 import { Camera } from '../../render/camera';
 import { LabelLayer, layoutLabel, type TextLabel } from '../../render/labels';
 import { FLAG_HOVERED, FLAG_SELECTED, MapRenderer } from '../../render/mapRenderer';
 import type { MeshBundle } from '../../render/meshBuilder';
 import { Picker } from '../../render/picking';
+import { UnitLayer, type UnitStyle } from '../../render/units';
 
 export interface MapCallbacks {
   /** Region under the pointer changed (0 = none); client coordinates for tooltips. */
@@ -17,6 +20,10 @@ export interface MapCallbacks {
   /** Pointer moved while over the same region. */
   hoverMove(clientX: number, clientY: number): void;
   click(region: number): void;
+  /** An army banner was clicked. */
+  clickArmy(id: number): void;
+  /** Right-click (or long order tap) on a region. */
+  order(region: number): void;
 }
 
 /** Screen edges (CSS px) covered by panels; framing centres targets in what is left. */
@@ -53,6 +60,9 @@ export class MapController {
   readonly camera: Camera;
   readonly renderer: MapRenderer;
   private labels: LabelLayer;
+  private units: UnitLayer;
+  private unitsDirty = true;
+  private selectedArmy = 0;
   private picker: Picker;
   private raf = 0;
   private lastT = 0;
@@ -77,11 +87,15 @@ export class MapController {
   /** Slow eastward drift for the title screen, in map units per second. */
   drift = 0;
   showProvinceNames = true;
+  /** Called at the start of every frame with the seconds since the last one (drives game time). */
+  onFrame: ((dt: number) => void) | null = null;
+  unitStyle: UnitStyle | null = null;
 
   constructor(
     private host: HTMLElement,
     glCanvas: HTMLCanvasElement,
     labelCanvas: HTMLCanvasElement,
+    unitCanvas: HTMLCanvasElement,
     private world: StaticWorld,
     private state: GameState,
     bundle: MeshBundle,
@@ -97,6 +111,7 @@ export class MapController {
     });
     this.renderer.terrain.onTileLoaded = () => (this.glDirty = true);
     this.labels = new LabelLayer(labelCanvas, world.regions, width);
+    this.units = new UnitLayer(unitCanvas, world.region, width);
     this.picker = new Picker(bundle.picking, world.regions.length, width, height);
     this.resize();
     this.ro = new ResizeObserver(() => this.resize());
@@ -108,10 +123,35 @@ export class MapController {
     host.addEventListener('pointerleave', this.onPointerLeave);
     host.addEventListener('wheel', this.onWheel, { passive: false });
     host.addEventListener('dblclick', this.onDblClick);
+    host.addEventListener('contextmenu', this.onContextMenu);
     window.addEventListener('keydown', this.onKeyDown);
     window.addEventListener('keyup', this.onKeyUp);
     window.addEventListener('blur', this.onBlur);
     this.setMode('realms', 0);
+  }
+
+  /** Swaps in another game state (after loading a save). */
+  setState(state: GameState) {
+    this.state = state;
+    this.refresh();
+    this.invalidateUnits();
+  }
+
+  /** Armies moved or changed: redraw them on the next frame. */
+  invalidateUnits() {
+    this.unitsDirty = true;
+  }
+
+  setSelectedArmy(id: number) {
+    if (id === this.selectedArmy) return;
+    this.selectedArmy = id;
+    this.unitsDirty = true;
+  }
+
+  /** Recolours for changed owners or controllers without re-laying out the labels. */
+  recolor() {
+    applyMapMode(this.renderer, this.world, this.state, this.mode, this.player);
+    this.glDirty = true;
   }
 
   /** Loads the always-resident terrain texture; call before the first frame is shown. */
@@ -136,6 +176,7 @@ export class MapController {
     h.removeEventListener('pointerleave', this.onPointerLeave);
     h.removeEventListener('wheel', this.onWheel);
     h.removeEventListener('dblclick', this.onDblClick);
+    h.removeEventListener('contextmenu', this.onContextMenu);
     window.removeEventListener('keydown', this.onKeyDown);
     window.removeEventListener('keyup', this.onKeyUp);
     window.removeEventListener('blur', this.onBlur);
@@ -286,6 +327,7 @@ export class MapController {
     const t = tMs / 1000;
     const dt = this.lastT ? Math.min(0.1, t - this.lastT) : 0;
     this.lastT = t;
+    this.onFrame?.(dt);
     this.stepCamera(dt);
     const c = this.camera;
     const key = `${c.x.toFixed(2)} ${c.y.toFixed(2)} ${c.zoom.toFixed(5)} ${c.width} ${c.height}`;
@@ -299,12 +341,17 @@ export class MapController {
       this.labelsDirty = false;
       this.labels.render(c, this.showProvinceNames);
     }
+    if ((moved || this.unitsDirty) && this.unitStyle) {
+      this.unitsDirty = false;
+      this.units.render(c, this.state, this.selectedArmy, this.unitStyle);
+    }
   };
 
   /** Forces a full redraw on the next frame. */
   invalidate() {
     this.glDirty = true;
     this.labelsDirty = true;
+    this.unitsDirty = true;
   }
 
   /** Web fonts arrived: text must be re-measured before it is drawn again. */
@@ -376,6 +423,7 @@ export class MapController {
 
   private onPointerDown = (e: PointerEvent) => {
     if (e.button !== 0 && e.pointerType === 'mouse') return;
+    if (e.pointerType === 'mouse' && e.ctrlKey) return; // macOS secondary click
     this.host.setPointerCapture(e.pointerId);
     const [x, y] = this.local(e);
     this.pointers.set(e.pointerId, { x, y });
@@ -447,8 +495,16 @@ export class MapController {
     }
     if (press && !press.moved && e.type === 'pointerup') {
       const [x, y] = this.local(e);
-      this.cb.click(this.pickAt(x, y));
+      const army = this.units.hit(x, y, this.camera.dpr);
+      if (army) this.cb.clickArmy(army);
+      else this.cb.click(this.pickAt(x, y));
     }
+  };
+
+  private onContextMenu = (e: MouseEvent) => {
+    e.preventDefault();
+    const [x, y] = this.local(e);
+    this.cb.order(this.pickAt(x, y));
   };
 
   private onPointerLeave = (e: PointerEvent) => {

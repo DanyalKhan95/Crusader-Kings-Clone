@@ -1,12 +1,16 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
 
-test('loads the world of 1066, takes a realm and inspects the map', async ({ page }) => {
+function watchErrors(page: Page): string[] {
   const errors: string[] = [];
   page.on('pageerror', (e) => errors.push(e.message));
   page.on('console', (m) => {
     if (m.type() === 'error') errors.push(m.text());
   });
+  return errors;
+}
 
+test('loads the world of 1066, takes a realm and inspects the map', async ({ page }) => {
+  const errors = watchErrors(page);
   await page.goto('/');
   const newCampaign = page.getByRole('button', { name: 'New Campaign' });
   await expect(newCampaign).toBeVisible({ timeout: 120_000 });
@@ -31,6 +35,36 @@ test('loads the world of 1066, takes a realm and inspects the map', async ({ pag
 
   await page.keyboard.press('Escape');
   await expect(page.locator('.side-panel')).toHaveCount(0);
+
+  expect(errors).toEqual([]);
+});
+
+test('plays England: armies, time and a saved game', async ({ page }) => {
+  const errors = watchErrors(page);
+  await page.goto('/');
+  await page.getByRole('button', { name: 'New Campaign' }).click({ timeout: 120_000 });
+  await page.getByRole('button', { name: 'Play as England' }).click();
+  await expect(page.locator('.date-long')).toHaveText('15th of September, 1066 AD');
+
+  // The royal army, ordered north.
+  await page.getByRole('tab', { name: 'Army' }).click();
+  await page.locator('.army-row', { hasText: 'Royal Army of England' }).click();
+  await expect(page.locator('.side-panel')).toContainText('Harold II');
+  await expect(page.locator('.side-panel')).toContainText('Encamped at London');
+
+  // Time runs, and news of the fight at York arrives.
+  await page.keyboard.press('5');
+  await expect(page.locator('.date-long')).not.toHaveText('15th of September, 1066 AD', { timeout: 30_000 });
+  await expect(page.locator('.toast').first()).toBeVisible({ timeout: 30_000 });
+  await page.keyboard.press(' ');
+
+  // Save to the browser.
+  await page.getByRole('button', { name: 'Game menu' }).click();
+  await page.getByRole('button', { name: 'Save game' }).click();
+  await expect(page.locator('.notice')).toHaveText('Game saved.');
+  await expect(page.locator('.modal .ranked-row')).toContainText('Kingdom of England');
+  await page.getByRole('button', { name: 'Resume', exact: true }).click();
+  await expect(page.locator('.modal')).toHaveCount(0);
 
   expect(errors).toEqual([]);
 });
