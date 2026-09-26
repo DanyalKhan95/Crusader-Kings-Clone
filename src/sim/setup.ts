@@ -9,6 +9,7 @@ import { newFleet } from './naval';
 import { defaultEstates, defaultTasks, initialLaws } from './politics';
 import { hashString, randInt } from './rng';
 import { setup1066 } from './scripted';
+import { snapshot } from './score';
 import { initialTech } from './tech';
 import { TRANSPORT_CAPACITY } from '../data/ships';
 import type { Country, GameState, ProvinceState, Units } from './types';
@@ -47,7 +48,7 @@ export function createGameState(world: SimWorld, scenario: ScenarioData, opts: {
   registerBeliefs(world.world, world.regions);
   const seed = opts.seed ?? hashString(scenario.id);
   const state: GameState = {
-    version: 7,
+    version: 8,
     scenario: scenario.id,
     seed,
     rng: seed,
@@ -77,6 +78,8 @@ export function createGameState(world: SimWorld, scenario: ScenarioData, opts: {
     events: [],
     happened: {},
     plague: null,
+    chronicle: [],
+    ledger: [],
   };
   const byTag = new Map<string, Country>();
   scenario.countries.forEach((c, i) => {
@@ -129,6 +132,7 @@ export function createGameState(world: SimWorld, scenario: ScenarioData, opts: {
       history: {},
       spies: {},
       spyTarget: 0,
+      score: 0,
       laws: initialLaws(c.gov, c.tag, cultureGroup(c.culture)),
       lawChanged: 0,
       legitimacy: 60,
@@ -201,6 +205,7 @@ export function createGameState(world: SimWorld, scenario: ScenarioData, opts: {
   initialKnowledge(state, world);
   state.proposalCooldown = state.day + 60;
   if (scenario.id === '1066') setup1066(state, world);
+  snapshot(state);
   return state;
 }
 

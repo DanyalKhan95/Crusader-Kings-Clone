@@ -8,6 +8,7 @@ import { cultureName } from './beliefs';
 import { makeCharacter, staffCourt } from './characters';
 import { loyalty, release, remember } from './diplomacy';
 import { maxManpower, provinceLevy } from './economy';
+import { chronicle } from './chronicle';
 import { log } from './log';
 import { newArmy } from './military';
 import {
@@ -216,6 +217,7 @@ export function createRebelRealm(
     history: {},
     spies: {},
     spyTarget: 0,
+    score: 0,
     laws: { ...c.laws },
     lawChanged: state.day,
     legitimacy: 30,
@@ -430,6 +432,10 @@ function becomeNation(state: GameState, world: SimWorld, rebel: Country) {
   state.mapVersion++;
   state.borderVersion++;
   state.diploVersion++;
+  chronicle(state, `The ${name} win their independence: the ${rebel.name} is born.`, {
+    province: rebel.capital,
+    realm: rebel.index,
+  });
   log(state, 'all', 'peace', `The ${name} have won their independence: the ${rebel.name} is born.`, {
     province: rebel.capital,
     important: true,

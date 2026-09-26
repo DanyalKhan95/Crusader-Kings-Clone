@@ -139,7 +139,7 @@ function RealmTab({ c }: { c: Country }) {
 function TreasuryTab({ c }: { c: Country }) {
   const game = useGame();
   const inc = income(game.state, c);
-  const exp = expenses(game.state, c);
+  const exp = expenses(game.state, c, inc.total);
   const balance = inc.total - exp.total;
   return (
     <>

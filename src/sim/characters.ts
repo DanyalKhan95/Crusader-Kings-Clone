@@ -220,6 +220,31 @@ export function appoint(state: GameState, country: Country, seat: CouncilSeat, i
   if (alive(state, prev)) country.courtiers.push(prev);
 }
 
+// ── The records of the dead ───────────────────────────────────────
+
+/**
+ * Once a year the dead leave the records, a year after their death: all but the past rulers of
+ * living realms, whom regnal numbers still count. Keeps a thousand years of courts out of the save.
+ */
+export function pruneCharacters(state: GameState) {
+  const keep = new Set<number>();
+  for (const c of state.countries) {
+    if (!c) continue;
+    keep.add(c.ruler);
+    keep.add(c.heir);
+    for (const id of Object.values(c.council)) keep.add(id);
+    for (const id of c.courtiers) keep.add(id);
+  }
+  for (const a of state.armies) keep.add(a.commander);
+  for (const f of state.fleets) keep.add(f.admiral);
+  const before = state.day - years(1);
+  for (const ch of Object.values(state.characters)) {
+    if (ch.died === undefined || ch.died > before || keep.has(ch.id)) continue;
+    if (ch.traits.includes('_reigned') && state.countries[ch.country]?.alive) continue;
+    delete state.characters[ch.id];
+  }
+}
+
 // ── Mortality and succession ──────────────────────────────────────
 
 /** Chance of dying within a year at a given age. */

@@ -21,7 +21,7 @@ import {
 import { unitDef } from '../data/units';
 import { rulerSkill } from './characters';
 import { provinceMultiplier } from './faith';
-import { buildingTech, maxBuildingLevel, militaryEra, techEffect } from './tech';
+import { buildingTech, eraOf, maxBuildingLevel, militaryEra, techEffect } from './tech';
 import { log } from './log';
 import { modifierEffect, modifierParts } from './modifiers';
 import { BLOCKADE_TAX, blockades, navyUpkeep } from './naval';
@@ -60,11 +60,20 @@ export function devCap(world: SimWorld, c: Country, id: number): number {
   return Math.min(MAX_DEV, Math.round(base * (1 + 0.05 * c.tech.economy)) + 1);
 }
 
+/** Each effect per level of each building type, in BUILDING_ORDER: summed over every province each month. */
+const PER_LEVEL = Object.fromEntries(
+  (['tax', 'levy', 'fort', 'growth', 'supply', 'research'] as const).map((k) => [
+    k,
+    BUILDING_ORDER.map((t) => BUILDINGS[t].effects[k] ?? 0),
+  ]),
+) as Record<keyof BuildingEffects, number[]>;
+
 export function buildingEffect(p: ProvinceState, key: keyof BuildingEffects): number {
+  const per = PER_LEVEL[key];
   let v = 0;
-  for (const t of BUILDING_ORDER) {
-    const level = p.buildings[t] ?? 0;
-    if (level) v += (BUILDINGS[t].effects[key] ?? 0) * level;
+  for (let i = 0; i < BUILDING_ORDER.length; i++) {
+    const level = p.buildings[BUILDING_ORDER[i]];
+    if (level) v += per[i] * level;
   }
   return v;
 }
@@ -129,37 +138,55 @@ export function fortLevel(state: GameState, id: number): number {
 /** Share of a tributary's taxes paid to its overlord (a vassal's share depends on crown authority). */
 export const TRIBUTARY_TRIBUTE = 0.15;
 
-/** Taxes of the realm's own provinces: what they pay, and what other faiths and peoples withhold. */
-function taxesOf(state: GameState, c: Country): { taxes: number; withheld: number; blockaded: number } {
-  let full = 0,
-    paid = 0,
-    lost = 0;
+/**
+ * What a realm's own provinces yield before its multipliers: taxes and levies in full, what is paid
+ * once other faiths and peoples have held back their share, and the taxes lost to enemy blockades.
+ */
+interface Yield {
+  tax: number;
+  taxPaid: number;
+  taxLost: number;
+  levy: number;
+  levyPaid: number;
+}
+
+function yieldOf(state: GameState, c: Country): Yield {
+  const y: Yield = { tax: 0, taxPaid: 0, taxLost: 0, levy: 0, levyPaid: 0 };
   const blocked = blockades(state);
   for (const id of provincesOf(state, c.index)) {
     const p = state.provinces[id];
     if (p.controller !== c.index) continue;
+    const m = provinceMultiplier(c, p);
     const t = provinceTax(p);
-    const due = t * provinceMultiplier(c, p);
-    full += t;
-    paid += due;
-    if (blocked.has(id)) lost += due * BLOCKADE_TAX;
+    const due = t * m;
+    y.tax += t;
+    y.taxPaid += due;
+    if (blocked.has(id)) y.taxLost += due * BLOCKADE_TAX;
+    const l = provinceLevy(p);
+    y.levy += l;
+    y.levyPaid += l * m;
   }
+  return y;
+}
+
+/** Where the yields of realms come from: worked out afresh, or once for the whole month's accounts. */
+type Yields = (c: Country) => Yield;
+
+/** Taxes of the realm's own provinces: what they pay, and what other faiths and peoples withhold. */
+function taxesOf(state: GameState, c: Country, y: Yield): { taxes: number; withheld: number; blockaded: number } {
   const mult = Math.max(0.3, taxMultiplier(state, c).total);
-  return { taxes: (paid - lost) * mult, withheld: (full - paid) * mult, blockaded: lost * mult };
+  return { taxes: (y.taxPaid - y.taxLost) * mult, withheld: (y.tax - y.taxPaid) * mult, blockaded: y.taxLost * mult };
 }
 
-function ownTaxes(state: GameState, c: Country): number {
-  return taxesOf(state, c).taxes;
-}
-
-export function income(state: GameState, c: Country): Breakdown {
-  const { taxes, withheld, blockaded } = taxesOf(state, c);
+export function income(state: GameState, c: Country, yields: Yields = (x) => yieldOf(state, x)): Breakdown {
+  const { taxes, withheld, blockaded } = taxesOf(state, c, yields(c));
   let fromVassals = 0,
     fromTributaries = 0;
   for (const v of vassalsOf(state, c.index))
-    if (!atWar(state, v.index, c.index)) fromVassals += ownTaxes(state, v) * CROWN_TRIBUTE[c.laws.crown];
+    if (!atWar(state, v.index, c.index))
+      fromVassals += taxesOf(state, v, yields(v)).taxes * CROWN_TRIBUTE[c.laws.crown];
   for (const t of tributariesOf(state, c.index))
-    if (!atWar(state, t.index, c.index)) fromTributaries += ownTaxes(state, t) * TRIBUTARY_TRIBUTE;
+    if (!atWar(state, t.index, c.index)) fromTributaries += taxesOf(state, t, yields(t)).taxes * TRIBUTARY_TRIBUTE;
   const paysLiege = c.liege && !atWar(state, c.index, c.liege);
   const paysOverlord = c.overlord && !atWar(state, c.index, c.overlord);
   return breakdown([
@@ -176,7 +203,18 @@ export function income(state: GameState, c: Country): Breakdown {
   ]);
 }
 
-export function expenses(state: GameState, c: Country): Breakdown {
+/** Years of income a treasury may hold before the gold beyond starts to go to waste. */
+export const IDLE_YEARS = 3;
+/** Share of the gold beyond that lost each month to idle courtiers and embezzlement. */
+export const IDLE_WASTE = 0.02;
+
+/** Gold a treasury far richer than the realm needs loses each month. */
+export function idleWaste(c: Country, monthlyIncome: number): number {
+  const keep = IDLE_YEARS * 12 * Math.max(10, monthlyIncome);
+  return c.gold > keep ? (c.gold - keep) * IDLE_WASTE : 0;
+}
+
+export function expenses(state: GameState, c: Country, monthlyIncome = income(state, c).total): Breakdown {
   const era = militaryEra(c);
   const pay = 1 - techEffect(c, 'upkeep');
   let field = 0,
@@ -198,23 +236,18 @@ export function expenses(state: GameState, c: Country): Breakdown {
     { label: 'Warships', value: navy.fleets },
     { label: 'Transports', value: navy.transports },
     { label: 'Interest on loans', value: interest },
+    { label: 'Waste of an idle treasury', value: idleWaste(c, monthlyIncome) },
   ]);
 }
 
 export function monthlyBalance(state: GameState, c: Country): number {
-  return income(state, c).total - expenses(state, c).total;
+  const inc = income(state, c).total;
+  return inc - expenses(state, c, inc).total;
 }
 
-export function maxManpower(state: GameState, c: Country): Breakdown {
-  let full = 0,
-    base = 0;
-  for (const id of provincesOf(state, c.index)) {
-    const p = state.provinces[id];
-    if (p.controller !== c.index) continue;
-    const l = provinceLevy(p);
-    full += l;
-    base += l * provinceMultiplier(c, p);
-  }
+export function maxManpower(state: GameState, c: Country, y: Yield = yieldOf(state, c)): Breakdown {
+  const full = y.levy,
+    base = y.levyPaid;
   const mult = levyMultiplier(state, c);
   return breakdown([
     { label: 'Levies of your provinces', value: full },
@@ -300,37 +333,85 @@ export function dailyConstruction(state: GameState, world: SimWorld) {
   });
 }
 
+// ── Development ───────────────────────────────────────────────────
+
+/**
+ * Gold to raise a province's development by a point: clearing land, draining marshes, founding
+ * towns. Dearer the more developed it already is, and in later ages, when everything costs more.
+ */
+export function developCost(c: Country, p: ProvinceState): number {
+  return Math.round(20 * (1 + p.dev / 4) * (1 + 0.5 * eraOf(c)));
+}
+
+export function canDevelop(
+  state: GameState,
+  world: SimWorld,
+  country: number,
+  id: number,
+): { ok: true; cost: number } | { ok: false; reason: string } {
+  const p = state.provinces[id];
+  const c = state.countries[country];
+  if (!p || !c || world.region(id).kind !== 'land') return { ok: false, reason: 'Not a province' };
+  if (p.owner !== country) return { ok: false, reason: 'Not your province' };
+  if (p.controller !== country) return { ok: false, reason: 'The province is occupied' };
+  if (p.plague !== undefined) return { ok: false, reason: 'Not while pestilence rages there' };
+  if (p.dev >= devCap(world, c, id)) return { ok: false, reason: 'It is as developed as the land and the age allow' };
+  const cost = developCost(c, p);
+  if (c.gold < cost) return { ok: false, reason: `Needs ${cost} gold` };
+  return { ok: true, cost };
+}
+
+/** Invests in a province: a point of development, at once. */
+export function develop(state: GameState, world: SimWorld, country: number, id: number) {
+  const check = canDevelop(state, world, country, id);
+  if (!check.ok) return check;
+  state.countries[country].gold -= check.cost;
+  state.provinces[id].dev++;
+  state.mapVersion++;
+  return check;
+}
+
 // ── The monthly tick ──────────────────────────────────────────────
 
-export function monthlyEconomy(state: GameState, world: SimWorld) {
+export function monthlyEconomy(state: GameState) {
+  // Each realm's provinces are counted once, for its own accounts and its liege's tribute alike.
+  const counted: Yield[] = [];
+  const yields: Yields = (c) => (counted[c.index] ??= yieldOf(state, c));
   for (const c of state.countries) {
     if (!c?.alive) continue;
-    const balance = monthlyBalance(state, c);
+    const inc = income(state, c, yields).total;
+    const balance = inc - expenses(state, c, inc).total;
     c.gold += balance;
     c.lastBalance = balance;
-    const max = maxManpower(state, c).total;
+    const max = maxManpower(state, c, yields(c)).total;
     // Levies recover a tenth of the full pool a month, faster when the commons are content.
     const recovery = 0.1 * (1 + 0.2 * estateEffect(state, c, 'commons'));
     if (c.manpower < max) c.manpower = Math.min(max, c.manpower + max * recovery);
     else c.manpower = Math.max(max, c.manpower - max * 0.05);
     if (c.gold < 0) handleDebt(state, c);
   }
-  // Development grows slowly towards what the land and the age allow, faster with farms and workshops
-  // and a stable realm.
+}
+
+/**
+ * Development grows slowly towards what the land and the age allow, faster with farms and workshops
+ * and a stable realm.
+ */
+export function monthlyGrowth(state: GameState, world: SimWorld) {
+  const growth: number[] = [];
+  const growthOf = (c: Country) =>
+    (growth[c.index] ??=
+      0.0025 *
+      (c.stability >= 0 ? 1 : 0.5) *
+      (1 + taskSkill(state, c, 'steward', 'develop') * 0.05) *
+      (1 + 0.1 * estateEffect(state, c, 'commons')) *
+      (1 + techEffect(c, 'growth')) *
+      Math.max(0, 1 + modifierEffect(c, 'growth')));
   state.provinces.forEach((p, id) => {
     if (!p?.owner) return;
     const c = state.countries[p.owner];
     const cap = devCap(world, c, id);
     if (p.dev >= cap) return;
-    const rate =
-      0.0025 *
-      (1 - p.dev / cap) *
-      (1 + buildingEffect(p, 'growth')) *
-      (c.stability >= 0 ? 1 : 0.5) *
-      (1 + taskSkill(state, c, 'steward', 'develop') * 0.05) *
-      (1 + 0.1 * estateEffect(state, c, 'commons')) *
-      (1 + techEffect(c, 'growth')) *
-      Math.max(0, 1 + modifierEffect(c, 'growth'));
+    const rate = growthOf(c) * (1 - p.dev / cap) * (1 + buildingEffect(p, 'growth'));
     if (p.controller === p.owner && chance(state, rate)) {
       p.dev++;
       log(state, [p.owner], 'economy', `${world.region(id).name} has grown to development ${p.dev}.`, { province: id });

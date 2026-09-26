@@ -381,6 +381,7 @@ export function foundColonialNation(
     history: {},
     spies: {},
     spyTarget: 0,
+    score: 0,
     laws: initialLaws(gov, tag, cultureGroup(c.culture)),
     lawChanged: state.day,
     legitimacy: 60,

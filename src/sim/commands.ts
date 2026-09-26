@@ -22,7 +22,7 @@ import {
   startFabrication,
   startIntegration,
 } from './diplomacy';
-import { canBuild, income, repayLoan, startBuilding, takeLoan } from './economy';
+import { canBuild, develop, income, repayLoan, startBuilding, takeLoan } from './economy';
 import { cultureName, faithName } from './beliefs';
 import {
   acceptCulture,
@@ -274,6 +274,11 @@ export function build(state: GameState, world: SimWorld, province: number, type:
   if (!check.ok) return no(check.reason);
   startBuilding(state, world, state.player, province, type);
   return ok();
+}
+
+export function developProvince(state: GameState, world: SimWorld, province: number): Result {
+  const check = develop(state, world, state.player, province);
+  return check.ok ? ok() : no(check.reason);
 }
 
 export function borrow(state: GameState): Result {
@@ -566,4 +571,13 @@ export function plot(state: GameState, world: SimWorld, target: number, id: Plot
   if (!check.ok) return no(check.reason);
   const result = carryOut(state, world, c, target, id);
   return result ? ok(result.text) : no('The plot could not go ahead');
+}
+
+// ── The end of the age ────────────────────────────────────────────
+
+/** The player has seen the final ranking and plays on. */
+export function playOnAfterTheAge(state: GameState): Result {
+  if (state.happened.end === undefined) return no('The age has not ended');
+  state.happened.end_seen ??= state.day;
+  return ok();
 }

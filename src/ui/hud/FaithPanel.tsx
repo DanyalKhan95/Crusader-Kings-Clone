@@ -171,6 +171,7 @@ function HolyWar({ c }: { c: Country }) {
     text = war.attackers.includes(c.index)
       ? `You fight in ${war.name} for ${game.world.region(war.goal).name}.`
       : `${war.name} is being fought for ${game.world.region(war.goal).name}, by ${war.attackers.length} realms.`;
+  else if (year > def.until) text = `The age of the great holy wars has passed. No ${name} will be called again.`;
   else if (!target) text = `${def.site} is in the hands of the faithful. There is no call for a ${name}.`;
   else {
     const holder = `${def.site} is held by ${state.countries[target.defender].name}.`;

@@ -9,6 +9,7 @@ import { toDate } from './calendar';
 import { cultureGroup, cultureName, faithFamily, faithName, holySites } from './beliefs';
 import { rulerSkill, seatSkill } from './characters';
 import type { Part } from './economy';
+import { agree, chronicle, firstTime, TheName } from './chronicle';
 import { log } from './log';
 import { modifierEffect } from './modifiers';
 import { countryByTag, provincesOf, realmNeighbours, topLiege } from './queries';
@@ -328,6 +329,9 @@ export function monthlyFaith(state: GameState, world: SimWorld) {
 
 // ── Heresies ──────────────────────────────────────────────────────
 
+/** A heresy that has died out rises again from its cradle only before this year (or before it settles). */
+export const LAST_PREACHERS = 1700;
+
 /**
  * Heresies appear in their cradle once their time has come and spread among the faithful, faster in
  * a realm that has taken them up; where the old faith rules they die out slowly, unless tolerated. A
@@ -342,8 +346,9 @@ export function monthlyHeresies(state: GameState, world: SimWorld) {
       if (p?.religion === id) held.push(pid);
     });
     if (!held.length) {
-      // A preacher rises in the cradle of the heresy (about once in eight years; a great reformer at once).
-      if (h.spawn === false || !chance(state, h.vigour ? 0.2 : 0.01)) continue;
+      // A preacher rises in the cradle of the heresy (about once in eight years; a great reformer at once),
+      // until the faith settles or, for the others, the age of reason.
+      if (h.spawn === false || year >= (h.settles ?? LAST_PREACHERS) || !chance(state, h.vigour ? 0.2 : 0.01)) continue;
       const [lon, lat, km] = h.cradle;
       const centre = { lon, lat } as Parameters<typeof distanceKm>[0];
       const candidates = world.regions.filter(
@@ -357,6 +362,8 @@ export function monthlyHeresies(state: GameState, world: SimWorld) {
       const seed = pick(state, candidates).id;
       state.provinces[seed].religion = id;
       state.mapVersion++;
+      if (firstTime(state, `heresy_${id}`))
+        chronicle(state, `The ${h.name} faith is first preached in ${world.region(seed).name}.`, { province: seed });
       log(state, 'all', 'event', `A ${h.name} heresy has taken hold in ${world.region(seed).name}.`, {
         province: seed,
         important: state.provinces[seed].owner === state.player,
@@ -411,6 +418,11 @@ export function monthlyHeresies(state: GameState, world: SimWorld) {
       c.stability = Math.max(-3, c.stability - 1);
       state.diploVersion++;
       state.mapVersion++;
+      if (!c.liege && (c.rank === 'kingdom' || c.rank === 'empire'))
+        chronicle(state, `${TheName(c.name)} ${agree(c.name, 'embraces', 'embrace')} the ${h.name} faith.`, {
+          province: c.capital,
+          realm: c.index,
+        });
       log(
         state,
         'all',

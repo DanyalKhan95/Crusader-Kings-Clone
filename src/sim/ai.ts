@@ -32,7 +32,7 @@ import {
   startIntegration,
   threatsTo,
 } from './diplomacy';
-import { canBuild, fortLevel, income, repayLoan, startBuilding } from './economy';
+import { buildingEffect, canBuild, canDevelop, develop, fortLevel, income, repayLoan, startBuilding } from './economy';
 import { acceptCulture, adoptFaith, canAcceptCulture, cultureShares, diversity, faithsToAdopt } from './faith';
 import { holyWarGoals, unbelievers, wagesHolyWar } from './holywars';
 import { canReform, militaryEra, reform, reformOptions } from './tech';
@@ -279,14 +279,18 @@ function economy(state: GameState, world: SimWorld, c: Country) {
   // Pay debts first.
   for (let i = c.loans.length - 1; i >= 0; i--) if (c.gold > c.loans[i].amount * 1.5) repayLoan(c, i);
   if (c.loans.length) return;
-  // Keep some men-at-arms: their upkeep at home up to a quarter of income.
+  const reserve = Math.max(30, monthly * 3);
+  // Gold beyond any need: the realm keeps more soldiers, and puts the rest into the land.
+  const floor = Math.max(reserve * 3, monthly * 24);
+  // Keep some men-at-arms: their upkeep at home up to a quarter of income, or two fifths for a rich realm.
+  const share = c.gold > floor ? 0.4 : 0.25;
   const era = militaryEra(c);
   let upkeep = 0;
   for (const [t, men] of Object.entries(c.reserve) as [UnitType, number][])
     upkeep += (men / 100) * unitDef(t, era).reserveUpkeep;
   const types = availableMaa(c);
   const regiments = 1 + Math.floor(monthly / 25);
-  for (let i = 0; i < regiments && upkeep < monthly * 0.25 && c.gold > 60; i++) {
+  for (let i = 0; i < regiments && upkeep < monthly * share && c.gold > 60; i++) {
     const pool: UnitType[] = types.filter((x) => x !== 'siege');
     if (types.includes('siege') && chance(state, 0.2)) pool.push('siege');
     const t = pick(state, pool);
@@ -294,7 +298,6 @@ function economy(state: GameState, world: SimWorld, c: Country) {
     upkeep += unitDef(t, era).reserveUpkeep * (unitDef(t, era).regiment / 100);
   }
   // Build the most useful things it can afford, keeping a reserve; big realms build several at once.
-  const reserve = Math.max(30, monthly * 3);
   if (state.day < c.ai.nextBuild) return;
   const own = provincesOf(state, c.index);
   const projects = 1 + Math.floor(own.length / 20);
@@ -319,6 +322,29 @@ function economy(state: GameState, world: SimWorld, c: Country) {
     startBuilding(state, world, c.index, best.id, best.type);
   }
   c.ai.nextBuild = state.day + 45;
+  // The most productive provinces first.
+  if (c.gold > floor) invest(state, world, c, own, floor);
+}
+
+/** Puts spare gold into developing the realm's own provinces, a few points a month. */
+function invest(state: GameState, world: SimWorld, c: Country, own: number[], floor: number) {
+  const points = 1 + Math.floor(own.length / 8);
+  for (let n = 0; n < points; n++) {
+    let best = 0,
+      value = 0;
+    for (const id of own) {
+      const check = canDevelop(state, world, c.index, id);
+      if (!check.ok || c.gold - check.cost < floor) continue;
+      const p = state.provinces[id];
+      const v = (1 + buildingEffect(p, 'tax') + buildingEffect(p, 'levy') * 0.5) / check.cost;
+      if (v > value) {
+        value = v;
+        best = id;
+      }
+    }
+    if (!best) return;
+    develop(state, world, c.index, best);
+  }
 }
 
 /** Can this realm expect to beat that one, friends included? */

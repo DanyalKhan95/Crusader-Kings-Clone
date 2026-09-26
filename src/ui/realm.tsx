@@ -3,7 +3,9 @@ import { cultureName as nameOfCulture, faithColor, faithName } from '../sim/beli
 import { age, character } from '../sim/characters';
 import type { Country } from '../sim/types';
 import { CoatOfArms } from './CoatOfArms';
-import { GOVERNMENT_NAMES, RANK_NAMES, formatNumber } from './format';
+import { GOVERNMENT_NAMES, RANK_NAMES, formatNumber, ordinal } from './format';
+import { ranking, standing } from '../sim/score';
+import { BreakdownList, WithTip } from './hud/Tip';
 import { countryStats, useGame, type CountryStats, type Game } from './game';
 
 export function cultureName(_game: Game, id: string | null | undefined): string {
@@ -106,6 +108,26 @@ export function CountryFacts({ country, stats }: { country: Country; stats?: Cou
         <dt>Land</dt>
         <dd className="num">{formatNumber(s.area)} km²</dd>
       </div>
+      {!country.liege && country.alive && !country.rebel && <Standing country={country} />}
     </dl>
+  );
+}
+
+/** The realm's place among the nations, and what it scores this year. */
+function Standing({ country }: { country: Country }) {
+  const game = useGame();
+  const rank = ranking(game.state).indexOf(country) + 1;
+  if (!rank) return null;
+  return (
+    <div className="wide">
+      <dt>Standing</dt>
+      <dd>
+        <WithTip tip={<BreakdownList title="At the next New Year" b={standing(game.state, country)} />}>
+          <span className="num">
+            {ordinal(rank)} among the nations · {Math.round(country.score).toLocaleString('en-US')} points
+          </span>
+        </WithTip>
+      </dd>
+    </div>
   );
 }

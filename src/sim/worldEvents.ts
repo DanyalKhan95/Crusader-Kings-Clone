@@ -1,14 +1,16 @@
 /**
  * Happenings of the whole world: the comet that returns every 76 years, the Horde that rides out of
- * the steppe, the crash of the stock exchanges, and the wars of the great powers of the modern age
- * that alliance blocs turn into world wars. Pestilence lives in `plague.ts`.
+ * the steppe, the crash of the stock exchanges, the crises between rival great powers, and the wars
+ * of the great powers of the modern age that alliance blocs turn into world wars. Pestilence lives
+ * in `plague.ts`.
  */
 import { COMETS, WORLD_WAR_NAMES } from '../data/events';
 import { TECHS } from '../data/techs';
 import { toDate } from './calendar';
 import { cultureGroup } from './beliefs';
 import { character } from './characters';
-import { alliesOf, realmDev } from './diplomacy';
+import { chronicle, theName } from './chronicle';
+import { alliesOf, opinionOf, realmDev } from './diplomacy';
 import { maxManpower } from './economy';
 import { fireEvent } from './events';
 import { log } from './log';
@@ -17,7 +19,7 @@ import { realmNeighbours, sideOf, strengthOf } from './queries';
 import { chance } from './rng';
 import { eraOf } from './tech';
 import type { Country, GameState } from './types';
-import { callToArms } from './war';
+import { callToArms, canDeclare, declareWar } from './war';
 import { distanceKm, type SimWorld } from './world';
 
 export function monthlyWorldEvents(state: GameState, world: SimWorld) {
@@ -25,6 +27,7 @@ export function monthlyWorldEvents(state: GameState, world: SimWorld) {
   comets(state, world, y, m);
   horde(state, world, y);
   crash(state, world, y);
+  crisis(state, world, y);
   worldWars(state, world, y);
 }
 
@@ -95,6 +98,10 @@ function horde(state: GameState, world: SimWorld, year: number) {
   best.ai.nextWarCheck = state.day;
   state.mapVersion++;
   state.borderVersion++;
+  chronicle(state, `${was} unites the peoples of the steppe as Genghis Khan: the ${best.adj} Horde rides out.`, {
+    province: best.capital,
+    realm: best.index,
+  });
   const player = state.countries[state.player];
   const near = !!player?.capital && distanceKm(world.region(player.capital), world.region(best.capital)) < 5000;
   log(
@@ -122,6 +129,7 @@ function crash(state: GameState, world: SimWorld, year: number) {
   );
   if (hit.length < 3) return;
   state.happened.crash = state.day;
+  chronicle(state, 'The great stock exchanges crash, and a depression grips the industrial world.');
   log(state, 'all', 'economy', 'The great stock exchanges have crashed. A depression grips the industrial world.', {
     important: hit.some((c) => c.index === state.player),
   });
@@ -153,6 +161,37 @@ export function greatPowers(state: GameState): number[] {
 /** Years between the outbreaks of two world wars, at the least. */
 const WORLD_WAR_GAP = 30;
 
+/** The first year a crisis between great powers may break out. */
+const CRISIS_FROM = 1905;
+
+/**
+ * Once a generation has passed since the last world war, the rivalry of two great powers that
+ * share a border may come to a crisis (about once in four years): the stronger marches, and their
+ * alliances decide whether the world follows. The player is never made to strike first.
+ */
+function crisis(state: GameState, world: SimWorld, year: number) {
+  if (year < CRISIS_FROM || state.wars.some((w) => w.world)) return;
+  const last = state.happened.last_world_war;
+  if (last !== undefined && state.day - last < WORLD_WAR_GAP * 365) return;
+  if (!chance(state, 1 / 48)) return;
+  const powers = greatPowers(state);
+  let worst: { a: number; b: number; opinion: number } | null = null;
+  for (const a of powers)
+    for (const b of powers) {
+      if (a === b || a === state.player || !realmNeighbours(state, world, a).has(b)) continue;
+      // The stronger of the two strikes, unless it is the player's realm.
+      if (b !== state.player && strengthOf(state, a) < strengthOf(state, b)) continue;
+      if (!canDeclare(state, world, a, b, 'conquest', 0).ok) continue;
+      const opinion = opinionOf(state, world, a, b) + opinionOf(state, world, b, a);
+      if (!worst || opinion < worst.opinion) worst = { a, b, opinion };
+    }
+  if (!worst) return;
+  const a = state.countries[worst.a],
+    b = state.countries[worst.b];
+  log(state, 'all', 'war', `A crisis between ${a.name} and ${b.name} ends in war.`, { province: b.capital });
+  declareWar(state, world, a.index, b.index, 'conquest', 0);
+}
+
 /**
  * From 1900 a war with three great powers or more, on both sides, becomes a world war, a generation
  * after the last: it is named, every realm in it goes over to total war, and each side calls its
@@ -177,6 +216,11 @@ function worldWars(state: GameState, world: SimWorld, year: number) {
       const name = WORLD_WAR_NAMES[n - 1] ?? `World War ${n}`;
       war.name = name[0].toUpperCase() + name.slice(1);
       state.diploVersion++;
+      chronicle(
+        state,
+        `${war.name} begins: ${theName(state.countries[war.attacker].name)} against ${theName(state.countries[war.defender].name)}.`,
+        { realm: war.attacker },
+      );
       log(
         state,
         'all',

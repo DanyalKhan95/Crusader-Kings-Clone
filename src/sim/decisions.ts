@@ -6,6 +6,7 @@ import { NATIONS, type NationDef } from '../data/nations';
 import type { Rank } from '../shared/dataTypes';
 import { faithFamily, provinceNamed } from './beliefs';
 import { toDate } from './calendar';
+import { agree, chronicle, TheName } from './chronicle';
 import { log } from './log';
 import { countryByTag, invalidateTags, realmProvinces, topLiege } from './queries';
 import { knowsId, techById } from './tech';
@@ -86,6 +87,10 @@ export function formNation(state: GameState, world: SimWorld, c: Country, n: Nat
   state.mapVersion++;
   state.borderVersion++;
   state.diploVersion++;
+  chronicle(state, `${TheName(old)} ${agree(old, 'proclaims', 'proclaim')} the ${n.name}.`, {
+    province: c.capital,
+    realm: c.index,
+  });
   log(state, 'all', 'event', `${old} has proclaimed the ${n.name}.`, {
     province: c.capital,
     important: c.index === state.player,

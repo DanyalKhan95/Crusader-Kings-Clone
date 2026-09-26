@@ -5,7 +5,7 @@ import { initialTech } from './tech';
 import type { CasusBelli, GameState } from './types';
 import type { SimWorld } from './world';
 
-export const SAVE_VERSION = 7;
+export const SAVE_VERSION = 8;
 
 export interface SaveFile {
   format: 'crowns-and-centuries';
@@ -42,7 +42,31 @@ export function deserialize(json: string, world?: SimWorld): GameState {
   if (file.version < 5) migrateToTechnology(s);
   if (file.version < 6) migrateToNavies(s, world);
   if (file.version < 7) migrateToEvents(s);
+  if (file.version < 8) migrateToLedger(s);
   return s;
+}
+
+/**
+ * Version 7 (milestone 7) kept no score, ledger or chronicle: every realm starts from nothing, and
+ * the chronicle opens with the world events already on record.
+ */
+function migrateToLedger(s: GameState) {
+  (s as unknown as { version: number }).version = 8;
+  s.ledger ??= [];
+  s.chronicle ??= [];
+  for (const c of s.countries) if (c) c.score ??= 0;
+  const NAMES: Record<string, string> = {
+    black_death: 'The Black Death breaks out.',
+    second_pestilence: 'The Second Pestilence breaks out.',
+    great_plague: 'The Great Plague breaks out.',
+    cholera: 'Cholera spreads from Bengal.',
+    spanish_flu: 'The Spanish Flu spreads around the world.',
+    horde: 'Genghis Khan unites the peoples of the steppe.',
+    crash: 'The great stock exchanges crash.',
+  };
+  if (!s.chronicle.length)
+    for (const [k, day] of Object.entries(s.happened).sort((a, b) => a[1] - b[1]))
+      if (NAMES[k]) s.chronicle.push({ day, text: NAMES[k] });
 }
 
 /**

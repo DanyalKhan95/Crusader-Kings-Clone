@@ -7,6 +7,7 @@
 import { PLAGUE_BY_ID, PLAGUES, type PlagueDef } from '../data/events';
 import { toDate, years } from './calendar';
 import { character, die } from './characters';
+import { chronicle } from './chronicle';
 import { fireEvent } from './events';
 import { log } from './log';
 import { modifierEffect } from './modifiers';
@@ -112,6 +113,7 @@ export function breakOut(state: GameState, world: SimWorld, id: string, province
   state.plague = { id: def.id, since: state.day };
   const player = state.countries[state.player];
   const near = !!player?.capital && distanceKm(world.region(player.capital), world.region(province)) < 3000;
+  chronicle(state, `${capitalise(def.name)} breaks out in ${world.region(province).name}.`, { province });
   log(state, 'all', 'plague', `${capitalise(def.name)} has broken out in ${world.region(province).name}.`, {
     province,
     important: near,

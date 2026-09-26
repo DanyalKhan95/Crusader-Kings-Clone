@@ -4,7 +4,7 @@ import { TERRAIN_INFO } from '../../game/mapModes';
 import { formatMen } from '../../render/units';
 import * as cmd from '../../sim/commands';
 import { canFabricate, fabricationCost, fabricationDays } from '../../sim/diplomacy';
-import { canBuild, devCap, fortLevel, provinceLevy, provinceTax } from '../../sim/economy';
+import { canBuild, canDevelop, devCap, fortLevel, provinceLevy, provinceTax } from '../../sim/economy';
 import { faithColor, faithName, holyTo } from '../../sim/beliefs';
 import {
   assimilationSpeed,
@@ -509,6 +509,7 @@ function Buildings({ id, mine }: { id: number; mine: boolean }) {
         </div>
       )}
       <ul className="buildings">
+        {mine && <DevelopRow id={id} />}
         {BUILDING_ORDER.map((type) => {
           const def = BUILDINGS[type];
           const level = p.buildings[type] ?? 0;
@@ -543,6 +544,35 @@ function Buildings({ id, mine }: { id: number; mine: boolean }) {
         })}
       </ul>
     </section>
+  );
+}
+
+/** Investing gold in the land itself: a point of development at once, up to what the age allows. */
+function DevelopRow({ id }: { id: number }) {
+  const game = useGame();
+  const p = game.state.provinces[id];
+  const owner = game.state.countries[p.owner];
+  const check = canDevelop(game.state, game.world, game.state.player, id);
+  const cap = devCap(game.world, owner, id);
+  return (
+    <li className="built">
+      <Icon name="village" />
+      <span className="building-text">
+        <span className="building-name">Develop the land</span>
+        <span className="dim small">
+          Development {p.dev} of {cap}
+        </span>
+      </span>
+      <button
+        className="btn small"
+        disabled={!check.ok}
+        title={check.ok ? 'Clear land, drain marshes and found towns: a point of development at once.' : check.reason}
+        onClick={() => run(game, cmd.developProvince(game.state, game.world, id))}
+      >
+        {check.ok ? `+1 · ${check.cost}` : '+1'}
+        {check.ok && <Icon name="coins" />}
+      </button>
+    </li>
   );
 }
 

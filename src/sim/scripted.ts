@@ -5,6 +5,7 @@
  */
 import { toDay } from './calendar';
 import { makeCharacter } from './characters';
+import { chronicle } from './chronicle';
 import { log } from './log';
 import { newArmy } from './military';
 import { countryByTag } from './queries';
@@ -47,6 +48,11 @@ export function setup1066(state: GameState, world: SimWorld) {
   eng.manpower = Math.max(0, eng.manpower - 9500);
   eng.reserve = {};
 
+  chronicle(
+    state,
+    'Harald Hardrada lands in Yorkshire to claim the English crown, and Duke William gathers a fleet across the Channel.',
+    { province: york, realm: nrw.index },
+  );
   // William's fleet waits at the mouth of the Somme.
   const normandy = nrm.capital;
   newArmy(state, nrm, normandy, { knights: 2000, archers: 1500, spearmen: 2500, levy: 1000 }, nrm.ruler).name =

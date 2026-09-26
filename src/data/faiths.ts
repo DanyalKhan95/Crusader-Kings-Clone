@@ -49,6 +49,8 @@ export interface GreatHolyWarDef {
   site: string;
   /** not before this year */
   from: number;
+  /** nor after this one: the age of the great holy wars passes */
+  until: number;
   /** monthly chance that the head calls it, once free to */
   chance: number;
   /** a realm founded in the land won; without one, the land goes to the leader */
@@ -62,10 +64,12 @@ export const GREAT_HOLY_WARS: GreatHolyWarDef[] = [
     called: ['catholic'],
     site: 'Jerusalem',
     from: 1090,
+    // The last Holy League against the Turk made its peace at Karlowitz in 1699.
+    until: 1700,
     chance: 1 / 36,
     kingdom: { tag: 'JER', name: 'Kingdom of Jerusalem', short: 'Jerusalem', adj: 'Jerusalemite', color: '#d8cfa8' },
   },
-  { name: 'Jihad', faith: 'sunni', called: ['sunni'], site: 'Jerusalem', from: 1066, chance: 1 / 180 },
+  { name: 'Jihad', faith: 'sunni', called: ['sunni'], site: 'Jerusalem', from: 1066, until: 1700, chance: 1 / 180 },
 ];
 /** How far from the holy city the land won in a great holy war reaches, in km. */
 export const HOLY_LAND_KM = 400;

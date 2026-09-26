@@ -70,7 +70,7 @@ function NationPlate() {
   const c = state.countries[player];
   if (!c) return null;
   const inc = income(state, c);
-  const exp = expenses(state, c);
+  const exp = expenses(state, c, inc.total);
   const balance = inc.total - exp.total;
   const maxMp = maxManpower(state, c);
   let fieldMaa = 0;
@@ -245,6 +245,14 @@ function TimeControls() {
           />
         ))}
       </div>
+      <button
+        className="btn ghost icon-btn"
+        onClick={() => game.ui.set({ modal: 'ledger', speed: 0 })}
+        aria-label="The ledger of nations (L)"
+        title="The ledger of nations (L)"
+      >
+        <Icon name="scroll-unfurled" />
+      </button>
       <button
         className="btn ghost icon-btn"
         onClick={() => game.ui.set({ modal: 'menu', speed: 0 })}

@@ -2843,3 +2843,257 @@ p.tight {
   border-color: rgba(150, 140, 90, 0.5);
   background: rgba(60, 55, 30, 0.35);
 }
+
+/* ── The ledger and the end of the age (milestone 8) ─────────── */
+
+.modal.ledger {
+  width: min(900px, 100%);
+}
+.ledger-note {
+  max-width: 70ch;
+}
+.ledger-table-wrap {
+  overflow-x: auto;
+  max-height: min(52vh, 520px);
+  overflow-y: auto;
+  border: 1px solid var(--line-soft);
+  border-radius: var(--radius);
+}
+.ledger-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+.ledger-table th,
+.ledger-table td {
+  padding: 5px 8px;
+  text-align: left;
+  white-space: nowrap;
+  border-bottom: 1px solid var(--line-soft);
+}
+.ledger-table td.num,
+.ledger-table th.num {
+  text-align: right;
+}
+.ledger-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--panel-solid);
+  font-family: var(--font-caps);
+  font-size: 12.5px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  color: var(--gold);
+}
+.ledger-table tbody tr:hover {
+  background: rgba(255, 230, 170, 0.04);
+}
+.ledger-table tr.mine {
+  background: rgba(207, 166, 92, 0.12);
+}
+.sort {
+  padding: 0;
+  font: inherit;
+  letter-spacing: inherit;
+  color: inherit;
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+.sort.on {
+  color: var(--gold-bright);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.ledger-realm {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0;
+  font: inherit;
+  color: var(--text);
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+.ledger-realm:hover span {
+  color: var(--gold-bright);
+}
+
+.centuries {
+  display: grid;
+  gap: 10px;
+}
+.centuries-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 14px;
+}
+.segmented {
+  display: inline-flex;
+  border: 1px solid var(--gold-dim);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+.segmented button {
+  padding: 4px 12px;
+  font-family: var(--font-caps);
+  font-size: 13.5px;
+  color: var(--text-dim);
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+}
+.segmented button[aria-checked='true'] {
+  color: var(--parchment-ink);
+  background: var(--gold);
+}
+.chart-wrap {
+  overflow-x: auto;
+  background: var(--panel-inset);
+  border: 1px solid var(--line-soft);
+  border-radius: var(--radius);
+}
+.chart {
+  display: block;
+  width: 100%;
+  min-width: 520px;
+  height: auto;
+}
+.chart .grid {
+  stroke: var(--line-soft);
+  stroke-width: 1;
+}
+.chart .axis {
+  font-family: var(--font-body);
+  font-size: 12px;
+  fill: var(--text-dim);
+}
+.chart .series {
+  fill: none;
+  stroke-width: 2.2;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+  transition: opacity 0.15s;
+}
+.chart .series.mine {
+  stroke-width: 3.6;
+}
+.chart-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 8px;
+  font: inherit;
+  font-size: 13.5px;
+  color: var(--text);
+  background: rgba(255, 230, 170, 0.04);
+  border: 1px solid var(--line-soft);
+  border-radius: var(--radius);
+  cursor: pointer;
+}
+.legend-item.mine {
+  border-color: var(--gold);
+}
+.legend-swatch {
+  width: 14px;
+  height: 4px;
+  border-radius: 2px;
+}
+
+.chronicle {
+  max-height: min(58vh, 560px);
+  overflow-y: auto;
+  padding-right: 4px;
+}
+.chronicle section + section {
+  margin-top: 12px;
+}
+.chronicle-list {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.chronicle-list li {
+  display: grid;
+  grid-template-columns: 7.5em 1fr;
+  gap: 10px;
+  font-size: 14.5px;
+  line-height: 1.4;
+}
+.chronicle-date {
+  color: var(--text-dim);
+  font-size: 13px;
+  padding-top: 1px;
+}
+.link-like {
+  padding: 0;
+  font: inherit;
+  text-align: left;
+  color: var(--text);
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+.link-like:hover {
+  color: var(--gold-bright);
+}
+.link-like .icon {
+  width: 0.9em;
+  height: 0.9em;
+  color: var(--gold-dim);
+  vertical-align: -0.1em;
+}
+
+.modal.end-of-age {
+  width: min(620px, 100%);
+}
+.end-text {
+  font-size: 16px;
+  line-height: 1.55;
+}
+.end-verdict {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  font-size: 16px;
+  background: var(--panel-inset);
+  border: 1px solid var(--gold-dim);
+  border-radius: var(--radius);
+}
+.end-ranking {
+  display: grid;
+  gap: 3px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.end-ranking li {
+  display: grid;
+  grid-template-columns: 2em auto 1fr auto;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 8px;
+  border-radius: var(--radius);
+}
+.end-ranking li.mine {
+  background: rgba(207, 166, 92, 0.14);
+}
+.end-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

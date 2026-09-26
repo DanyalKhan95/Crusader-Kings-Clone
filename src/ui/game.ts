@@ -14,7 +14,8 @@ import { createStore, type Store } from './store';
 export type Phase = 'menu' | 'choose' | 'playing';
 export type Panel = 'none' | 'province' | 'country' | 'army' | 'fleet' | 'war';
 export type CountryTab = 'realm' | 'treasury' | 'military' | 'court' | 'laws' | 'faith' | 'diplomacy';
-export type Modal = 'none' | 'credits' | 'menu' | 'declare' | 'peace' | 'offer' | 'fallen' | 'tech' | 'event';
+export type Modal =
+  'none' | 'credits' | 'menu' | 'declare' | 'peace' | 'offer' | 'fallen' | 'tech' | 'event' | 'ledger' | 'end';
 
 export interface UIState {
   phase: Phase;

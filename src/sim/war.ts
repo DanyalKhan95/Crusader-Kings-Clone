@@ -22,6 +22,7 @@ import {
 } from './diplomacy';
 import { income, type Breakdown, type Part } from './economy';
 import { grantHolyLand, holyLandOf, holyVictory, holyWarGoals, unbelievers, wagesHolyWar } from './holywars';
+import { agree, chronicle, theName, TheName } from './chronicle';
 import { log } from './log';
 import { hasModifier } from './modifiers';
 import { taskSkill } from './politics';
@@ -835,8 +836,20 @@ export function endWar(
     loseLeader.stability = Math.max(-3, loseLeader.stability - 1);
     if (terms.independence)
       for (const m of war.attackers)
-        if (state.countries[m]?.liege === war.defender || state.countries[m]?.overlord === war.defender)
+        if (state.countries[m]?.liege === war.defender || state.countries[m]?.overlord === war.defender) {
+          const free = state.countries[m];
+          // The chronicle remembers kingdoms and colonies that win their freedom.
+          if (free.colony || free.rank === 'kingdom' || free.rank === 'empire')
+            chronicle(
+              state,
+              `${TheName(free.name)} ${agree(free.name, 'wins its', 'win their')} independence from ${theName(loseLeader.name)}.`,
+              {
+                province: free.capital,
+                realm: free.index,
+              },
+            );
           release(state, m);
+        }
     if (terms.tributary) {
       addAggression(state, world, winLeader.index, realmProvinces(state, loseLeader.index), 0.25);
       makeTributary(state, loseLeader.index, winLeader.index);

@@ -19,6 +19,7 @@ import type { Government } from '../shared/dataTypes';
 import { toDate, years } from './calendar';
 import { rulerSkill, seatSkill } from './characters';
 import type { Breakdown, Part } from './economy';
+import { agree, chronicle, firstTime, TheName } from './chronicle';
 import { log } from './log';
 import { termYears } from '../data/politics';
 import { modifierParts } from './modifiers';
@@ -241,6 +242,15 @@ export function monthlyResearch(state: GameState, world: SimWorld) {
     }
     const era = eraOf(c);
     if (era > eraBefore) {
+      if (firstTime(state, `era_${ERAS[era].id}`))
+        chronicle(
+          state,
+          `${TheName(c.name)} ${agree(c.name, 'is', 'are')} the first realm to enter the ${ERAS[era].name.toLowerCase()} era.`,
+          {
+            province: c.capital,
+            realm: c.index,
+          },
+        );
       state.mapVersion++;
       log(state, [c.index], 'event', `${c.name} enters the ${ERAS[era].name.toLowerCase()} era. ${ERAS[era].blurb}`, {
         important: true,
@@ -322,6 +332,12 @@ export function changeGovernment(
   gov: Government,
   cost: { legitimacy: number; stability: number },
 ) {
+  const firstOfKind = FIRSTS[gov] && firstTime(state, `gov_${gov}`);
+  if (firstOfKind)
+    chronicle(state, `${TheName(c.name)} ${agree(c.name, 'becomes', 'become')} the world's first ${FIRSTS[gov]}.`, {
+      province: c.capital,
+      realm: c.index,
+    });
   c.gov = gov;
   c.legitimacy = Math.max(0, c.legitimacy - cost.legitimacy);
   c.stability = Math.max(-3, c.stability - cost.stability);
@@ -336,6 +352,15 @@ export function changeGovernment(
     important: c.index === state.player,
   });
 }
+
+/** New forms of government whose first realm the chronicle remembers. */
+const FIRSTS: Partial<Record<Government, string>> = {
+  absolute: 'absolute monarchy',
+  constitutional: 'constitutional monarchy',
+  democracy: 'democracy',
+  dictatorship: 'dictatorship',
+  communist: 'communist state',
+};
 
 const GOV_NOUN: Partial<Record<Government, string>> = {
   feudal: 'feudal monarchy',

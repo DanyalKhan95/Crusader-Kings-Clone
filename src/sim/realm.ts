@@ -1,5 +1,6 @@
 /** Changes to a realm as a whole: its capital moving, and the end of a country. */
-import { provincesOf } from './queries';
+import { agree, chronicle, theName, TheName } from './chronicle';
+import { provincesOf, topLiege } from './queries';
 import type { Country, GameState } from './types';
 import type { SimWorld } from './world';
 
@@ -23,6 +24,18 @@ export function fixCapitals(state: GameState, world: SimWorld) {
 
 /** A country with nothing left leaves the game, and everything bound to it lets go. */
 export function destroyCountry(state: GameState, c: Country) {
+  if (!c.rebel && (c.rank === 'kingdom' || c.rank === 'empire')) {
+    // Whoever holds its old seat is taken for its conqueror.
+    const holder = state.countries[state.provinces[c.capital]?.owner ?? 0];
+    const top = holder ? state.countries[topLiege(state, holder.index)] : undefined;
+    chronicle(
+      state,
+      top && top !== c
+        ? `${TheName(c.name)} ${agree(c.name, 'falls', 'fall')} to ${theName(top.name)}.`
+        : `The end of ${theName(c.name)}.`,
+      { province: c.capital, realm: c.index },
+    );
+  }
   c.alive = false;
   c.liege = 0;
   c.overlord = 0;

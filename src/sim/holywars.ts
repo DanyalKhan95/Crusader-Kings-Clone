@@ -19,6 +19,7 @@ import { makeCharacter, staffCourt } from './characters';
 import { alliesOf, guarantorsOf, remember } from './diplomacy';
 import { maxManpower } from './economy';
 import { headOf, sitesHeldByUnbelievers } from './faith';
+import { chronicle, theName } from './chronicle';
 import { log } from './log';
 import { defaultEstates, defaultTasks, initialLaws } from './politics';
 import { armySize, atWar, realmMembers, realmProvinces, strengthOf, topLiege, touchesRealm } from './queries';
@@ -108,6 +109,7 @@ export function canCallHolyWar(state: GameState, def: GreatHolyWarDef, caller: n
   if (leader.index !== caller) return no(`Only ${leader.name} can call the faithful to a ${def.name.toLowerCase()}`);
   if (activeHolyWar(state, def.faith)) return no(`A ${def.name.toLowerCase()} is being fought`);
   const year = toDate(state.day).y;
+  if (year > def.until) return no(`The age of the great holy wars has passed`);
   const next = nextHolyWarYear(state, def);
   if (year < next) return no(`The faithful are not ready before ${next}`);
   const target = greatHolyWarTarget(state, def);
@@ -155,6 +157,10 @@ export function callHolyWar(state: GameState, world: SimWorld, def: GreatHolyWar
       important: !!player && (def.called.includes(player.religion) || war.defenders.includes(player.index)),
     },
   );
+  chronicle(state, `${war.name} is called, to free ${def.site} from ${theName(d.name)}.`, {
+    province: target.site,
+    realm: leader.index,
+  });
   if (head && head.index !== leader.index) remember(state, head.index, leader.index, 'fought_beside', 10);
   for (const c of state.countries)
     if (c?.alive && !c.liege && !c.rebel && def.called.includes(c.religion) && !war.attackers.includes(c.index))
@@ -293,6 +299,7 @@ function foundKingdom(
     history: {},
     spies: {},
     spyTarget: 0,
+    score: 0,
     laws: initialLaws('feudal', def.tag, cultureGroup(culture)),
     lawChanged: state.day,
     legitimacy: 70,
@@ -331,6 +338,10 @@ export function grantHolyLand(state: GameState, world: SimWorld, war: War): Coun
     p.siege = undefined;
   }
   if (founded) {
+    chronicle(state, `The crusaders take ${world.region(war.goal).name} and found ${theName(heir.name)}.`, {
+      province: war.goal,
+      realm: heir.index,
+    });
     heir.manpower = Math.round(maxManpower(state, heir).total);
     // The crusaders who founded it stand by it.
     for (const m of war.attackers) if (!state.countries[m]?.liege) remember(state, heir.index, m, 'fought_beside', 20);

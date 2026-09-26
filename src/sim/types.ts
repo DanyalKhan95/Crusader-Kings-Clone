@@ -216,6 +216,8 @@ export interface Country {
   spies: Record<number, number>;
   /** the realm the spymaster builds a network in (0 = none) */
   spyTarget: number;
+  /** points of standing gathered year by year, for the ranking at the end of the age */
+  score: number;
 
   laws: Laws;
   /** day of the last change of law; laws change at most once in five years */
@@ -514,8 +516,24 @@ export interface PlagueState {
   since: number;
 }
 
+/** A great happening, for the chronicle of the world. */
+export interface ChronicleEntry {
+  day: number;
+  text: string;
+  /** a place to look at */
+  province?: number;
+  /** the realm it is about */
+  realm?: number;
+}
+
+/** The great realms of a year, for the chart of the centuries: [country, realm development, score]. */
+export interface LedgerSnapshot {
+  year: number;
+  rows: [number, number, number][];
+}
+
 export interface GameState {
-  version: 7;
+  version: 8;
   scenario: string;
   seed: number;
   rng: number;
@@ -556,4 +574,8 @@ export interface GameState {
   happened: Record<string, number>;
   /** the pestilence abroad in the world, if any */
   plague: PlagueState | null;
+  /** great happenings of the world, oldest first */
+  chronicle: ChronicleEntry[];
+  /** the great realms every ten years */
+  ledger: LedgerSnapshot[];
 }

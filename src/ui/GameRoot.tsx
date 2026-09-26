@@ -2,7 +2,9 @@ import { useEffect } from 'react';
 import { MAP_MODES } from '../game/mapModes';
 import { closePanel, setMapMode, setSpeed, togglePause, toMenu } from './actions';
 import { DeclareWar } from './dialogs/DeclareWar';
+import { EndOfAge } from './dialogs/EndOfAge';
 import { EventDialog } from './dialogs/EventDialog';
+import { Ledger } from './dialogs/Ledger';
 import { Fallen, GameMenu } from './dialogs/GameMenu';
 import { Offer, Peace } from './dialogs/Peace';
 import { TechScreen } from './dialogs/TechScreen';
@@ -27,7 +29,7 @@ export function GameRoot() {
       if (isTyping(e) || e.ctrlKey || e.metaKey || e.altKey) return;
       const s = game.ui.get();
       if (e.key === 'Escape') {
-        if (s.modal === 'offer' || s.modal === 'fallen' || s.modal === 'event') return;
+        if (s.modal === 'offer' || s.modal === 'fallen' || s.modal === 'event' || s.modal === 'end') return;
         if (s.modal !== 'none') game.ui.set({ modal: 'none' });
         else if (s.orderMode) game.ui.set({ orderMode: false });
         else if (s.phase === 'playing' && s.panel !== 'none') closePanel(game);
@@ -44,6 +46,10 @@ export function GameRoot() {
         }
         if (/^[1-5]$/.test(e.key)) {
           setSpeed(game, Number(e.key));
+          return;
+        }
+        if (e.key === 'l' || e.key === 'L') {
+          game.ui.set({ modal: 'ledger', speed: 0 });
           return;
         }
       }
@@ -69,6 +75,8 @@ export function GameRoot() {
       {phase === 'playing' && modal === 'fallen' && <Fallen />}
       {phase === 'playing' && modal === 'tech' && <TechScreen />}
       {phase === 'playing' && modal === 'event' && <EventDialog />}
+      {phase === 'playing' && modal === 'ledger' && <Ledger />}
+      {phase === 'playing' && modal === 'end' && <EndOfAge />}
     </>
   );
 }

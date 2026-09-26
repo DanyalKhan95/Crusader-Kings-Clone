@@ -15,6 +15,7 @@ import { createGameState } from '../src/sim/setup.ts';
 import { advanceDay } from '../src/sim/tick.ts';
 import { fleetSize } from '../src/sim/naval.ts';
 import { makeSimWorld } from '../src/sim/world.ts';
+import { ranking as scoreRanking } from '../src/sim/score.ts';
 import type { RegionData, ScenarioData, WorldData } from '../src/shared/dataTypes.ts';
 
 const arg = (name: string, fallback: number) => {
@@ -248,3 +249,8 @@ for (const c of state.countries)
 console.log(`spy networks: ${networks} (${strong} of 50 or more); grudges over exposed plots: ${plotted}`);
 const hordes = state.countries.filter((c) => c?.alive && c.modifiers.some((m) => m.id === 'horde'));
 for (const h of hordes) console.log(`the Horde: ${h.name}, ${realmProvinces(state, h.index).length} provinces`);
+// ── Score, ledger and chronicle ──
+const ranks = scoreRanking(state).slice(0, 10);
+console.log(`ranking: ${ranks.map((c, i) => `${i + 1}. ${c.name} ${Math.round(c.score)}`).join(', ')}`);
+console.log(`ledger snapshots: ${state.ledger.length}; chronicle entries: ${state.chronicle.length}`);
+for (const e of state.chronicle.slice(-arg('chronicle', 25))) console.log(`  ${fmt(e.day)} ${e.text}`);

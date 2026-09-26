@@ -20,6 +20,7 @@ import { cultureGroup, faithFamily, faithName } from './beliefs';
 import { age, character, die, makeCharacter, rulerSkill } from './characters';
 import { opinionOf, remember } from './diplomacy';
 import { income, maxManpower, MAX_DEV, takeLoan } from './economy';
+import { agree, chronicle, TheName } from './chronicle';
 import { log } from './log';
 import { addModifier, hasModifier, removeModifier } from './modifiers';
 import { estateInfluence, estateLoyalty, estateName, grantPrivilege, invalidateRealm } from './politics';
@@ -385,6 +386,15 @@ function turnFaith(state: GameState, c: Country, faith: string) {
   if (cap && cap.owner === c.index) cap.religion = faith;
   state.mapVersion++;
   state.diploVersion++;
+  if (!c.liege && (c.rank === 'kingdom' || c.rank === 'empire'))
+    chronicle(
+      state,
+      `${TheName(c.name)} ${agree(c.name, 'breaks', 'break')} with the ${faithName(old)} church and ${agree(c.name, 'turns', 'turn')} ${faithName(faith)}.`,
+      {
+        province: c.capital,
+        realm: c.index,
+      },
+    );
   log(
     state,
     'all',
