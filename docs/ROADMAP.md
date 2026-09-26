@@ -341,8 +341,9 @@ whole world. The player controls a country rather than a dynasty.
     first.
   - World wars: from 1905, and forty years after the last, two rival great powers that share a
     border may come to a crisis and war (about once in ten years), and their alliances decide
-    whether it becomes a world war. Before the crises one run had none; with crises every
-    generation, another had five (1908 to 2039).
+    whether it becomes a world war. Before the crises one run had none; with a crisis every
+    generation, another had five (1908 to 2039); with the present odds the latest run had two
+    (1927 and 2024).
   - Score: the Song Empire has ranked first in every 1,000-year run so far, with 150,000 to
     200,000 points, ahead of Russia, Byzantium, the Seljuks and Germany; France is usually sixth
     or seventh. A score means most against the other realms of the same game.
