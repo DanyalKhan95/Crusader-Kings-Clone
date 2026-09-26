@@ -3,12 +3,14 @@
  * conversion and assimilation, accepted cultures, heresies, heads of faith and holy sites, and the
  * conversion of pagan crowns. Great holy wars live in `holywars.ts`.
  */
+import { PLAGUE_PENALTY } from '../data/events';
 import { CONVERSION_SPEED, FAITH_HEADS, FAITH_PENALTY, HERESIES, MAJOR_FAMILIES } from '../data/faiths';
 import { toDate } from './calendar';
 import { cultureGroup, cultureName, faithFamily, faithName, holySites } from './beliefs';
 import { rulerSkill, seatSkill } from './characters';
 import type { Part } from './economy';
 import { log } from './log';
+import { modifierEffect } from './modifiers';
 import { countryByTag, provincesOf, realmNeighbours, topLiege } from './queries';
 import { chance, pick } from './rng';
 import { nationalist, techEffect } from './tech';
@@ -37,12 +39,12 @@ export function cultureStanding(c: Country, p: ProvinceState): CultureStanding {
 
 const CULTURE_PENALTY: Record<CultureStanding, number> = { own: 0, accepted: 0, kin: 0.05, foreign: 0.15 };
 
-/** Tax and levy of a province for its ruler, as a multiplier, with the reasons. */
 /** What a province of another people withholds; nationalism makes a foreign people resist harder. */
 function culturePenalty(c: Country, s: CultureStanding): number {
   return s === 'foreign' && nationalist(c) ? 0.25 : CULTURE_PENALTY[s];
 }
 
+/** Tax and levy of a province for its ruler, as a multiplier, with the reasons. */
 export function provinceFactor(c: Country, p: ProvinceState): { value: number; parts: Part[] } {
   const parts: Part[] = [];
   const f = faithStanding(c, p);
@@ -58,7 +60,8 @@ export function provinceFactor(c: Country, p: ProvinceState): { value: number; p
       label: s === 'kin' ? 'A kindred people' : nationalist(c) ? 'A foreign nation' : 'A foreign people',
       value: -pen,
     });
-  return { value: 1 + parts.reduce((n, x) => n + x.value, 0), parts };
+  if (p.plague !== undefined) parts.push({ label: 'Pestilence', value: -PLAGUE_PENALTY });
+  return { value: Math.max(0, 1 + parts.reduce((n, x) => n + x.value, 0)), parts };
 }
 
 /** The same multiplier without the reasons, for the sums over every province. */
@@ -66,7 +69,8 @@ export function provinceMultiplier(c: Country, p: ProvinceState): number {
   let v = 1;
   const f = faithStanding(c, p);
   if (f !== 'same') v -= FAITH_PENALTY[c.laws.tolerance][f === 'sister' ? 0 : 1];
-  return v - culturePenalty(c, cultureStanding(c, p));
+  if (p.plague !== undefined) v -= PLAGUE_PENALTY;
+  return Math.max(0, v - culturePenalty(c, cultureStanding(c, p)));
 }
 
 export interface Diversity {
@@ -338,8 +342,8 @@ export function monthlyHeresies(state: GameState, world: SimWorld) {
       if (p?.religion === id) held.push(pid);
     });
     if (!held.length) {
-      // A preacher rises in the cradle of the heresy (about once in eight years).
-      if (!chance(state, 0.01)) continue;
+      // A preacher rises in the cradle of the heresy (about once in eight years; a great reformer at once).
+      if (h.spawn === false || !chance(state, h.vigour ? 0.2 : 0.01)) continue;
       const [lon, lat, km] = h.cradle;
       const centre = { lon, lat } as Parameters<typeof distanceKm>[0];
       const candidates = world.regions.filter(
@@ -362,21 +366,31 @@ export function monthlyHeresies(state: GameState, world: SimWorld) {
     for (const pid of held) {
       const p = state.provinces[pid];
       const owner = state.countries[p.owner];
-      // Spread to a neighbour of the old faith.
-      if (chance(state, owner?.religion === id ? 0.05 : 0.01)) {
+      // Spread to a neighbour of the old faith: fast where its crown has taken up the new faith, slowly
+      // across a border (a great reformer's teaching no faster than any other), and hardly at all
+      // where the crown fights the heresy.
+      const vigour = h.vigour ?? 1;
+      const settled = h.settles !== undefined && year >= h.settles;
+      if (chance(state, 0.05 * vigour)) {
         const next = world
           .region(pid)
           .adj.filter(([n]) => state.provinces[n]?.owner && state.provinces[n].religion === h.parent);
         if (next.length) {
-          state.provinces[pick(state, next)[0]].religion = id;
-          state.mapVersion++;
+          const to = pick(state, next)[0];
+          const lord = state.countries[state.provinces[to].owner];
+          const odds =
+            lord?.religion === id ? 1 : settled ? 0 : 0.2 / vigour / (1 + modifierEffect(lord, 'heresyFade'));
+          if (chance(state, odds)) {
+            state.provinces[to].religion = id;
+            state.mapVersion++;
+          }
         }
       }
       // Where the old faith rules, the heresy fades, fast under persecution and not at all under tolerance.
       if (
         owner?.religion === h.parent &&
         owner.laws.tolerance < 2 &&
-        chance(state, owner.laws.tolerance === 0 ? 0.015 : 0.005)
+        chance(state, (owner.laws.tolerance === 0 ? 0.015 : 0.005) * (1 + modifierEffect(owner, 'heresyFade')))
       ) {
         p.religion = h.parent;
         state.mapVersion++;

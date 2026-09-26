@@ -11,28 +11,31 @@ every push).
 
 ## Status
 
-**Milestone 6: navies, exploration and colonisation.** The seas and the wider world open up.
-Every other realm is run by the AI.
+**Milestone 7: events, decisions and espionage.** The world happens to you, and you can work in
+the shadows. Every other realm is run by the AI.
 
-- **Fleets by era:** war cogs and galleys (longships in the north), carracks, galleons, ships of
-  the line and frigates, ironclads and cruisers, dreadnoughts, destroyers and submarines, then
-  carriers. Build them in any of your ports, give them an admiral, and send them to fight,
-  blockade or explore.
-- **War at sea:** fleets that meet give battle, and the beaten make for port. A blockade cuts the
-  taxes of an enemy coast and hastens its sieges, and victories at sea count in the war score.
-- **Transports:** armies cross the sea only when your transports have room for them, and enemy
-  warships sink the men they catch at sea. William's fleet waits at the mouth of the Somme.
-- **Terra incognita:** you see only the world your realm knows, the lands of your faith and those
-  around your own. Armies and fleets chart what they reach, allies share their maps, and
-  expeditions sail on their own into the unknown. Cartography lets ships cross the open ocean.
-- **Colonies:** settle land no realm rules, among its natives once you have cartography, as far
-  as your colonial range allows. Colonies on another continent are governed by colonial nations,
-  which may one day want their freedom.
+- **Events:** some 35 happenings across the eras, from harvests, fires and feuding lords to the
+  printing press, revolution, railways and the space race. Each offers a choice, with its costs
+  and effects shown before you pick; many leave a modifier on the realm for years.
+- **Pestilence:** the Black Death breaks out near Kaffa around 1346 and spreads along roads and
+  sea lanes. Stricken provinces pay and serve half, lose people and sometimes their ruler, and
+  fill again slowly. Later come the Great Plague, cholera and the Spanish Flu.
+- **The world moves:** Halley's comet, the Horde of Genghis Khan, the Reformation spreading from
+  Saxony and Geneva, the King's Great Matter, the Crash of 1929, and world wars when the alliance
+  blocs of the great powers are drawn into one war.
+- **Nations:** hold its heartland to proclaim Spain, Great Britain, Italy, Germany, Russia, or the
+  Roman Empire restored, with new arms and flags and claims on the rest of it.
+- **Espionage:** set your spymaster to build a network in a rival realm, then spend it to forge
+  claims, steal learning, sabotage, stir up revolts or murder a ruler, at the risk of being
+  traced.
 
-![England's fleet in port at London in 1066, and the world as the English know it: Christendom and its seas, and terra incognita beyond](docs/images/navies-1066.webp)
+![August 1343: the Black Death has broken out north of the Black Sea and reached Constantinople, a dark hatch lies over the stricken provinces, and the emperor must choose what to do](docs/images/plague-1343.webp)
 
 Earlier milestones:
 
+- **Navies, exploration and colonisation (M6):** warships by era, sea battles and blockades;
+  transports for armies at sea; terra incognita, expeditions and shared maps; colonies and
+  colonial nations.
 - **Technology and eras (M5):** three tracks of 33 levels over six eras, each level with its
   year in history; arms, buildings and governments that modernise; nationalism and ideologies;
   era themes, banners and national flags.
@@ -55,7 +58,7 @@ Earlier milestones:
 
 ![Byzantium in 1066 on the faith map: the Orthodox empire, its Miaphysite east, and the holy places it holds and has lost](docs/images/faith-1066.webp)
 
-Next up is **Milestone 7: events, decisions and espionage**. The full plan is in
+Next up is **Milestone 8: the endgame and polish**. The full plan is in
 [docs/ROADMAP.md](docs/ROADMAP.md).
 
 ## Controls
@@ -124,7 +127,7 @@ Hand-curated tables live in `tools/mapgen/curated`:
 | Path             | What                                                                             |
 | ---------------- | -------------------------------------------------------------------------------- |
 | `src/render/`    | WebGL2 map: terrain, fills, borders, rivers, labels, picking, camera             |
-| `src/sim/`       | The simulation: economy, armies, war, diplomacy, politics, faith, technology, AI |
+| `src/sim/`       | The simulation: economy, war, diplomacy, politics, faith, technology, events, AI |
 | `src/game/`      | Loading the world, and map modes                                                 |
 | `src/heraldry/`  | Coats of arms: blazon model, curated arms, generator, SVG                        |
 | `src/ui/`        | React screens, HUD and era themes                                                |

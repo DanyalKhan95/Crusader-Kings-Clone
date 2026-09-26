@@ -21,6 +21,7 @@ import { rulerSkill, seatSkill } from './characters';
 import type { Breakdown, Part } from './economy';
 import { log } from './log';
 import { termYears } from '../data/politics';
+import { modifierParts } from './modifiers';
 import { estateEffect, invalidatePolitics, successionOptions } from './politics';
 import { provincesOf, realmNeighbours } from './queries';
 import type { BuildingType, Country, CouncilSeat, GameState, Skill } from './types';
@@ -141,6 +142,7 @@ export function researchPoints(state: GameState, c: Country, track: TechTrack): 
   ];
   if (c.focus === track) mult.push({ label: 'The realm’s focus', value: FOCUS_BONUS });
   if (c.gov === 'democracy') mult.push({ label: 'Free enquiry', value: 0.1 });
+  mult.push(...modifierParts(c, 'research'));
   for (const m of mult) parts.push({ label: m.label, value: base * m.value });
   const b = breakdown(parts);
   b.total = Math.max(0.2, b.total);
@@ -309,7 +311,17 @@ export function canReform(state: GameState, c: Country, gov: Government): Check 
 /** A new form of government: the estates shift, succession follows the new form. */
 export function reform(state: GameState, c: Country, gov: Government): boolean {
   if (!canReform(state, c, gov).ok) return false;
-  const cost = reformCost();
+  changeGovernment(state, c, gov, reformCost());
+  return true;
+}
+
+/** Sets a form of government without asking what the realm knows: for revolutions and their like. */
+export function changeGovernment(
+  state: GameState,
+  c: Country,
+  gov: Government,
+  cost: { legitimacy: number; stability: number },
+) {
   c.gov = gov;
   c.legitimacy = Math.max(0, c.legitimacy - cost.legitimacy);
   c.stability = Math.max(-3, c.stability - cost.stability);
@@ -323,11 +335,11 @@ export function reform(state: GameState, c: Country, gov: Government): boolean {
     province: c.capital,
     important: c.index === state.player,
   });
-  return true;
 }
 
 const GOV_NOUN: Partial<Record<Government, string>> = {
   feudal: 'feudal monarchy',
+  republic: 'republic',
   clan: 'dynastic realm',
   absolute: 'absolute monarchy',
   constitutional: 'constitutional monarchy',

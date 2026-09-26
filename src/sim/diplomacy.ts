@@ -10,6 +10,7 @@ import { knowsId } from './tech';
 import type { Breakdown, Part } from './economy';
 import { headOf, sitesHeldByUnbelievers } from './faith';
 import { log } from './log';
+import { modifierParts } from './modifiers';
 import { taskSkill } from './politics';
 import {
   atWar,
@@ -197,6 +198,8 @@ export const MEMORY: Record<MemoryKind, { label: string; decay: number; min: num
   fought_beside: { label: 'Fought beside us', decay: 0.25, min: 0, max: 30 },
   freed_us: { label: 'Granted us independence', decay: 0.25, min: 0, max: 50 },
   refused: { label: 'Turned down our proposal', decay: 2, min: -20, max: 0 },
+  insulted: { label: 'Insulted us', decay: 0.5, min: -60, max: 0 },
+  plotted: { label: 'Plotted against us', decay: 0.4, min: -150, max: 0 },
 };
 
 /** Adds to what `of` remembers about `about`. */
@@ -282,6 +285,7 @@ export function opinion(state: GameState, world: SimWorld, of: number, about: nu
   }
 
   for (const m of a.memories[about] ?? []) parts.push({ label: MEMORY[m.kind].label, value: Math.round(m.value) });
+  parts.push(...modifierParts(b, 'opinion'));
   parts.push({ label: 'Their ruler’s diplomacy', value: Math.round(rulerSkill(state, b, 'dip') * 1.5) });
   const embassies = taskSkill(state, b, 'chancellor', 'embassies');
   if (embassies) parts.push({ label: 'Their embassies', value: Math.round(embassies / 2) });

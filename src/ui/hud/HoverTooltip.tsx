@@ -10,6 +10,8 @@ import { CoatOfArms } from '../CoatOfArms';
 import { useGame } from '../game';
 import { moveTooltip } from '../map/MapCanvas';
 import { cultureName } from '../realm';
+import { capitalize } from '../format';
+import { plagueName } from '../../sim/plague';
 import { useStore } from '../store';
 
 /** Follows the pointer over the map; the map writes its position directly (see moveTooltip). */
@@ -107,6 +109,9 @@ export function HoverTooltip() {
           )}
           {r.kind === 'land' && !owner && colonisedBy(game.state, r.id) && (
             <div className="tt-line">Being settled by {colonisedBy(game.state, r.id)!.name}</div>
+          )}
+          {r.kind === 'land' && p?.plague !== undefined && (
+            <div className="tt-line bad">{capitalize(plagueName(game.state) || 'pestilence')} rages here</div>
           )}
           {r.kind === 'land' && blockades(game.state).has(r.id) && (
             <div className="tt-line bad">

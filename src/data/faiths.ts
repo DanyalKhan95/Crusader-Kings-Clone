@@ -82,6 +82,12 @@ export interface HeresyDef {
   from: number;
   /** where it may first appear: [lon, lat, radius in km] */
   cradle: [number, number, number];
+  /** how many times faster than an ordinary heresy it spreads */
+  vigour?: number;
+  /** false for a faith that never rises by itself: a crown founds it (see data/events.ts) */
+  spawn?: boolean;
+  /** from this year it spreads no more across borders, only within realms that follow it */
+  settles?: number;
 }
 
 export const HERESIES: Record<string, HeresyDef> = {
@@ -140,6 +146,38 @@ export const HERESIES: Record<string, HeresyDef> = {
     color: '#b3934c',
     from: 1415,
     cradle: [14.4, 50.0, 350],
+  },
+  // The Reformation: Luther's theses at Wittenberg, Calvin's Geneva, and the King's Great Matter.
+  protestant: {
+    name: 'Protestant',
+    parent: 'catholic',
+    family: 'christian',
+    color: '#6f93d6',
+    from: 1517,
+    cradle: [12.6, 51.9, 450],
+    vigour: 2,
+    // The Peace of Westphalia: the ruler's faith is the realm's.
+    settles: 1648,
+  },
+  reformed: {
+    name: 'Reformed',
+    parent: 'catholic',
+    family: 'christian',
+    color: '#4d7a8c',
+    from: 1536,
+    cradle: [6.1, 46.2, 400],
+    vigour: 1.5,
+    settles: 1648,
+  },
+  anglican: {
+    name: 'Anglican',
+    parent: 'catholic',
+    family: 'christian',
+    color: '#c0566f',
+    from: 1527,
+    cradle: [-0.2, 51.5, 300],
+    spawn: false,
+    settles: 1648,
   },
 };
 

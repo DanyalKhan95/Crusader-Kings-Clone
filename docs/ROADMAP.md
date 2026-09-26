@@ -211,13 +211,38 @@ whole world. The player controls a country rather than a dynasty.
       province and realm panels.
 - [x] Saves from milestone 5 load.
 
-### M7: Events, decisions and espionage
+### M7: Events, decisions and espionage (done)
 
-- An event engine: triggers, a mean time before each event fires, and choices with effects.
-- Events across all eras: plague, steppe hordes, the Reformation, printing, revolutions,
-  industrialisation, and world wars that emerge from alliance blocs.
-- Decisions to form nations: Spain, Great Britain, Italy, Germany, Russia, and restoring Rome.
-- Spy networks: fabricate claims, sabotage, incite revolts, steal tech, assassinate.
+- [x] Timed modifiers on realms (harvests and famines, booms and depressions, reforms, total war,
+      the Horde), named in every breakdown they touch: taxes, levies, growth, research, damage,
+      morale, legitimacy, the estates and opinion.
+- [x] An event engine: conditions, a mean time to happen, a cooldown or once only, and choices
+      whose effects are shown before the player picks; the AI chooses by weights. The player's
+      events pause the game.
+- [x] Some 35 events across the eras: harvests, famines, fires, earthquakes, mines and brigands;
+      unrest, feuds, charters, disputed successions and corruption; tournaments, pilgrimages,
+      scholars, reforming officers and golden ages; border incidents and embassies; heretics,
+      monasteries, the Reformation and the King's Great Matter; the printing press, the
+      philosophers, national awakening and revolution; factories, railways, the workers'
+      movement and the space race.
+- [x] Pestilence: the Black Death from about 1346 near Kaffa, later waves, cholera and the
+      Spanish Flu. It spreads over land and between ports, halves what a province gives while it
+      rages, kills people and sometimes rulers, and the land fills again slowly. Quarantine and
+      public health slow it; a dark cross-hatch shows it on the map.
+- [x] World events: Halley's comet, the Horde of Genghis Khan on the eastern steppe in the
+      early 13th century, the Crash from 1929, and world wars: from 1900 a war with three great
+      powers on both sides is named, goes over to total war, and draws in each side's allies.
+- [x] The Reformation: Protestant and Reformed faiths rise in Saxony and Geneva and spread fast
+      within realms that take them up, slowly across borders, and not at all across them after
+      the Peace of Westphalia (1648); Catholic crowns choose to defend the old faith, embrace the
+      new, or tolerate both; England may break with Rome.
+- [x] Decisions to proclaim nations: Spain, Great Britain, Italy, Germany, Russia and the Roman
+      Empire, by people, heartland provinces, date or technology, with new names, arms and
+      flags and claims on the rest of the nation.
+- [x] Espionage: the spymaster builds a network in one realm at a time; plots to forge claims,
+      steal learning, sabotage, incite revolts and assassinate, with odds, costs and the chance
+      of being traced; the AI spies on its enemies and rivals.
+- [x] Saves from milestone 6 load.
 
 ### M8: Endgame and polish
 
@@ -276,9 +301,30 @@ whole world. The player controls a country rather than a dynasty.
     for hundreds of thousands of men (the upkeep is capped at a sixteenth of income). Armies of
     several hundred thousand men also appear by then.
   - A realm that loses its homeland can live on in its colonies.
-- **Speed:** headless runs manage about 700 days a second in the first decades and 550 over 650
-  years (a 900-year run in M5 averaged about 950): fleets, blockades, expeditions and colonies
-  add work, and so do the larger realms of later centuries. Estate and faith figures are cached
+  - Events: a realm meets one every two years or so. In a 1,000-year run some 150 to 220 realms
+    see each of the common ones at least once.
+  - Pestilence: the Black Death breaks out north of the Black Sea in the 1340s and reaches 110 to
+    140 realms. The Second Pestilence follows in the 1360s, the Great Plague in the 1630s or 1650s,
+    cholera around 1820 and the Spanish Flu in 1918. Lost development grows back within a few
+    decades.
+  - The Horde rises between about 1203 and 1210 from the Mongols (or, if they are gone, another
+    steppe people of the east), and troubles its neighbours for sixty years.
+  - The Reformation: Protestant and Reformed faiths rise in 1517 and 1536, and 25 to 40 Catholic
+    crowns face the choice. Until 1648 the new faiths gain ground; after it the map of faiths
+    holds. In a 1,000-year run 28 crowns are Catholic in 2066, 9 Reformed and 6 Anglican (238, 158
+    and 102 provinces); on another seed 37 crowns were Protestant and 19 Catholic by 1766. Which
+    reformed faith wins out varies from run to run.
+  - Nations: Russia is proclaimed in 1450, Great Britain in 1600 and Germany in the 1770s. Spain
+    and Italy seldom are, because Iberia and Italy are usually swallowed by their neighbours
+    first.
+  - World wars: one to three after 1900, a generation apart, each drawing in the allies of the
+    great powers (in one run the first began in 1930 and the third in 1988).
+  - Spies: AI realms keep about 150 networks, and some 25 realms are under sabotage at any time.
+    Stolen secrets and the learned events bring laggards closer to the historical dates than in
+    milestone 5: most realms are industrial by the 1860s and contemporary by 1966.
+- **Speed:** headless runs manage about 600 days a second in the first decades and 420 over 1,000
+  years (a 900-year run in M5 averaged about 950): fleets, blockades, expeditions, colonies,
+  events and spies add work, and so do the larger realms of later centuries. Estate and faith figures are cached
   per day, and routes an army or fleet cannot take are ruled out by cached reachability checks
   before any search. Worth another look in M8.
 - **Size:** the stylesheet is 1.1 MB, most of it the inlined fonts of the six era themes.

@@ -18,6 +18,8 @@ import {
   pruneClaims,
 } from './diplomacy';
 import { dailyConstruction, monthlyEconomy } from './economy';
+import { monthlyEspionage } from './espionage';
+import { monthlyEvents } from './events';
 import { monthlyMaps, revealAround } from './exploration';
 import { monthlyFaith, monthlyHeresies } from './faith';
 import { monthlyGreatHolyWars } from './holywars';
@@ -32,6 +34,8 @@ import {
   updateBlockades,
 } from './naval';
 import { planFleets } from './navalAi';
+import { dailyModifiers } from './modifiers';
+import { monthlyPlague } from './plague';
 import { estateEffect, monthlyElections, monthlyEstateMoods, monthlyLegitimacy, taskSkill } from './politics';
 import { monthlyFactions, monthlyRevolts, orphanRebels } from './revolts';
 import { chance } from './rng';
@@ -39,6 +43,7 @@ import { runScheduled } from './scripted';
 import { dailySieges } from './siege';
 import type { GameState } from './types';
 import { expireOffers, monthlyWars } from './war';
+import { monthlyWorldEvents } from './worldEvents';
 import type { SimWorld } from './world';
 
 export function advanceDay(state: GameState, world: SimWorld) {
@@ -57,6 +62,7 @@ export function advanceDay(state: GameState, world: SimWorld) {
   dailyFleets(state, world);
   dailyConstruction(state, world);
   dailyFabrication(state, world);
+  dailyModifiers(state);
   if (state.offers.length) expireOffers(state);
   runScheduled(state, world);
   const date = toDate(state.day);
@@ -78,10 +84,14 @@ export function advanceDay(state: GameState, world: SimWorld) {
     monthlyFactions(state, world);
     monthlyFaith(state, world);
     monthlyHeresies(state, world);
+    monthlyPlague(state, world);
     monthlyGreatHolyWars(state, world);
+    monthlyWorldEvents(state, world);
     monthlyResearch(state, world);
     monthlyMaps(state, world, date.m === 1);
     monthlyColonies(state, world);
+    monthlyEvents(state, world);
+    monthlyEspionage(state, world);
     expelArmies(state, world);
     if (date.m === 1)
       for (const c of state.countries) if (c?.alive) staffCourt(state, world, c, c.index !== state.player);

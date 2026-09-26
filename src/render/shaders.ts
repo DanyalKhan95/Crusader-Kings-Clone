@@ -98,6 +98,15 @@ void main() {
     float s = fract((v_map.x + v_map.y) * u_zoom / 16.0);
     if (s < 0.42) c = vec4(v_stripe.rgb, max(c.a, 0.75));
   }
+  if ((v_flags & 128u) != 0u) {
+    // Pestilence: the land darkens under a cross-hatch of sickly ink, the same size at any zoom.
+    vec2 q = v_map * u_zoom / 11.0;
+    float h = min(abs(fract(q.x + q.y) - 0.5), abs(fract(q.x - q.y) - 0.5));
+    float ink = 1.0 - smoothstep(0.07, 0.13, h);
+    c.rgb = mix(c.rgb, vec3(0.2, 0.22, 0.13), 0.4);
+    c.rgb = mix(c.rgb, vec3(0.05, 0.06, 0.03), ink * 0.8);
+    c.a = max(c.a, 0.72);
+  }
   if ((v_flags & 2u) != 0u) c.rgb = mix(c.rgb, vec3(1.0), 0.16);
   if ((v_flags & 1u) != 0u) {
     c.rgb = mix(c.rgb, vec3(1.0, 0.93, 0.75), 0.26 + 0.07 * sin(u_time * 3.0));

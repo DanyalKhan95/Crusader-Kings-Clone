@@ -93,6 +93,19 @@ export const CURATED: Record<string, CoA> = {
   PLT: C('plain', 'gules', 'gules', { charge: { kind: 'mounted-knight' as IconName, t: 'argent', count: 1 } }),
   VEN: C('plain', 'azure', 'azure', { charge: { kind: 'griffin-symbol', t: 'or', count: 1 } }),
   PAP: C('plain', 'gules', 'gules', { charge: { kind: 'key', t: 'or', count: 2, crossed: true } }),
+  // Nations proclaimed in the game (see data/nations.ts).
+  ESP: C('quarterly', 'gules', 'argent', { charge: { kind: 'crown', t: 'or', count: 1 } }),
+  GBR: C('quarterly', 'gules', 'azure', { charge: { kind: 'lion', t: 'or', count: 1 } }),
+  ITA: C('plain', 'vert', 'vert', {
+    ordinary: { type: 'bordure', t: 'gules' },
+    charge: { kind: 'mullet', t: 'argent', count: 1 },
+  }),
+  DEU: C('plain', 'argent', 'argent', { charge: { kind: 'eagle-emblem', t: 'sable', count: 1 } }),
+  TSR: C('plain', 'or', 'or', { charge: { kind: 'double_eagle', t: 'sable', count: 1 } }),
+  ROM: C('plain', 'purpure', 'purpure', {
+    ordinary: { type: 'bordure', t: 'or' },
+    charge: { kind: 'eagle-emblem', t: 'or', count: 1 },
+  }),
   GEO: C('plain', 'argent', 'argent', { ordinary: { type: 'cross', t: 'gules' } }),
   SAX: C('plain', 'gules', 'gules', { charge: { kind: 'horse-head', t: 'argent', count: 1 } }),
   BAV: C('chequy', 'argent', 'azure'),

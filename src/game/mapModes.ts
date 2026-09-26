@@ -1,7 +1,15 @@
 /** Map modes: how each region is coloured, and which data the renderer gets per region. */
 import { faithColor } from '../sim/beliefs';
 import type { Terrain } from '../shared/dataTypes';
-import { FLAG_IMPASSABLE, FLAG_LAKE, FLAG_UNKNOWN, FLAG_WATER, type MapRenderer } from '../render/mapRenderer';
+import {
+  FLAG_IMPASSABLE,
+  FLAG_LAKE,
+  FLAG_PLAGUE,
+  FLAG_PLAYER,
+  FLAG_UNKNOWN,
+  FLAG_WATER,
+  type MapRenderer,
+} from '../render/mapRenderer';
 import { knows, knowsWorld } from '../sim/exploration';
 import { coalitionAgainst, hasPact } from '../sim/diplomacy';
 import { atWar, hasTruce, isInRealm, realmHead, topLiege } from '../sim/queries';
@@ -143,7 +151,8 @@ export function applyMapMode(
     }
     const owner = p?.owner ?? 0;
     const liege = owner ? realmHead(state, owner) : 0;
-    if (player && owner && (owner === player || topLiege(state, owner) === player)) flags |= 64;
+    if (player && owner && (owner === player || topLiege(state, owner) === player)) flags |= FLAG_PLAYER;
+    if (p?.plague !== undefined && mode !== 'terrain') flags |= FLAG_PLAGUE;
     const prev = r.infoData[id * 4 + 3] & 3; // keep selection/hover
     r.setInfo(id, owner, liege, p?.controller ?? 0, flags | prev);
     if (water) {

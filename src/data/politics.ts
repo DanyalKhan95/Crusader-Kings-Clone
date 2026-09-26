@@ -232,7 +232,16 @@ export const TASK_INFO: Record<TaskId, { seat: CouncilSeat; name: string; blurb:
   taxes: { seat: 'steward', name: 'Collect taxes', blurb: 'Higher taxes.' },
   develop: { seat: 'steward', name: 'Develop the land', blurb: 'Provinces grow faster.' },
   sieges: { seat: 'spymaster', name: 'Undermine walls', blurb: 'Faster sieges.' },
-  watch: { seat: 'spymaster', name: 'Watch the realm', blurb: 'Estates and vassals are more loyal.' },
+  watch: {
+    seat: 'spymaster',
+    name: 'Watch the realm',
+    blurb: 'Estates and vassals are more loyal, and foreign spies are caught more often.',
+  },
+  network: {
+    seat: 'spymaster',
+    name: 'Build a spy network',
+    blurb: 'Agents work their way into the realm chosen for them, for plots to come.',
+  },
   stability: { seat: 'chaplain', name: 'Preach obedience', blurb: 'Stability recovers faster.' },
   legitimacy: { seat: 'chaplain', name: 'Anoint the crown', blurb: 'Legitimacy grows towards a higher mark.' },
   convert: {
@@ -251,7 +260,7 @@ export const SEAT_TASKS: Record<CouncilSeat, TaskId[]> = {
   chancellor: ['negotiate', 'embassies', 'claims'],
   marshal: ['levies', 'drill'],
   steward: ['taxes', 'develop', 'assimilate'],
-  spymaster: ['sieges', 'watch'],
+  spymaster: ['sieges', 'watch', 'network'],
   chaplain: ['stability', 'legitimacy', 'convert'],
 };
 

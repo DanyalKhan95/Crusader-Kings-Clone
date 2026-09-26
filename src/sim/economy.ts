@@ -23,6 +23,7 @@ import { rulerSkill } from './characters';
 import { provinceMultiplier } from './faith';
 import { buildingTech, maxBuildingLevel, militaryEra, techEffect } from './tech';
 import { log } from './log';
+import { modifierEffect, modifierParts } from './modifiers';
 import { BLOCKADE_TAX, blockades, navyUpkeep } from './naval';
 import { estateEffect, taskSkill } from './politics';
 import { armiesOf, atWar, menIn, provincesOf, tributariesOf, vassalsOf } from './queries';
@@ -83,6 +84,7 @@ export function taxMultiplier(state: GameState, c: Country): Breakdown {
     { label: 'Stability', value: c.stability * 0.05 },
     { label: 'War weariness', value: -c.warExhaustion * 0.01 },
     { label: 'Technology', value: techEffect(c, 'tax') },
+    ...modifierParts(c, 'tax'),
   ];
   for (const e of ['nobles', 'clergy', 'burghers'] as const)
     if (c.estates[e].privileged) parts.push({ label: ESTATE_INFO[e].privilege, value: -0.05 });
@@ -100,6 +102,7 @@ export function levyMultiplier(state: GameState, c: Country): Breakdown {
     { label: 'The nobility', value: estateEffect(state, c, 'nobles') * 0.1 },
     { label: 'Stability', value: c.stability * 0.03 },
     { label: 'Technology', value: techEffect(c, 'levy') },
+    ...modifierParts(c, 'levy'),
   ];
   if (c.estates.commons.privileged) parts.push({ label: ESTATE_INFO.commons.privilege, value: -0.1 });
   return breakdown(parts);
@@ -326,7 +329,8 @@ export function monthlyEconomy(state: GameState, world: SimWorld) {
       (c.stability >= 0 ? 1 : 0.5) *
       (1 + taskSkill(state, c, 'steward', 'develop') * 0.05) *
       (1 + 0.1 * estateEffect(state, c, 'commons')) *
-      (1 + techEffect(c, 'growth'));
+      (1 + techEffect(c, 'growth')) *
+      Math.max(0, 1 + modifierEffect(c, 'growth'));
     if (p.controller === p.owner && chance(state, rate)) {
       p.dev++;
       log(state, [p.owner], 'economy', `${world.region(id).name} has grown to development ${p.dev}.`, { province: id });

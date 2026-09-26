@@ -34,6 +34,13 @@ const no = (reason: string): Check => ({ ok: false, reason });
 
 const ORDINALS = ['First', 'Second', 'Third', 'Fourth', 'Fifth', 'Sixth', 'Seventh', 'Eighth', 'Ninth', 'Tenth'];
 
+/** 11th, 21st, 22nd, 23rd … */
+function ordinal(n: number): string {
+  const teen = n % 100 >= 11 && n % 100 <= 13;
+  const suffix = teen ? 'th' : (['th', 'st', 'nd', 'rd'][n % 10] ?? 'th');
+  return `${n}${suffix}`;
+}
+
 // ── Holy wars of one realm ────────────────────────────────────────
 
 /** Does this realm's faith wage holy wars? */
@@ -122,7 +129,7 @@ export function callHolyWar(state: GameState, world: SimWorld, def: GreatHolyWar
   const attackers = realmMembers(state, leader.index);
   const war: War = {
     id: state.nextId++,
-    name: `The ${ORDINALS[record.count - 1] ?? `${record.count}th`} ${def.name}`,
+    name: `The ${ORDINALS[record.count - 1] ?? ordinal(record.count)} ${def.name}`,
     cb: 'crusade',
     goal: target.site,
     faith: def.faith,
@@ -282,6 +289,10 @@ function foundKingdom(
     known: founders.known,
     colonies: [],
     memories: {},
+    modifiers: [],
+    history: {},
+    spies: {},
+    spyTarget: 0,
     laws: initialLaws('feudal', def.tag, cultureGroup(culture)),
     lawChanged: state.day,
     legitimacy: 70,

@@ -136,7 +136,10 @@ export function realmNeighbours(state: GameState, world: SimWorld, index: number
 
 const tagIndex = new WeakMap<GameState, { count: number; map: Map<string, number> }>();
 
-/** The first country with a tag (tags of dead realms may be taken up again by new ones). */
+/**
+ * The first country with a tag (tags of dead realms may be taken up again by new ones). A realm that
+ * proclaimed a nation still answers to its old tag, unless another realm has taken it up.
+ */
 export function countryByTag(state: GameState, tag: string): Country | undefined {
   let ix = tagIndex.get(state);
   if (!ix || ix.count !== state.countries.length) {
@@ -144,8 +147,13 @@ export function countryByTag(state: GameState, tag: string): Country | undefined
     for (const c of state.countries) if (c && !ix.map.has(c.tag)) ix.map.set(c.tag, c.index);
     tagIndex.set(state, ix);
   }
-  const i = ix.map.get(tag);
+  const i = ix.map.get(tag) ?? state.happened[`tag:${tag}`];
   return i ? state.countries[i] : undefined;
+}
+
+/** Forget the tag index after a realm changes its tag. */
+export function invalidateTags(state: GameState) {
+  tagIndex.delete(state);
 }
 
 // ── Wars ──────────────────────────────────────────────────────────

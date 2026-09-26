@@ -15,6 +15,7 @@ export const FLAG_IMPASSABLE = 8;
 export const FLAG_WATER = 16;
 export const FLAG_LAKE = 32;
 export const FLAG_PLAYER = 64;
+export const FLAG_PLAGUE = 128;
 
 const TEX = 64; // data textures are 64×64 → up to 4095 regions / countries
 

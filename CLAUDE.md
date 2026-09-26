@@ -99,6 +99,27 @@ when a milestone lands.
     a colonial region (by modern country code) pass to a colonial nation: a vassal with
     `colony` set, which cannot be integrated and grows restless once it knows popular
     sovereignty.
+  - Modifiers (`modifiers.ts`, data in `src/data/modifiers.ts`): timed effects on a realm, summed
+    with `modifierEffect` and shown in breakdowns with `modifierParts`. New effect keys go in
+    `ModifierEffects` and `MODIFIER_TEXT`. They touch one realm only, so they clear its estate
+    figures with `invalidateRealm`, not `invalidatePolitics`.
+  - Events (`events.ts`, definitions in `src/data/events.ts`): conditions and AI weights ask an
+    `EventContext`, so the data file imports no simulation code; effects are declarative, and
+    anything more is a `SpecialId` done in `events.ts`. `monthlyEvents` draws by mean time to
+    happen; world events call `fireEvent`. The AI chooses at once; the player's events wait in
+    `state.events` and pause the game. `Country.history` holds the last day of each event (and
+    `plague:<id>` and `nation:<id>` keys).
+  - Pestilence (`plague.ts`, plagues in `PLAGUES`): `ProvinceState.plague` is the day it ends
+    there, `immune` the day a new outbreak may take hold, `lost` the development to regrow.
+    `provinceFactor` halves a sick province (`PLAGUE_PENALTY`); the map shows `FLAG_PLAGUE`.
+  - World events (`worldEvents.ts`): comets, the Horde, the Crash and world wars. What has
+    happened is in `state.happened` (a day, or the count of world wars).
+  - Decisions (`decisions.ts`, nations in `src/data/nations.ts`): proclaiming a nation changes
+    the realm's tag. `countryByTag` still finds it by its old tag (`happened['tag:XXX']`); call
+    `invalidateTags` after changing a tag. Curated arms and flags are keyed by tag.
+  - Espionage (`espionage.ts`, plots in `src/data/espionage.ts`): `Country.spies` holds network
+    strength by country index, grown while the spymaster's task is `network` and `spyTarget` is
+    set. Plots go through `canPlot` and `carryOut`.
 - **`src/ui/runner.ts`:** runs the simulation from `MapController.onFrame` within a time budget,
   and bumps the store's `tick` at most every 120 ms. Panels with live numbers subscribe to `tick`.
 - **`?debug`** in the address exposes the running game as `window.game` (the e2e tests use it to

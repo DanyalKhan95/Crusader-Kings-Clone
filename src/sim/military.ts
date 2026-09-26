@@ -11,6 +11,7 @@ import { components, findPath, graph, isWater, stepDays } from './movement';
 import { canShip, embarked, freeTransport } from './naval';
 import { taskSkill } from './politics';
 import { armySize, atWar, menIn } from './queries';
+import { modifierEffect } from './modifiers';
 import { knowsId, militaryEra, techEffect } from './tech';
 import type { Army, Country, GameState, UnitType, Units } from './types';
 import type { SimWorld } from './world';
@@ -368,7 +369,7 @@ export function dailyUpkeep(state: GameState, world: SimWorld) {
     }
     if (!inBattle(state, army)) {
       const drill = owner ? taskSkill(state, owner, 'marshal', 'drill') : 0;
-      const doctrine = owner ? techEffect(owner, 'morale') : 0;
+      const doctrine = owner ? techEffect(owner, 'morale') + modifierEffect(owner, 'morale') : 0;
       army.morale = Math.min(1, army.morale + 0.03 * (1 + drill * 0.05) + doctrine);
     }
   }

@@ -297,3 +297,57 @@ test('sails: a fleet, the unknown lands and a colony', async ({ page }) => {
 
   expect(errors).toEqual([]);
 });
+
+test('meets events: a choice, a modifier, a nation to proclaim and spies abroad', async ({ page }) => {
+  const errors = watchErrors(page);
+  await page.goto('/?debug');
+  await page.getByRole('button', { name: 'New Campaign' }).click({ timeout: 120_000 });
+  await page.getByRole('button', { name: 'Play as England' }).click();
+  await expect(page.locator('.date-long')).toHaveText('15th of September, 1066 AD');
+  type E = {
+    runner: { sync: () => void };
+    ui: { set: (p: object) => void };
+    state: {
+      day: number;
+      nextId: number;
+      player: number;
+      events: object[];
+      countries: ({ tag: string; index: number; gold: number } | null)[];
+    };
+  };
+
+  // The knights ask for a tournament; the game stops until the crown answers.
+  await page.evaluate(() => {
+    const g = (window as unknown as { game: E }).game;
+    const s = g.state;
+    s.countries[s.player]!.gold = 500;
+    s.events.push({ id: s.nextId++, event: 'tournament', country: s.player, province: 0, other: 0, day: s.day });
+    g.runner.sync();
+  });
+  const dialog = page.getByRole('dialog', { name: 'A Great Tournament' });
+  await expect(dialog).toBeVisible();
+  await expect(dialog).toContainText('The knights of England');
+  await page.keyboard.press('Escape');
+  await expect(dialog).toBeVisible();
+  await dialog.getByRole('button', { name: /Hold the tournament/ }).click();
+  await expect(page.locator('.modal')).toHaveCount(0);
+
+  // The realm now carries the fervour for ten years, and one day may proclaim Great Britain.
+  await page.locator('.nation-coa').click();
+  await expect(page.locator('.modifier', { hasText: 'Martial fervour' })).toBeVisible();
+  await expect(page.locator('.decision')).toContainText('Proclaim the Kingdom of Great Britain');
+  await expect(page.locator('.decision').getByRole('button', { name: 'Proclaim' })).toBeDisabled();
+
+  // Spies in France: the spymaster goes to work there.
+  await page.evaluate(() => {
+    const g = (window as unknown as { game: E }).game;
+    const fra = g.state.countries.find((c) => c?.tag === 'FRA')!;
+    g.ui.set({ panel: 'country', selectedCountry: fra.index });
+  });
+  await expect(page.locator('.intrigue')).toBeVisible();
+  await page.getByRole('button', { name: 'Build a network here' }).click();
+  await expect(page.getByRole('button', { name: 'Recall the agents' })).toBeVisible();
+  await expect(page.locator('.plot', { hasText: 'Assassinate the ruler' }).getByRole('button')).toBeDisabled();
+
+  expect(errors).toEqual([]);
+});

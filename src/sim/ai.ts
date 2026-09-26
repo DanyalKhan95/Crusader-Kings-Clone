@@ -39,10 +39,13 @@ import { canReform, militaryEra, reform, reformOptions } from './tech';
 import { changeLaw, estateInfluence, estateLoyalty, grantPrivilege, lawCooldown } from './politics';
 import { revoltRisk } from './revolts';
 import { log } from './log';
+import { modifierEffect } from './modifiers';
 import { availableMaa, detach, disband, inBattle, mergeInto, orderMove, raiseArmy, recruit } from './military';
 import { freeTransport } from './naval';
 import { navyAI } from './navalAi';
 import { colonyAI } from './colonies';
+import { decisionsAI } from './decisions';
+import { espionageAI } from './espionage';
 import { toDate } from './calendar';
 import {
   armiesOf,
@@ -88,7 +91,7 @@ import { distanceKm, type SimWorld } from './world';
 
 function aggression(state: GameState, c: Country): number {
   const ruler = character(state, c.ruler);
-  let a = 0;
+  let a = modifierEffect(c, 'aggression');
   for (const t of ruler?.traits ?? []) a += TRAITS[t]?.aggression ?? 0;
   return a;
 }
@@ -120,11 +123,14 @@ export function monthlyAI(state: GameState, world: SimWorld, c: Country) {
     for (const w of warsOf(state, c.index)) considerPeace(state, world, c, w);
     return;
   }
+  const month = toDate(state.day).m;
   politicsAI(state, c);
   faithAI(state, world, c);
   techAI(state, c);
   navyAI(state, world, c);
-  colonyAI(state, world, c, toDate(state.day).m);
+  colonyAI(state, world, c, month);
+  espionageAI(state, world, c);
+  if (month === 1) decisionsAI(state, world, c);
   diplomacyAI(state, world, c);
   const wars = warsOf(state, c.index);
   if (wars.length) {
@@ -162,7 +168,15 @@ function politicsAI(state: GameState, c: Country) {
             ? 'legitimacy'
             : 'stability';
   const unrest = ESTATES.some((e) => revoltRisk(state, c, e) > 0) || state.factions.some((f) => f.realm === c.index);
-  c.tasks.spymaster = !fighting && unrest ? 'watch' : 'sieges';
+  c.tasks.spymaster = unrest
+    ? fighting
+      ? 'sieges'
+      : 'watch'
+    : fighting
+      ? 'sieges'
+      : c.spyTarget
+        ? 'network'
+        : 'watch';
   // A privilege to calm an estate on the brink.
   for (const e of ESTATES)
     if (!c.estates[e].privileged && revoltRisk(state, c, e) > 0) {
@@ -415,13 +429,14 @@ function considerWar(state: GameState, world: SimWorld, c: Country) {
       return;
     }
   }
-  // A warlike ruler may attack a much weaker neighbour without any cause.
-  if (aggression(state, c) < 0.3 || c.stability < 1 || !chance(state, 0.1)) return;
+  // A warlike ruler may attack a much weaker neighbour without any cause; a horde attacks anyone.
+  const hunger = modifierEffect(c, 'aggression');
+  if (aggression(state, c) < 0.3 || c.stability < 1 || !chance(state, Math.min(0.6, 0.1 + hunger * 0.15))) return;
   let prey: { target: number; ratio: number } | null = null;
   for (const t of realmNeighbours(state, world, c.index)) {
     if (offLimits(state, c.index, t) || !canDeclare(state, world, c.index, t, 'conquest', 0).ok) continue;
     const ratio = odds(state, c.index, t);
-    if (ratio >= 2.5 && (!prey || ratio > prey.ratio)) prey = { target: t, ratio };
+    if (ratio >= (hunger > 0 ? 1.2 : 2.5) && (!prey || ratio > prey.ratio)) prey = { target: t, ratio };
   }
   if (prey) declareWar(state, world, c.index, prey.target, 'conquest', 0);
 }

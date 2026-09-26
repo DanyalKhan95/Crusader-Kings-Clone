@@ -15,7 +15,16 @@ export function emblemStyle(era: number): EmblemStyle {
 }
 
 export type FlagLayout =
-  'plain' | 'tricolor_v' | 'tricolor_h' | 'bicolor_h' | 'bicolor_v' | 'cross' | 'saltire' | 'nordic' | 'canton';
+  | 'plain'
+  | 'tricolor_v'
+  | 'tricolor_h'
+  | 'bicolor_h'
+  | 'bicolor_v'
+  | 'cross'
+  | 'saltire'
+  | 'nordic'
+  | 'canton'
+  | 'union';
 
 export interface FlagSpec {
   layout: FlagLayout;
@@ -49,6 +58,16 @@ const CURATED: Record<string, { monarchy: FlagSpec; republic?: FlagSpec }> = {
   VEN: { monarchy: { layout: 'plain', colors: ['#9b1b1f'], emblem: { kind: 'lion', fill: GOLD, size: 56 } } },
   PAP: { monarchy: { layout: 'bicolor_v', colors: ['#ffe000', '#ffffff'] } },
   BYZ: { monarchy: { layout: 'plain', colors: ['#5b2270'], emblem: { kind: 'double_eagle', fill: GOLD, size: 64 } } },
+  // Nations proclaimed in the game (see data/nations.ts).
+  ESP: { monarchy: { layout: 'tricolor_h', colors: ['#aa151b', '#f1bf00', '#aa151b'] } },
+  GBR: { monarchy: { layout: 'union', colors: ['#012169', '#ffffff', RED] } },
+  ITA: { monarchy: { layout: 'tricolor_v', colors: ['#009246', '#ffffff', '#ce2b37'] } },
+  DEU: {
+    monarchy: { layout: 'tricolor_h', colors: ['#1a1a1a', '#ffffff', '#dd0000'] },
+    republic: { layout: 'tricolor_h', colors: ['#1a1a1a', '#dd0000', '#ffce00'] },
+  },
+  TSR: { monarchy: { layout: 'tricolor_h', colors: ['#ffffff', '#0039a6', '#d52b1e'] } },
+  ROM: { monarchy: { layout: 'plain', colors: ['#5e1a2c'], emblem: { kind: 'eagle-emblem', fill: GOLD, size: 60 } } },
 };
 
 function hash(s: string): number {
@@ -142,6 +161,15 @@ export function flagSvg(f: FlagSpec, width = 60): string {
     }
     case 'canton':
       body = `<rect width="150" height="100" fill="${a}"/>`;
+      break;
+    case 'union':
+      // Crosses of saints laid over one another: a white saltire, a red one, and a red cross fimbriated white.
+      body =
+        `<rect width="150" height="100" fill="${a}"/>` +
+        `<g stroke="${b}" stroke-width="20"><path d="M0 0 L150 100 M150 0 L0 100"/></g>` +
+        `<g stroke="${c}" stroke-width="7"><path d="M0 0 L150 100 M150 0 L0 100"/></g>` +
+        `<rect x="58" width="34" height="100" fill="${b}"/><rect y="33" width="150" height="34" fill="${b}"/>` +
+        `<rect x="64" width="22" height="100" fill="${c}"/><rect y="39" width="150" height="22" fill="${c}"/>`;
       break;
   }
   if (f.emblem) {

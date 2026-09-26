@@ -182,4 +182,6 @@ export function resume(game: Game) {
     countryTab: 'realm',
     modal: 'none',
   });
+  // A loaded game may have an event or an offer waiting for an answer.
+  game.runner?.sync();
 }

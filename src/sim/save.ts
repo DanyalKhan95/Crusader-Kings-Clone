@@ -5,7 +5,7 @@ import { initialTech } from './tech';
 import type { CasusBelli, GameState } from './types';
 import type { SimWorld } from './world';
 
-export const SAVE_VERSION = 6;
+export const SAVE_VERSION = 7;
 
 export interface SaveFile {
   format: 'crowns-and-centuries';
@@ -41,7 +41,26 @@ export function deserialize(json: string, world?: SimWorld): GameState {
   if (file.version < 4) migrateToFaith(s);
   if (file.version < 5) migrateToTechnology(s);
   if (file.version < 6) migrateToNavies(s, world);
+  if (file.version < 7) migrateToEvents(s);
   return s;
+}
+
+/**
+ * Version 6 (milestone 6) had no events, modifiers, pestilence or spies: every realm starts with a
+ * clean slate, and the world events of the past are taken as not having happened.
+ */
+function migrateToEvents(s: GameState) {
+  (s as unknown as { version: number }).version = 7;
+  s.events ??= [];
+  s.happened ??= {};
+  s.plague ??= null;
+  for (const c of s.countries) {
+    if (!c) continue;
+    c.modifiers ??= [];
+    c.history ??= {};
+    c.spies ??= {};
+    c.spyTarget ??= 0;
+  }
 }
 
 /**

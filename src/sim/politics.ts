@@ -22,6 +22,7 @@ import { age, alive, candidateScore, character, electionCandidates, seatSkill } 
 import type { Breakdown, Part } from './economy';
 import { diversity, holySiteLegitimacy } from './faith';
 import { log } from './log';
+import { modifierParts } from './modifiers';
 import { provincesOf } from './queries';
 import { nationalist, techEffect } from './tech';
 import {
@@ -151,6 +152,7 @@ export function legitimacyTarget(state: GameState, c: Country): Breakdown {
   parts.push({ label: 'Court chaplain', value: taskSkill(state, c, 'chaplain', 'legitimacy') });
   parts.push({ label: 'Holy sites held', value: holySiteLegitimacy(state, c) });
   parts.push({ label: 'Learning and law', value: techEffect(c, 'legitimacy') });
+  parts.push(...modifierParts(c, 'legitimacy'));
   const ruler = character(state, c.ruler);
   if (ruler && age(state, ruler) < 16) parts.push({ label: 'A child on the throne', value: -15 });
   if (ruler?.traits.includes('pious')) parts.push({ label: 'A pious ruler', value: 5 });
@@ -263,6 +265,7 @@ export function estateLoyalty(state: GameState, c: Country, e: EstateId): Breakd
   if (e === 'burghers' && c.warExhaustion >= 1)
     parts.push({ label: 'War weariness', value: -Math.round(c.warExhaustion) });
   if (c.estates[e].mood) parts.push({ label: 'Recent dealings', value: Math.round(c.estates[e].mood) });
+  parts.push(...modifierParts(c, e));
   const watch = taskSkill(state, c, 'spymaster', 'watch');
   if (watch) parts.push({ label: 'A watchful spymaster', value: Math.round(watch / 2) });
   const share = estateInfluence(state, c).share[e];
@@ -294,6 +297,13 @@ export function estateEffect(state: GameState, c: Country, e: EstateId): number 
 export function invalidatePolitics(state: GameState) {
   effectCache.delete(state);
   influenceCache.delete(state);
+}
+
+/** Forget the cached estate figures of one realm only, after something that touched it alone. */
+export function invalidateRealm(state: GameState, index: number) {
+  const effects = effectCache.get(state);
+  if (effects) for (let k = 0; k < ESTATES.length; k++) effects.map.delete(index * 8 + k);
+  influenceCache.get(state)?.map.delete(index);
 }
 
 export function grantPrivilege(state: GameState, c: Country, e: EstateId): boolean {

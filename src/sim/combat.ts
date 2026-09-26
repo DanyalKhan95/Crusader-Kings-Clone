@@ -11,6 +11,7 @@ import { log } from './log';
 import { isPassable, stepDays } from './movement';
 import { armySize, atWar, menIn, sideOf } from './queries';
 import { chance, jitter } from './rng';
+import { modifierEffect } from './modifiers';
 import { militaryEra, techEffect } from './tech';
 import type { Army, Battle, BattleSide, GameState, UnitType, Units } from './types';
 import type { SimWorld } from './world';
@@ -142,7 +143,7 @@ function damageOf(
   for (const a of armies) {
     const owner = state.countries[a.owner];
     const era = militaryEra(owner);
-    const doctrine = 1 + (owner ? techEffect(owner, 'combat') : 0);
+    const doctrine = 1 + (owner ? techEffect(owner, 'combat') + modifierEffect(owner, 'combat') : 0);
     for (const [t, men] of Object.entries(a.units) as [UnitType, number][])
       d += (men / 100) * unitDef(t, era).damage * doctrine * (1 - 0.5 * counterShare(t, enemy, enemyMen));
   }

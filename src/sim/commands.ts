@@ -64,7 +64,12 @@ import {
   orderFleet,
   splitFleet,
 } from './naval';
-import { canChangeLaw, changeLaw, grantPrivilege, revokePrivilege, setTask } from './politics';
+import { canChangeLaw, changeLaw, grantPrivilege, invalidatePolitics, revokePrivilege, setTask } from './politics';
+import { answerEvent } from './events';
+import { canForm, formNation } from './decisions';
+import { canPlot, canSpyOn, carryOut } from './espionage';
+import { NATION_BY_ID } from '../data/nations';
+import type { PlotId } from '../data/espionage';
 import { factionWar, grantFreedom } from './revolts';
 import type {
   BuildingType,
@@ -522,4 +527,43 @@ export function reformGovernment(state: GameState, gov: Government): Result {
   if (!check.ok) return no(check.reason);
   reform(state, c, gov);
   return ok();
+}
+
+// ── Events, decisions and espionage ───────────────────────────────
+
+export function chooseEventOption(state: GameState, world: SimWorld, eventId: number, option: number): Result {
+  const check = answerEvent(state, world, eventId, option);
+  return check.ok ? ok() : no(check.reason);
+}
+
+export function proclaimNation(state: GameState, world: SimWorld, id: string): Result {
+  const c = state.countries[state.player];
+  const n = NATION_BY_ID[id];
+  if (!n) return no('No such nation');
+  const check = canForm(state, c, n);
+  if (!check.ok) return no(check.reason);
+  formNation(state, world, c, n);
+  return ok(`You have proclaimed the ${n.name}.`);
+}
+
+/** Sets the spymaster to build a network in a realm (0 recalls the agents). */
+export function spyOn(state: GameState, target: number): Result {
+  const c = state.countries[state.player];
+  if (target) {
+    const check = canSpyOn(state, c, target);
+    if (!check.ok) return no(check.reason);
+  }
+  c.spyTarget = target;
+  if (target) c.tasks.spymaster = 'network';
+  else if (c.tasks.spymaster === 'network') c.tasks.spymaster = 'watch';
+  invalidatePolitics(state);
+  return ok(target ? `Your spymaster sends agents into ${state.countries[target].name}.` : 'Your agents are recalled.');
+}
+
+export function plot(state: GameState, world: SimWorld, target: number, id: PlotId): Result {
+  const c = state.countries[state.player];
+  const check = canPlot(state, world, c, target, id);
+  if (!check.ok) return no(check.reason);
+  const result = carryOut(state, world, c, target, id);
+  return result ? ok(result.text) : no('The plot could not go ahead');
 }

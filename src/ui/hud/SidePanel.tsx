@@ -22,7 +22,9 @@ import { garrison } from '../../sim/siege';
 import { ADJ_RIVER, type RegionData } from '../../shared/dataTypes';
 import { closePanel, flyToProvince, run, selectArmy, selectCountry, selectProvince } from '../actions';
 import { CoatOfArms } from '../CoatOfArms';
-import { formatNumber } from '../format';
+import { capitalize, formatDate, formatNumber } from '../format';
+import { toDate } from '../../sim/calendar';
+import { plagueName } from '../../sim/plague';
 import { useGame, type Game } from '../game';
 import { Icon } from '../Icon';
 import { useMapInsets } from '../map/useMapInsets';
@@ -158,6 +160,15 @@ function LandView({ r }: { r: RegionData }) {
           <Icon name="anchor" /> Blockaded by the fleet of {state.countries[blockader]?.name}: its taxes suffer, and a
           siege goes faster.
         </p>
+      )}
+      {p?.plague !== undefined && (
+        <p className="alert plague">
+          <Icon name="plague-doctor-profile" /> {capitalize(plagueName(state) || 'pestilence')} rages here until{' '}
+          {formatDate(toDate(p.plague))}: it pays and serves half.
+        </p>
+      )}
+      {!!p?.lost && p.plague === undefined && (
+        <p className="dim small">Emptied by pestilence: {p.lost} development to win back as the land fills again.</p>
       )}
       <ColonySection id={r.id} />
       {owner && <Claims id={r.id} />}

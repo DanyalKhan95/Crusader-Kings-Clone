@@ -203,3 +203,48 @@ if (worst.of)
   console.log(
     `worst aggressive expansion: ${state.countries[worst.of].tag} about ${state.countries[worst.about].tag}: ${Math.round(worst.v)}`,
   );
+// ── Events, pestilence, nations and spies ──
+const fired = new Map<string, number>();
+for (const c of state.countries)
+  if (c) for (const k of Object.keys(c.history)) if (!k.includes(':')) fired.set(k, (fired.get(k) ?? 0) + 1);
+console.log(
+  `events that befell realms: ${[...fired]
+    .sort((a, b) => b[1] - a[1])
+    .map(([k, n]) => `${k} ${n}`)
+    .join(', ')}`,
+);
+const mods = new Map<string, number>();
+for (const c of state.countries) if (c?.alive) for (const m of c.modifiers) mods.set(m.id, (mods.get(m.id) ?? 0) + 1);
+console.log(
+  `modifiers now: ${[...mods]
+    .sort((a, b) => b[1] - a[1])
+    .map(([k, n]) => `${k} ${n}`)
+    .join(', ')}`,
+);
+const world_ = Object.entries(state.happened)
+  .filter(([k]) => !k.startsWith('tag:'))
+  .map(([k, v]) => (k === 'world_wars' ? `world wars ${v}` : `${k} ${fmt(v)}`));
+console.log(`world events: ${world_.join(', ') || 'none'}`);
+const sick = state.provinces.filter((p) => p?.plague !== undefined).length;
+const lost = state.provinces.reduce((s, p) => s + (p?.lost ?? 0), 0);
+console.log(
+  `pestilence: ${state.plague ? `${state.plague.id} since ${fmt(state.plague.since)}, ${sick} provinces sick` : 'none now'}; development still to regrow ${lost}`,
+);
+const nations = state.countries.filter((c) => c?.alive && Object.keys(c.history).some((k) => k.startsWith('nation:')));
+console.log(
+  `nations proclaimed: ${nations.map((c) => `${c.name} (${fmt(c.history[Object.keys(c.history).find((k) => k.startsWith('nation:'))!])})`).join(', ') || 'none'}`,
+);
+let networks = 0,
+  strong = 0,
+  plotted = 0;
+for (const c of state.countries)
+  if (c?.alive) {
+    for (const v of Object.values(c.spies)) {
+      networks++;
+      if (v >= 50) strong++;
+    }
+    for (const k of Object.keys(c.memories)) if (memory(state, c.index, Number(k), 'plotted') < 0) plotted++;
+  }
+console.log(`spy networks: ${networks} (${strong} of 50 or more); grudges over exposed plots: ${plotted}`);
+const hordes = state.countries.filter((c) => c?.alive && c.modifiers.some((m) => m.id === 'horde'));
+for (const h of hordes) console.log(`the Horde: ${h.name}, ${realmProvinces(state, h.index).length} provinces`);

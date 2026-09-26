@@ -64,9 +64,9 @@ export type TaskId =
   | 'stability'
   | 'legitimacy'
   | 'convert'
-  | 'assimilate';
+  | 'assimilate'
+  | 'network';
 
-/** A demand of rebels, enforced if they win. */
 /** A demand of rebels, enforced if they win; `nation` rebels want a state of their own. */
 export type Demand = 'lower_taxes' | 'lower_conscription' | 'lower_crown' | 'privileges' | 'nation';
 
@@ -95,7 +95,16 @@ export interface Character {
 
 /** What one country remembers about another; the value fades month by month. */
 export type MemoryKind =
-  'ae' | 'took_land' | 'gift' | 'betrayed' | 'broke_pact' | 'fought_beside' | 'freed_us' | 'refused';
+  | 'ae'
+  | 'took_land'
+  | 'gift'
+  | 'betrayed'
+  | 'broke_pact'
+  | 'fought_beside'
+  | 'freed_us'
+  | 'refused'
+  | 'insulted'
+  | 'plotted';
 
 export interface Memory {
   kind: MemoryKind;
@@ -107,6 +116,13 @@ export interface Mission {
   province: number;
   progress: number;
   needed: number;
+}
+
+/** A modifier on a realm for a time (see data/modifiers.ts). */
+export interface ActiveModifier {
+  id: string;
+  /** the day it ends; without one it lasts until it is taken away */
+  until?: number;
 }
 
 export interface Loan {
@@ -192,6 +208,14 @@ export interface Country {
   colony?: string;
   /** memories of other countries, by country index */
   memories: Record<number, Memory[]>;
+  /** modifiers for a time: harvests, plagues, booms and reforms */
+  modifiers: ActiveModifier[];
+  /** the last day each event happened to the realm, by event id */
+  history: Record<string, number>;
+  /** the spy networks of the realm in other realms, by country index: 0 … 100 */
+  spies: Record<number, number>;
+  /** the realm the spymaster builds a network in (0 = none) */
+  spyTarget: number;
 
   laws: Laws;
   /** day of the last change of law; laws change at most once in five years */
@@ -231,6 +255,12 @@ export interface ProvinceState {
   buildings: Partial<Record<BuildingType, number>>;
   construction?: Construction;
   siege?: Siege;
+  /** while pestilence rages here: the day it ends */
+  plague?: number;
+  /** no new outbreak takes hold here before this day */
+  immune?: number;
+  /** development lost to pestilence, won back as the land fills again */
+  lost?: number;
 }
 
 export type ArmyStatus = 'idle' | 'moving' | 'battle' | 'siege';
@@ -365,6 +395,8 @@ export interface War {
   ticking: number;
   /** revolts: what the rebels want */
   demand?: Demand;
+  /** a war between the great powers of the modern age: which world war it became */
+  world?: number;
 }
 
 export interface Truce {
@@ -449,7 +481,9 @@ export type MessageKind =
   | 'diplomacy'
   | 'naval'
   | 'discovery'
-  | 'colony';
+  | 'colony'
+  | 'plague'
+  | 'intrigue';
 
 export interface Message {
   id: number;
@@ -462,8 +496,26 @@ export interface Message {
   important?: boolean;
 }
 
+/** An event waiting for the player's choice (see data/events.ts). */
+export interface PendingEvent {
+  id: number;
+  event: string;
+  country: number;
+  /** the province it concerns, or 0 */
+  province: number;
+  /** another realm it concerns, or 0 */
+  other: number;
+  day: number;
+}
+
+/** A pestilence abroad in the world (see data/events.ts). */
+export interface PlagueState {
+  id: string;
+  since: number;
+}
+
 export interface GameState {
-  version: 6;
+  version: 7;
   scenario: string;
   seed: number;
   rng: number;
@@ -498,4 +550,10 @@ export interface GameState {
   diploVersion: number;
   /** one-off scripted happenings still to come */
   scheduled: { day: number; event: string }[];
+  /** events waiting for the player's choice */
+  events: PendingEvent[];
+  /** world events that have happened, by id: the day (or a count, for world wars) */
+  happened: Record<string, number>;
+  /** the pestilence abroad in the world, if any */
+  plague: PlagueState | null;
 }

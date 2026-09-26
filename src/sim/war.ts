@@ -23,6 +23,7 @@ import {
 import { income, type Breakdown, type Part } from './economy';
 import { grantHolyLand, holyLandOf, holyVictory, holyWarGoals, unbelievers, wagesHolyWar } from './holywars';
 import { log } from './log';
+import { hasModifier } from './modifiers';
 import { taskSkill } from './politics';
 import {
   atWar,
@@ -209,7 +210,8 @@ export function declareWar(
   };
   state.wars.push(war);
   state.diploVersion++;
-  if (cb === 'conquest') a.stability = Math.max(-3, a.stability - 1);
+  // A horde needs no cause.
+  if (cb === 'conquest' && !hasModifier(a, 'horde')) a.stability = Math.max(-3, a.stability - 1);
   log(state, [...war.attackers, ...war.defenders], 'war', `${a.name} has declared war on ${d.name}: ${war.name}.`, {
     important: war.defenders.includes(state.player),
     province: cb === 'claim' || cb === 'holy' ? goal : d.capital,

@@ -47,7 +47,7 @@ export function createGameState(world: SimWorld, scenario: ScenarioData, opts: {
   registerBeliefs(world.world, world.regions);
   const seed = opts.seed ?? hashString(scenario.id);
   const state: GameState = {
-    version: 6,
+    version: 7,
     scenario: scenario.id,
     seed,
     rng: seed,
@@ -74,6 +74,9 @@ export function createGameState(world: SimWorld, scenario: ScenarioData, opts: {
     borderVersion: 1,
     diploVersion: 1,
     scheduled: [],
+    events: [],
+    happened: {},
+    plague: null,
   };
   const byTag = new Map<string, Country>();
   scenario.countries.forEach((c, i) => {
@@ -122,6 +125,10 @@ export function createGameState(world: SimWorld, scenario: ScenarioData, opts: {
       known: '',
       colonies: [],
       memories: {},
+      modifiers: [],
+      history: {},
+      spies: {},
+      spyTarget: 0,
       laws: initialLaws(c.gov, c.tag, cultureGroup(c.culture)),
       lawChanged: 0,
       legitimacy: 60,

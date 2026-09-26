@@ -2,6 +2,7 @@
  * Game time. Runs simulated days inside the map's frame loop, within a time budget, and tells the
  * map and the panels what changed. Important news pauses the game, as in any grand strategy game.
  */
+import { playerEvent } from '../sim/events';
 import { advanceDay } from '../sim/tick';
 import type { Game } from './game';
 
@@ -50,6 +51,9 @@ export function attachRunner(game: Game) {
     if (state.offers.some((o) => o.to === state.player) && ui.modal === 'none') {
       patch.speed = 0;
       patch.modal = 'offer';
+    } else if (playerEvent(state) && ui.modal === 'none') {
+      patch.speed = 0;
+      patch.modal = 'event';
     }
     if (state.player !== ui.player) {
       patch.player = state.player;
@@ -93,6 +97,7 @@ export function attachRunner(game: Game) {
       const last = game.state.messages.at(-1);
       if (last && last.id > lastMessage && last.important) break;
       if (game.state.offers.some((o) => o.to === game.state.player)) break;
+      if (playerEvent(game.state)) break;
     }
     if (days) sync(false);
   };

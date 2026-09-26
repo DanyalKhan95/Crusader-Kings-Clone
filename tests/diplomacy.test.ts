@@ -334,7 +334,7 @@ describe('saves', () => {
       defenders: [pol.index],
     });
     const loaded = deserialize(JSON.stringify(file));
-    expect(loaded.version).toBe(6);
+    expect(loaded.version).toBe(7);
     expect(loaded.pacts).toEqual([]);
     expect(loaded.countries[hun.index].laws.taxation).toBe(1);
     const war = loaded.wars.find((w) => w.id === 9999)!;

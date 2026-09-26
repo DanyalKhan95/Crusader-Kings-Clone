@@ -21,6 +21,7 @@ import { ColoniesSection, NavySection } from './NavyPanel';
 import { LawsTab } from './PoliticsPanel';
 import { DiplomacyTab, ForeignDiplomacy } from './DiplomacyPanel';
 import { CountryFacts, CountryHeader } from '../realm';
+import { DecisionsSection, IntrigueSection, ModifiersSection, SpyNetworkLine } from './RealmAffairs';
 import { useStore } from '../store';
 import { goToProvince } from './SidePanel';
 import { BreakdownList, fmtSigned, WithTip } from './Tip';
@@ -76,6 +77,7 @@ export function CountryView({ index }: { index: number }) {
       ) : (
         <>
           <ForeignDiplomacy c={c} />
+          <IntrigueSection c={c} />
           <RealmTab c={c} />
         </>
       )}
@@ -97,6 +99,8 @@ function RealmTab({ c }: { c: Country }) {
   return (
     <>
       <CountryFacts country={c} stats={stats} />
+      <ModifiersSection c={c} />
+      {c.index === game.state.player && <DecisionsSection c={c} />}
       {stats.vassals.length > 0 && (
         <section className="sp-section">
           <h3 className="section-title">Vassals · {stats.vassals.length}</h3>
@@ -349,6 +353,7 @@ function CourtTab({ c }: { c: Country }) {
                       </WithTip>
                     ))}
                   </div>
+                  {seat === 'spymaster' && <SpyNetworkLine c={c} />}
                 </div>
               </li>
             );

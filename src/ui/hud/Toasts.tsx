@@ -21,6 +21,8 @@ const KIND_ICON: Record<MessageKind, IconName> = {
   naval: 'anchor',
   discovery: 'compass',
   colony: 'wood-cabin',
+  plague: 'plague-doctor-profile',
+  intrigue: 'cloak-dagger',
 };
 
 const SHORT_MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
