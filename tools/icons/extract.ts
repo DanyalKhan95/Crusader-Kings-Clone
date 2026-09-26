@@ -177,6 +177,23 @@ const UI = [
   'steam-locomotive',
   'light-bulb',
   'atom',
+  // Milestone 6: ships, exploration and colonies.
+  'galley',
+  'drakkar',
+  'caravel',
+  'galleon',
+  'shooner-sailboat',
+  'iron-hulled-warship',
+  'battleship',
+  'carrier',
+  'submarine',
+  'cargo-ship',
+  'ship-bow',
+  'sinking-ship',
+  'harbor-dock',
+  'lighthouse',
+  'wood-cabin',
+  'huts-village',
 ];
 
 const out: Record<string, string> = {};

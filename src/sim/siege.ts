@@ -6,6 +6,7 @@
 import { taskSkill } from './politics';
 import { fortLevel } from './economy';
 import { log } from './log';
+import { BLOCKADE_SIEGE, blockades } from './naval';
 import { armySize, atWar } from './queries';
 import { chance } from './rng';
 import { militaryEra, techEffect } from './tech';
@@ -49,7 +50,9 @@ function dailyRate(state: GameState, id: number, armies: Army[]): number {
   const owner = state.countries[armies[0].owner];
   const spy = owner ? taskSkill(state, owner, 'spymaster', 'sieges') : 0;
   const numbers = Math.min(1.5, men / (g * 4));
-  return ((1 + engines * 0.08) * (1 + spy * 0.02) * (0.5 + numbers)) / (35 * fort);
+  // A garrison that cannot be supplied from the sea holds out less long.
+  const blockade = blockades(state).has(id) ? 1 + BLOCKADE_SIEGE : 1;
+  return ((1 + engines * 0.08) * (1 + spy * 0.02) * (0.5 + numbers) * blockade) / (35 * fort);
 }
 
 /** Which country takes a province an army occupies: the owner's side gets its own land back. */

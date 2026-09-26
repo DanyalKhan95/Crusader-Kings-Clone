@@ -182,13 +182,34 @@ whole world. The player controls a country rather than a dynasty.
       unit names by era, building levels and development ceilings in the province panel.
 - [x] Saves from milestone 4 load.
 
-### M6: Navies, exploration and colonisation
+### M6: Navies, exploration and colonisation (done)
 
-- Fleets by era: galleys → cogs → carracks → galleons → ships of the line → ironclads →
-  dreadnoughts → carriers and submarines.
-- Naval battles, blockades and transports. These replace automatic embarking.
-- Terra incognita for each country, explorers and map sharing.
-- Colonising empty and native lands, and colonial subjects.
+- [x] Warships in three roles (the line, escorts, and submarines from the modern era), named for
+      their era: war cogs and galleys, carracks, galleons, ships of the line and frigates,
+      ironclads and cruisers with steam, dreadnoughts and destroyers, carriers; longships for the
+      Norse.
+- [x] Ships built in any free port, fleets with admirals, sailing the sea lanes and putting in at
+      friendly ports; open ocean only with Cartography.
+- [x] Naval battles (counters, admirals, morale); the beaten make for port; war score from
+      victories at sea.
+- [x] Blockades: enemy coasts lose taxes, sieges there go faster, and blockaded ports cannot
+      launch ships.
+- [x] Transports in place of automatic embarking: armies cross the sea only with room on the
+      realm's transports, and enemy warships sink the men and ships they catch at sea.
+- [x] Terra incognita for each realm: the lands of its faith and around its own at first, then
+      what its armies and fleets see; maps shared by allies and within realms, within a faith
+      once it has Cartography, and the whole world from the industrial era.
+- [x] Expeditions: fleets that chart the nearest unknown waters on their own.
+- [x] Colonisation: colonists and colonial range by technology, cost and time, natives who slow
+      and attack settlers, and settling among natives only from Cartography.
+- [x] Colonial nations: colonies on another continent pass to a colonial subject, which cannot be
+      integrated and grows restless with popular sovereignty.
+- [x] AI: transports and a navy by coast and income, war fleets that hunt, flee and blockade,
+      armies that ship what the transports can carry, expeditions and colonies.
+- [x] UI: fleets and sea battles on the map, the fleet panel, shipyards, transports and the navy
+      in the Army tab, parchment for the unknown with "Terra incognita" across it, colonies in the
+      province and realm panels.
+- [x] Saves from milestone 5 load.
 
 ### M7: Events, decisions and espionage
 
@@ -237,15 +258,30 @@ whole world. The player controls a country rather than a dynasty.
     spend it.
   - Technology: in a 900-year AI run the great realms stay within a level or two of the
     historical dates, and the average realm is three to eight levels behind. Isolated realms stay
-    medieval or renaissance into the modern era; colonisation in M6 should reach them.
+    medieval or renaissance into the modern era.
   - Governments: absolutism spreads through the great monarchies between about 1600 and 1670,
     constitutions follow from about 1700 and the first democracies around 1770; most great realms
     are democracies by 1916. Small feudal realms mostly stay as they are.
   - Development grows more slowly as it nears a ceiling set by the land and the economy track.
     World development rises by about 40% in the first 200 years. Before M5 it rose fivefold in
     that time, and levies tenfold.
-- **Speed:** headless runs manage about 1,000 days a second, so a 900-year run takes five and a
-  half minutes. Estate and faith figures are cached per day, and routes an army cannot take are
-  ruled out by a cached reachability check before any search. Worth another look in M8.
+  - The age of discovery begins around 1500, when the first realms learn Cartography. By 1716 in
+    a 650-year run, 25 colonial nations govern parts of the Americas, Africa, the East Indies and
+    Oceania, and 160 of the 963 unclaimed provinces are left. East Asian realms, close to the
+    East Indies and Oceania, colonise first; native realms of the Americas spread over their
+    neighbours; European colonies follow once expeditions have charted the Atlantic.
+  - The Atlantic has no islands to hop between: the Azores, Madeira and Cape Verde are not
+    provinces, so Iberia reaches the Americas only with joint-stock companies.
+  - Navies grow with income: some 10,000 warships sail by 1716, and rich empires keep transports
+    for hundreds of thousands of men (the upkeep is capped at a sixteenth of income). Armies of
+    several hundred thousand men also appear by then.
+  - A realm that loses its homeland can live on in its colonies.
+- **Speed:** headless runs manage about 700 days a second in the first decades and 550 over 650
+  years (a 900-year run in M5 averaged about 950): fleets, blockades, expeditions and colonies
+  add work, and so do the larger realms of later centuries. Estate and faith figures are cached
+  per day, and routes an army or fleet cannot take are ruled out by cached reachability checks
+  before any search. Worth another look in M8.
 - **Size:** the stylesheet is 1.1 MB, most of it the inlined fonts of the six era themes.
-- **Navies:** armies embark automatically and cannot be intercepted at sea until M6.
+- **Fleets and armies at sea:** transports are a pool per realm rather than ships in fleets, so
+  an escort protects armies only in the sea zone where it sails. Ships are built at once, like
+  men-at-arms.

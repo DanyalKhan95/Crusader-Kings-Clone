@@ -303,9 +303,23 @@ describe('saves', () => {
       delete c.estates;
       delete c.tasks;
       delete c.termEnds;
-      for (const k of ['accepted', 'converting', 'assimilating', 'blessed', 'tech', 'research', 'focus', 'reformed'])
+      for (const k of [
+        'accepted',
+        'converting',
+        'assimilating',
+        'blessed',
+        'tech',
+        'research',
+        'focus',
+        'reformed',
+        'transports',
+        'known',
+        'colonies',
+      ])
         delete c[k];
     }
+    delete st.fleets;
+    delete st.navalBattles;
     const hun = st.countries.find((c: { tag: string } | null) => c?.tag === 'HUN');
     const pol = st.countries.find((c: { tag: string } | null) => c?.tag === 'POL');
     const goal = borderOf(s, hun.index, pol.index);
@@ -320,7 +334,7 @@ describe('saves', () => {
       defenders: [pol.index],
     });
     const loaded = deserialize(JSON.stringify(file));
-    expect(loaded.version).toBe(5);
+    expect(loaded.version).toBe(6);
     expect(loaded.pacts).toEqual([]);
     expect(loaded.countries[hun.index].laws.taxation).toBe(1);
     const war = loaded.wars.find((w) => w.id === 9999)!;

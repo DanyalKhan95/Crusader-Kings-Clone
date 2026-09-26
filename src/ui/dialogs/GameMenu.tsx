@@ -14,7 +14,7 @@ function label(game: Game): string {
 }
 
 function afterLoad(game: Game, json: string) {
-  const state = deserialize(json);
+  const state = deserialize(json, game.world);
   replaceState(game, state);
   resume(game);
   notice(game, `Loaded: ${label(game)}`);

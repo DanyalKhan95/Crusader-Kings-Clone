@@ -7,7 +7,8 @@ import { alive, character, makeCharacter, skill } from './characters';
 import { accessSet, mayEnter } from './diplomacy';
 import { buildingEffect } from './economy';
 import { log } from './log';
-import { components, findPath, graph, stepDays } from './movement';
+import { components, findPath, graph, isWater, stepDays } from './movement';
+import { canShip, embarked, freeTransport } from './naval';
 import { taskSkill } from './politics';
 import { armySize, atWar, menIn } from './queries';
 import { knowsId, militaryEra, techEffect } from './tech';
@@ -78,7 +79,7 @@ export function newArmy(state: GameState, c: Country, location: number, units: U
 
 /** Characters of a country free to lead an army, best first. */
 export function freeCommanders(state: GameState, c: Country): number[] {
-  const busy = new Set(state.armies.map((a) => a.commander));
+  const busy = new Set([...state.armies.map((a) => a.commander), ...state.fleets.map((f) => f.admiral)]);
   const pool = [c.ruler, c.council.marshal, ...c.courtiers, c.heir].filter(
     (id, i, all) => id && alive(state, id) && !busy.has(id) && all.indexOf(id) === i,
   );
@@ -159,6 +160,26 @@ export function split(state: GameState, army: Army): Army | null {
   return other;
 }
 
+/**
+ * Detaches about `men` from an army, in the same mix of arms, as a new army under the next best free
+ * commander.
+ */
+export function detach(state: GameState, army: Army, men: number): Army | null {
+  const size = armySize(army);
+  if (men < 100 || men >= size || inBattle(state, army)) return null;
+  const f = men / size;
+  const part: Units = {};
+  for (const [t, n] of Object.entries(army.units) as [UnitType, number][]) {
+    const k = Math.floor(n * f);
+    if (k > 0) part[t] = k;
+    army.units[t] = n - k;
+  }
+  const c = state.countries[army.owner];
+  const other = newArmy(state, c, army.location, part, freeCommanders(state, c)[0] ?? 0);
+  other.morale = army.morale;
+  return other;
+}
+
 export function inBattle(state: GameState, army: Army): boolean {
   return state.battles.some((b) => b.attacker.armies.includes(army.id) || b.defender.armies.includes(army.id));
 }
@@ -166,42 +187,108 @@ export function inBattle(state: GameState, army: Army): boolean {
 // ── Orders ────────────────────────────────────────────────────────
 
 const reachCache = new WeakMap<GameState, { border: number; byKey: Map<string, Int32Array> }>();
+const accessKeys = new WeakMap<Set<number>, string>();
+const waterLabels = new WeakMap<SimWorld, Int32Array>();
+
+/** The seas and lakes, labelled by which of them are joined: the same in every game. */
+function waterComponents(world: SimWorld): Int32Array {
+  let label = waterLabels.get(world);
+  if (!label) waterLabels.set(world, (label = components(world, (id) => isWater(world.region(id)))));
+  return label;
+}
 
 /**
- * Which regions an army of `owner` could march between. It depends only on who owns the land and
- * whose land the army may enter, so realms with the same rights of passage share the answer.
+ * Joins the land an army may march over through the seas it may sail: land regions that touch the
+ * same water get the same label.
  */
-function reachable(state: GameState, world: SimWorld, owner: number): Int32Array {
+function overSea(world: SimWorld, land: Int32Array): Int32Array {
+  const water = waterComponents(world);
+  let landCount = 0;
+  for (const l of land) if (l >= landCount) landCount = l + 1;
+  const parent = new Int32Array(landCount + water.length);
+  for (let i = 0; i < parent.length; i++) parent[i] = i;
+  const find = (x: number): number => {
+    while (parent[x] !== x) x = parent[x] = parent[parent[x]];
+    return x;
+  };
+  const { edges } = graph(world);
+  for (let id = 0; id < land.length; id++) {
+    if (land[id] < 0 || !world.region(id)?.coastal) continue;
+    for (const e of edges[id]) {
+      if (water[e.to] < 0) continue;
+      const a = find(land[id]),
+        b = find(landCount + water[e.to]);
+      if (a !== b) parent[a] = b;
+    }
+  }
+  const out = new Int32Array(land.length).fill(-1);
+  for (let id = 0; id < land.length; id++) {
+    if (land[id] >= 0) out[id] = find(land[id]);
+    else if (water[id] >= 0) out[id] = find(landCount + water[id]);
+  }
+  return out;
+}
+
+/**
+ * Which regions an army of `owner` could march between, over the sea too if it has the ships. It
+ * depends only on who owns the land and whose land the army may enter, so realms with the same
+ * rights of passage share the answer.
+ */
+function reachable(state: GameState, world: SimWorld, owner: number, sea: boolean): Int32Array {
   let cache = reachCache.get(state);
-  if (!cache || cache.border !== state.borderVersion || cache.byKey.size > 64)
+  if (!cache || cache.border !== state.borderVersion || cache.byKey.size > 256)
     reachCache.set(state, (cache = { border: state.borderVersion, byKey: new Map() }));
   const allowed = accessSet(state, owner);
-  const key = [...allowed].sort((x, y) => x - y).join(',');
-  let label = cache.byKey.get(key);
-  if (!label) {
-    label = components(world, (id) => {
+  let key = accessKeys.get(allowed);
+  if (key === undefined) accessKeys.set(allowed, (key = [...allowed].sort((x, y) => x - y).join(',')));
+  let land = cache.byKey.get(`L${key}`);
+  if (!land) {
+    land = components(world, (id) => {
+      if (isWater(world.region(id))) return false;
       const o = state.provinces[id]?.owner ?? 0;
       return !o || allowed.has(o);
     });
-    cache.byKey.set(key, label);
+    cache.byKey.set(`L${key}`, land);
   }
+  if (!sea) return land;
+  let label = cache.byKey.get(`S${key}`);
+  if (!label) cache.byKey.set(`S${key}`, (label = overSea(world, land)));
   return label;
 }
 
 /** Could an army of `owner` get from one region to another at all? Cheap, so hopeless orders fail fast. */
-export function canReach(state: GameState, world: SimWorld, owner: number, from: number, to: number): boolean {
-  const label = reachable(state, world, owner);
+export function canReach(
+  state: GameState,
+  world: SimWorld,
+  owner: number,
+  from: number,
+  to: number,
+  sea = true,
+): boolean {
+  const label = reachable(state, world, owner, sea);
   if (label[to] < 0) return false;
   if (label[from] >= 0) return label[from] === label[to];
-  // Standing where it may not go (land that just closed to it): it may still step out.
+  // Standing where it may not go (land that just closed to it, or afloat): it may still step out.
   return (graph(world).edges[from] ?? []).some((e) => label[e.to] === label[to]);
 }
 
-/** The route an army of `owner` may take: only through land it has the right to enter. */
-export function routeFor(state: GameState, world: SimWorld, owner: number, from: number, to: number): number[] | null {
-  if (from !== to && !canReach(state, world, owner, from, to)) return null;
+/**
+ * The route an army of `owner` may take: only through land it has the right to enter, and over the
+ * sea only if it is afloat already or the realm's transports have room for its `men`.
+ */
+export function routeFor(
+  state: GameState,
+  world: SimWorld,
+  owner: number,
+  from: number,
+  to: number,
+  men = 0,
+): number[] | null {
+  const sea = isWater(world.region(from)) || freeTransport(state, world, owner) >= men;
+  if (from !== to && !canReach(state, world, owner, from, to, sea)) return null;
   const allowed = accessSet(state, owner);
   return findPath(world, from, to, {
+    sea,
     penalty: (id) => {
       const o = state.provinces[id]?.owner ?? 0;
       return !o || allowed.has(o) ? 0 : Infinity;
@@ -219,7 +306,7 @@ export function orderMove(state: GameState, world: SimWorld, army: Army, to: num
   }
   // Keep going to the next region if already underway, so the army does not teleport back.
   const from = army.path.length && army.progress > 0 ? army.path[0] : army.location;
-  const path = routeFor(state, world, army.owner, from, to);
+  const path = routeFor(state, world, army.owner, from, to, armySize(army));
   if (!path) return false;
   if (from !== army.location) {
     army.path = [from, ...path];
@@ -303,15 +390,27 @@ export function dailyMarch(state: GameState, world: SimWorld): { army: Army; fro
       const dest = army.path[army.path.length - 1];
       army.progress = 0;
       army.path = [];
-      const path = mayEnter(state, army.owner, dest) ? routeFor(state, world, army.owner, army.location, dest) : null;
+      const path = mayEnter(state, army.owner, dest)
+        ? routeFor(state, world, army.owner, army.location, dest, armySize(army))
+        : null;
       if (path?.length) {
         army.path = path;
         army.stepDays = stepDays(world, army.location, path[0]);
       }
       continue;
     }
+    // Taking to the sea needs room on the transports; other armies may have filled them since.
+    if (!army.retreating && isWater(world.region(army.path[0])) && !canShip(state, world, army)) {
+      army.progress = 0;
+      army.path = [];
+      log(state, [army.owner], 'army', `${army.name} waits on the shore: the transports cannot carry it.`, {
+        province: army.location,
+      });
+      continue;
+    }
     const from = army.location;
     army.location = army.path.shift()!;
+    if (isWater(world.region(army.location)) !== isWater(world.region(from))) embarked(state);
     army.progress = 0;
     army.stepDays = army.path.length ? stepDays(world, army.location, army.path[0]) : 0;
     if (!army.path.length) army.retreating = false;

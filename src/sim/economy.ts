@@ -23,10 +23,11 @@ import { rulerSkill } from './characters';
 import { provinceMultiplier } from './faith';
 import { buildingTech, maxBuildingLevel, militaryEra, techEffect } from './tech';
 import { log } from './log';
+import { BLOCKADE_TAX, blockades, navyUpkeep } from './naval';
 import { estateEffect, taskSkill } from './politics';
 import { armiesOf, atWar, menIn, provincesOf, tributariesOf, vassalsOf } from './queries';
 import { chance } from './rng';
-import type { BuildingType, Country, GameState, ProvinceState, UnitType } from './types';
+import type { BuildingType, Country, GameState, ProvinceState, ShipType, UnitType } from './types';
 import type { SimWorld } from './world';
 
 export interface Part {
@@ -126,18 +127,22 @@ export function fortLevel(state: GameState, id: number): number {
 export const TRIBUTARY_TRIBUTE = 0.15;
 
 /** Taxes of the realm's own provinces: what they pay, and what other faiths and peoples withhold. */
-function taxesOf(state: GameState, c: Country): { taxes: number; withheld: number } {
+function taxesOf(state: GameState, c: Country): { taxes: number; withheld: number; blockaded: number } {
   let full = 0,
-    paid = 0;
+    paid = 0,
+    lost = 0;
+  const blocked = blockades(state);
   for (const id of provincesOf(state, c.index)) {
     const p = state.provinces[id];
     if (p.controller !== c.index) continue;
     const t = provinceTax(p);
+    const due = t * provinceMultiplier(c, p);
     full += t;
-    paid += t * provinceMultiplier(c, p);
+    paid += due;
+    if (blocked.has(id)) lost += due * BLOCKADE_TAX;
   }
   const mult = Math.max(0.3, taxMultiplier(state, c).total);
-  return { taxes: paid * mult, withheld: (full - paid) * mult };
+  return { taxes: (paid - lost) * mult, withheld: (full - paid) * mult, blockaded: lost * mult };
 }
 
 function ownTaxes(state: GameState, c: Country): number {
@@ -145,7 +150,7 @@ function ownTaxes(state: GameState, c: Country): number {
 }
 
 export function income(state: GameState, c: Country): Breakdown {
-  const { taxes, withheld } = taxesOf(state, c);
+  const { taxes, withheld, blockaded } = taxesOf(state, c);
   let fromVassals = 0,
     fromTributaries = 0;
   for (const v of vassalsOf(state, c.index))
@@ -155,8 +160,9 @@ export function income(state: GameState, c: Country): Breakdown {
   const paysLiege = c.liege && !atWar(state, c.index, c.liege);
   const paysOverlord = c.overlord && !atWar(state, c.index, c.overlord);
   return breakdown([
-    { label: `Taxes from ${provincesOf(state, c.index).length} provinces`, value: taxes + withheld },
+    { label: `Taxes from ${provincesOf(state, c.index).length} provinces`, value: taxes + withheld + blockaded },
     { label: 'Withheld by other faiths and peoples', value: -withheld },
+    { label: 'Lost to enemy blockades', value: -blockaded },
     { label: 'Tribute from vassals', value: fromVassals },
     { label: 'Tribute from tributaries', value: fromTributaries },
     {
@@ -181,10 +187,13 @@ export function expenses(state: GameState, c: Country): Breakdown {
   for (const [t, men] of Object.entries(c.reserve) as [UnitType, number][])
     reserve += (men / 100) * unitDef(t, era).reserveUpkeep * pay;
   const interest = c.loans.reduce((s, l) => s + l.interest, 0);
+  const navy = navyUpkeep(state, c);
   return breakdown([
     { label: 'Men-at-arms in the field', value: field },
     { label: 'Men-at-arms at home', value: reserve },
     { label: 'Raised levies', value: levies },
+    { label: 'Warships', value: navy.fleets },
+    { label: 'Transports', value: navy.transports },
     { label: 'Interest on loans', value: interest },
   ]);
 }
@@ -347,6 +356,11 @@ function handleDebt(state: GameState, c: Country) {
   for (const a of armiesOf(state, c.index))
     for (const k of Object.keys(a.units) as UnitType[])
       if (k !== 'levy') a.units[k] = Math.floor((a.units[k] ?? 0) / 2);
+  // Unpaid crews too.
+  for (const f of state.fleets)
+    if (f.owner === c.index)
+      for (const k of Object.keys(f.ships) as ShipType[]) f.ships[k] = Math.floor((f.ships[k] ?? 0) / 2);
+  c.transports = Math.floor(c.transports / 2);
   log(state, [c.index], 'economy', `${c.name} is bankrupt. Its debts are repudiated and half its soldiers desert.`, {
     important: true,
   });

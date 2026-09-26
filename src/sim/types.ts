@@ -19,6 +19,11 @@ export type Units = Partial<Record<UnitType, number>>;
 
 export type BuildingType = 'farms' | 'market' | 'barracks' | 'castle' | 'workshop' | 'port' | 'university';
 
+/** Roles of warships. Each keeps its role through the eras while the ships change (see data/ships.ts). */
+export type ShipType = 'heavy' | 'light' | 'submarine';
+/** Ships per role. */
+export type Ships = Partial<Record<ShipType, number>>;
+
 // ── Politics ──────────────────────────────────────────────────────
 
 /** How a ruler is chosen when the throne falls empty. */
@@ -177,6 +182,14 @@ export interface Country {
   focus: TechTrack | null;
   /** day of the last change of government */
   reformed: number;
+  /** ships that carry the realm's armies over the sea */
+  transports: number;
+  /** the regions this realm knows, as a bit set in base64 (see exploration.ts) */
+  known: string;
+  /** colonies being founded */
+  colonies: Mission[];
+  /** a colonial nation: the colonial region it governs for its liege */
+  colony?: string;
   /** memories of other countries, by country index */
   memories: Record<number, Memory[]>;
 
@@ -244,6 +257,53 @@ export interface Army {
   objective: number;
   /** fleeing a lost battle: cannot be caught or given orders until it arrives */
   retreating?: boolean;
+  /** the last day enemy ships caught it at sea */
+  caught?: number;
+}
+
+/** What a fleet was sent to do on its own. */
+export type FleetMission = 'explore';
+
+export interface Fleet {
+  id: number;
+  owner: number;
+  name: string;
+  admiral: number;
+  /** a sea or lake zone, or the coastal province where the fleet lies in port */
+  location: number;
+  ships: Ships;
+  /** 0 … 1 */
+  morale: number;
+  /** remaining regions to sail through */
+  path: number[];
+  /** days spent on the current step */
+  progress: number;
+  /** days the current step takes */
+  stepDays: number;
+  /** AI and missions: day to re-plan */
+  replan: number;
+  /** where the AI sent it, or 0 */
+  objective: number;
+  mission?: FleetMission;
+  /** beaten in battle: making for port, and cannot be caught or given orders until it arrives */
+  retreating?: boolean;
+}
+
+export interface FleetSide {
+  fleets: number[];
+  country: number;
+  /** ships at the start */
+  start: number;
+  /** ships sunk */
+  losses: number;
+}
+
+export interface NavalBattle {
+  id: number;
+  zone: number;
+  day: number;
+  attacker: FleetSide;
+  defender: FleetSide;
 }
 
 export interface BattleSide {
@@ -377,7 +437,19 @@ export interface Faction {
 }
 
 export type MessageKind =
-  'war' | 'peace' | 'battle' | 'siege' | 'death' | 'building' | 'economy' | 'army' | 'event' | 'diplomacy';
+  | 'war'
+  | 'peace'
+  | 'battle'
+  | 'siege'
+  | 'death'
+  | 'building'
+  | 'economy'
+  | 'army'
+  | 'event'
+  | 'diplomacy'
+  | 'naval'
+  | 'discovery'
+  | 'colony';
 
 export interface Message {
   id: number;
@@ -391,7 +463,7 @@ export interface Message {
 }
 
 export interface GameState {
-  version: 5;
+  version: 6;
   scenario: string;
   seed: number;
   rng: number;
@@ -402,6 +474,8 @@ export interface GameState {
   characters: Record<number, Character>;
   armies: Army[];
   battles: Battle[];
+  fleets: Fleet[];
+  navalBattles: NavalBattle[];
   wars: War[];
   truces: Truce[];
   pacts: Pact[];

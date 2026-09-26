@@ -12,7 +12,7 @@ import type { Runner } from './runner';
 import { createStore, type Store } from './store';
 
 export type Phase = 'menu' | 'choose' | 'playing';
-export type Panel = 'none' | 'province' | 'country' | 'army' | 'war';
+export type Panel = 'none' | 'province' | 'country' | 'army' | 'fleet' | 'war';
 export type CountryTab = 'realm' | 'treasury' | 'military' | 'court' | 'laws' | 'faith' | 'diplomacy';
 export type Modal = 'none' | 'credits' | 'menu' | 'declare' | 'peace' | 'offer' | 'fallen' | 'tech';
 
@@ -37,10 +37,11 @@ export interface UIState {
   /** bumped when the world changed, so panels re-read the state */
   tick: number;
   selectedArmy: number;
+  selectedFleet: number;
   selectedWar: number;
   /** the country a war declaration is aimed at */
   dialogCountry: number;
-  /** the next map click orders the selected army there (touch screens) */
+  /** the next map click orders the selected army or fleet there (touch screens) */
   orderMode: boolean;
   /** message ids shown as toasts */
   toasts: number[];
@@ -77,6 +78,7 @@ export function createGame(world: StaticWorld, scenario: ScenarioData, state: Ga
     speed: 0,
     tick: 0,
     selectedArmy: 0,
+    selectedFleet: 0,
     selectedWar: 0,
     dialogCountry: 0,
     orderMode: false,

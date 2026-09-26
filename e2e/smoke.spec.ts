@@ -236,3 +236,64 @@ test('learns: the technology screen, a new era and its flag', async ({ page }) =
 
   expect(errors).toEqual([]);
 });
+
+test('sails: a fleet, the unknown lands and a colony', async ({ page }) => {
+  const errors = watchErrors(page);
+  await page.goto('/?debug');
+  await page.getByRole('button', { name: 'New Campaign' }).click({ timeout: 120_000 });
+  await page.getByRole('button', { name: 'Play as England' }).click();
+  await expect(page.locator('.nation-name')).toHaveText('Kingdom of England');
+  type G = {
+    state: { player: number; countries: ({ tech: Record<string, number>; gold: number; known: string } | null)[] };
+    world: { regions: { id: number; name: string }[] };
+    map: { isUnknown(id: number): boolean };
+    ui: { set(patch: Record<string, unknown>): void };
+    runner: { sync(): void };
+  };
+  const region = (name: string) =>
+    page.evaluate((n) => (window as unknown as { game: G }).game.world.regions.find((r) => r.name === n)!.id, name);
+  const newYork = await region('New York');
+  const london = await region('London');
+
+  // The New World is unknown in 1066.
+  expect(await page.evaluate((id) => (window as unknown as { game: G }).game.map.isUnknown(id), newYork)).toBe(true);
+
+  // London's shipyard launches a galley for the fleet lying there.
+  await page.evaluate(
+    (id) => (window as unknown as { game: G }).game.ui.set({ panel: 'province', selectedProvince: id }),
+    london,
+  );
+  await expect(page.locator('.side-panel')).toContainText('Shipyard');
+  await page.locator('.recruit li', { hasText: 'Galleys' }).getByTitle('Build one').click();
+  await expect(page.locator('.side-panel')).toContainText('6 ships');
+
+  // The fleet, from the navy in the Army tab: its ships, and an order to chart the unknown.
+  await page.locator('.nation-coa').click();
+  await page.getByRole('tab', { name: 'Army' }).click();
+  await expect(page.locator('.side-panel')).toContainText('cogs as transports');
+  await page.getByRole('button', { name: /First Fleet of England/ }).click();
+  await expect(page.locator('.side-panel .sp-title')).toHaveText('First Fleet of England');
+  await expect(page.locator('.side-panel')).toContainText('War cogs');
+  await page.getByRole('button', { name: 'Explore' }).click();
+  await expect(page.getByRole('button', { name: 'Stop exploring' })).toBeVisible();
+
+  // Centuries on, the realm knows the world and can cross the ocean: a colony in America.
+  await page.evaluate(() => {
+    const g = (window as unknown as { game: G }).game;
+    const c = g.state.countries[g.state.player]!;
+    c.tech = { economy: 20, military: 18, society: 12 };
+    c.gold = 5000;
+    c.known = '*';
+    g.runner.sync();
+  });
+  expect(await page.evaluate((id) => (window as unknown as { game: G }).game.map.isUnknown(id), newYork)).toBe(false);
+  await page.evaluate(
+    (id) => (window as unknown as { game: G }).game.ui.set({ panel: 'province', selectedProvince: id }),
+    newYork,
+  );
+  await expect(page.locator('.side-panel')).toContainText('Iroquoian');
+  await page.getByRole('button', { name: /Found a colony/ }).click();
+  await expect(page.locator('.side-panel')).toContainText('Your colonists are settling it');
+
+  expect(errors).toEqual([]);
+});

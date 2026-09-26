@@ -217,9 +217,12 @@ describe('emblems and saves', () => {
     const file = JSON.parse(serialize(s));
     file.version = 4;
     file.state.version = 4;
-    for (const c of file.state.countries) if (c) for (const k of ['tech', 'research', 'focus', 'reformed']) delete c[k];
+    delete file.state.fleets;
+    delete file.state.navalBattles;
+    for (const c of file.state.countries)
+      if (c) for (const k of ['tech', 'research', 'focus', 'reformed', 'transports', 'known', 'colonies']) delete c[k];
     const loaded = deserialize(JSON.stringify(file));
-    expect(loaded.version).toBe(5);
+    expect(loaded.version).toBe(6);
     expect(tag(loaded, 'FRA').tech).toEqual({ economy: 3, military: 3, society: 3 });
     for (let d = 0; d < 40; d++) advanceDay(loaded, world);
   });

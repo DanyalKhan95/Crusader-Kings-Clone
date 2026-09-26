@@ -17,6 +17,7 @@ import { SEAT_TASKS, TASK_INFO } from '../../data/politics';
 import { toDate } from '../../sim/calendar';
 import { CharacterCard, Portrait } from '../people';
 import { FaithTab } from './FaithPanel';
+import { ColoniesSection, NavySection } from './NavyPanel';
 import { LawsTab } from './PoliticsPanel';
 import { DiplomacyTab, ForeignDiplomacy } from './DiplomacyPanel';
 import { CountryFacts, CountryHeader } from '../realm';
@@ -111,6 +112,7 @@ function RealmTab({ c }: { c: Country }) {
           </ul>
         </section>
       )}
+      <ColoniesSection c={c} />
       {best.length > 0 && (
         <section className="sp-section">
           <h3 className="section-title">Richest provinces</h3>
@@ -227,6 +229,7 @@ function MilitaryTab({ c }: { c: Country }) {
           </ul>
         </section>
       )}
+      <NavySection c={c} />
       <section className="sp-section">
         <h3 className="section-title">Recruit men-at-arms</h3>
         <ul className="recruit">

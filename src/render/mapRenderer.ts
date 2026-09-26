@@ -41,6 +41,8 @@ export class MapRenderer {
   readonly countryData = new Uint8Array(TEX * TEX * 4);
   private dirty = { fill: true, info: true, country: true };
   drawWaterFills = false;
+  /** Some regions are unknown to the viewer: they are drawn over as parchment. */
+  hasUnknown = false;
   /** 0 … 1: how far fills lean towards opaque when zoomed in, for map modes whose colours carry meaning */
   fillBoost = 0;
   frame = 0;
@@ -170,6 +172,7 @@ export class MapRenderer {
     gl.useProgram(fp.prog);
     this.bindCommon(fp, cam);
     gl.uniform1f(fp.u.u_time, timeSec);
+    gl.uniform1i(fp.u.u_parchment, 0);
     const alpha = 0.4 + 0.53 * farness;
     gl.uniform1f(fp.u.u_alpha, alpha + (0.93 - alpha) * this.fillBoost);
     this.bindTextures(fp);
@@ -198,6 +201,21 @@ export class MapRenderer {
       }
     };
     if (cam.zoom > 0.14) drawLines(this.rivers, 2);
+    // Terra incognita covers land, sea and rivers alike; the known world's borders are drawn on top.
+    if (this.hasUnknown) {
+      gl.useProgram(fp.prog);
+      this.bindCommon(fp, cam);
+      this.bindTextures(fp);
+      gl.uniform1i(fp.u.u_parchment, 1);
+      gl.bindVertexArray(fill.mesh.vao);
+      for (const shift of cam.worldCopies()) {
+        gl.uniform1f(fp.u.u_shift, shift);
+        gl.drawElements(gl.TRIANGLES, fill.land[1], gl.UNSIGNED_INT, fill.land[0] * 4);
+        gl.drawElements(gl.TRIANGLES, fill.water[1], gl.UNSIGNED_INT, fill.water[0] * 4);
+      }
+      gl.uniform1i(fp.u.u_parchment, 0);
+      gl.useProgram(lp.prog);
+    }
     drawLines(this.borders[lod], 0);
     drawLines(this.borders[lod], 1);
     gl.bindVertexArray(null);

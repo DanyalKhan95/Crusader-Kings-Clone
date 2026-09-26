@@ -13,6 +13,7 @@ import { ESTATES } from '../src/sim/types.ts';
 import { armySize, lordOf, provincesOf, realmProvinces } from '../src/sim/queries.ts';
 import { createGameState } from '../src/sim/setup.ts';
 import { advanceDay } from '../src/sim/tick.ts';
+import { fleetSize } from '../src/sim/naval.ts';
 import { makeSimWorld } from '../src/sim/world.ts';
 import type { RegionData, ScenarioData, WorldData } from '../src/shared/dataTypes.ts';
 
@@ -45,6 +46,8 @@ const initialOwners = state.provinces.map((p) => p?.owner ?? 0);
 const initialFaiths = state.provinces.map((p) => p?.religion ?? null);
 const initialCultures = state.provinces.map((p) => p?.culture ?? null);
 const crusades: string[] = [];
+const seenSeaBattles = new Set<number>();
+let seaBattles = 0;
 for (let d = 0; d < years * 365; d++) {
   advanceDay(state, world);
   const ids = new Set(state.wars.map((w) => w.id));
@@ -60,6 +63,11 @@ for (let d = 0; d < years * 365; d++) {
     }
   for (const id of lastWars) if (!ids.has(id)) peaces++;
   lastWars = ids;
+  for (const b of state.navalBattles)
+    if (!seenSeaBattles.has(b.id)) {
+      seenSeaBattles.add(b.id);
+      seaBattles++;
+    }
   if (d % Math.round(365 * every) === 0 || d === years * 365 - 1) {
     const alive = state.countries.filter((c) => c?.alive).length;
     const men = state.armies.reduce((s, a) => s + armySize(a), 0);
@@ -78,6 +86,14 @@ for (let d = 0; d < years * 365; d++) {
     console.log(`            eras: ${eras}; highest level ${top}`);
     console.log(
       `            alliances ${pacts('alliance')}  naps ${pacts('nap')}  guarantees ${pacts('guarantee')}  access ${pacts('access')}  tributaries ${tributaries}  coalitions ${state.coalitions.length}  claims ${claims} (+${forging} forging)`,
+    );
+    const ships = state.fleets.reduce((s, f) => s + fleetSize(f), 0);
+    const expeditions = state.fleets.filter((f) => f.mission === 'explore').length;
+    const settling = state.countries.reduce((s, c) => s + (c?.alive ? c.colonies.length : 0), 0);
+    const colonial = state.countries.filter((c) => c?.alive && c.colony).length;
+    const unowned = state.provinces.filter((p, id) => p && world.region(id).kind === 'land' && !p.owner).length;
+    console.log(
+      `            fleets ${state.fleets.length} (${Math.round(ships)} ships, ${expeditions} exploring)  sea battles ${seaBattles}  colonies being founded ${settling}  colonial nations ${colonial}  unclaimed land ${unowned}`,
     );
   }
 }

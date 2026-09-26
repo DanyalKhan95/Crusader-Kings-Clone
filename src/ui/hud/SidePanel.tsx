@@ -29,6 +29,9 @@ import { useMapInsets } from '../map/useMapInsets';
 import { cultureName, religionName, Swatch } from '../realm';
 import { useStore } from '../store';
 import { ArmyView } from './ArmyPanel';
+import { ColonySection, FleetsHere, FleetView, Shipyard, UnknownView } from './NavyPanel';
+import { knows } from '../../sim/exploration';
+import { blockades, isOpenOcean } from '../../sim/naval';
 import { WithTip } from './Tip';
 import { CountryView } from './CountryPanel';
 import { faithIcon } from './FaithPanel';
@@ -40,15 +43,17 @@ export function SidePanel() {
   const province = useStore(game.ui, (s) => s.selectedProvince);
   const country = useStore(game.ui, (s) => s.selectedCountry);
   const army = useStore(game.ui, (s) => s.selectedArmy);
+  const fleet = useStore(game.ui, (s) => s.selectedFleet);
   const war = useStore(game.ui, (s) => s.selectedWar);
   useStore(game.ui, (s) => s.tick);
   if (panel === 'none') return null;
-  const label = { province: 'Province', country: 'Realm', army: 'Army', war: 'War' }[panel];
+  const label = { province: 'Province', country: 'Realm', army: 'Army', fleet: 'Fleet', war: 'War' }[panel];
   return (
     <PanelFrame label={label}>
       {panel === 'province' && province ? <ProvinceView key={province} id={province} /> : null}
       {panel === 'country' && country ? <CountryView key={country} index={country} /> : null}
       {panel === 'army' && army ? <ArmyView key={army} id={army} /> : null}
+      {panel === 'fleet' && fleet ? <FleetView key={fleet} id={fleet} /> : null}
       {panel === 'war' && war ? <WarView key={war} id={war} /> : null}
     </PanelFrame>
   );
@@ -80,6 +85,8 @@ function ProvinceView({ id }: { id: number }) {
   const game = useGame();
   const r = game.world.region(id);
   if (!r) return null;
+  const me = game.state.countries[game.state.player];
+  if (me && !knows(game.world, me, id)) return <UnknownView r={r} />;
   return r.kind === 'land' ? <LandView r={r} /> : <WaterView r={r} />;
 }
 
@@ -97,6 +104,7 @@ function LandView({ r }: { r: RegionData }) {
   const fort = fortLevel(state, r.id);
   const mine = owner?.index === state.player;
   const siegeBy = p?.siege ? state.countries[p.siege.by] : null;
+  const blockader = p ? blockades(state).get(r.id) : undefined;
   return (
     <div className="sp-body">
       <div className="sp-head">
@@ -145,6 +153,13 @@ function LandView({ r }: { r: RegionData }) {
         </div>
       )}
 
+      {blockader && (
+        <p className="alert">
+          <Icon name="anchor" /> Blockaded by the fleet of {state.countries[blockader]?.name}: its taxes suffer, and a
+          siege goes faster.
+        </p>
+      )}
+      <ColonySection id={r.id} />
       {owner && <Claims id={r.id} />}
 
       <dl className="facts">
@@ -229,7 +244,9 @@ function LandView({ r }: { r: RegionData }) {
 
       <FaithSection id={r.id} />
       {owner && <Buildings id={r.id} mine={mine} />}
+      {mine && <Shipyard id={r.id} />}
       <ArmiesHere id={r.id} />
+      <FleetsHere id={r.id} />
       <Neighbours r={r} />
     </div>
   );
@@ -563,6 +580,10 @@ function WaterView({ r }: { r: RegionData }) {
           <dd className="num">{coasts} provinces</dd>
         </div>
       </dl>
+      {isOpenOcean(game.world, r.id) && (
+        <p className="dim small">Open ocean, far from any coast: only ships built to cross the ocean may sail it.</p>
+      )}
+      <FleetsHere id={r.id} />
       <ArmiesHere id={r.id} />
       <Neighbours r={r} />
     </div>

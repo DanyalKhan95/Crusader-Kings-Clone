@@ -255,6 +255,7 @@ export function die(state: GameState, world: SimWorld, c: Character) {
   if (!country) return;
   for (const seat of COUNCIL_SEATS) if (country.council[seat] === c.id) country.council[seat] = 0;
   for (const a of state.armies) if (a.commander === c.id) a.commander = 0;
+  for (const f of state.fleets) if (f.admiral === c.id) f.admiral = 0;
   if (country.ruler === c.id) succeed(state, world, country);
   else if (country.heir === c.id) {
     country.heir = 0;

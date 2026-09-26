@@ -18,6 +18,9 @@ const KIND_ICON: Record<MessageKind, IconName> = {
   army: 'knight-banner',
   event: 'scroll-unfurled',
   diplomacy: 'shaking-hands',
+  naval: 'anchor',
+  discovery: 'compass',
+  colony: 'wood-cabin',
 };
 
 const SHORT_MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];

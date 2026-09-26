@@ -39,7 +39,11 @@ import { canReform, militaryEra, reform, reformOptions } from './tech';
 import { changeLaw, estateInfluence, estateLoyalty, grantPrivilege, lawCooldown } from './politics';
 import { revoltRisk } from './revolts';
 import { log } from './log';
-import { availableMaa, disband, inBattle, mergeInto, orderMove, raiseArmy, recruit } from './military';
+import { availableMaa, detach, disband, inBattle, mergeInto, orderMove, raiseArmy, recruit } from './military';
+import { freeTransport } from './naval';
+import { navyAI } from './navalAi';
+import { colonyAI } from './colonies';
+import { toDate } from './calendar';
 import {
   armiesOf,
   armySize,
@@ -119,6 +123,8 @@ export function monthlyAI(state: GameState, world: SimWorld, c: Country) {
   politicsAI(state, c);
   faithAI(state, world, c);
   techAI(state, c);
+  navyAI(state, world, c);
+  colonyAI(state, world, c, toDate(state.day).m);
   diplomacyAI(state, world, c);
   const wars = warsOf(state, c.index);
   if (wars.length) {
@@ -759,6 +765,18 @@ function planArmy(state: GameState, world: SimWorld, army: Army, enemies: Set<nu
       army.objective = t.id;
       return;
     }
+  // Too many for the ships: send over what they can carry.
+  const room = here.kind === 'land' && here.coastal ? freeTransport(state, world, army.owner) : 0;
+  if (targets.length && room >= 1000 && room < size) {
+    const force = detach(state, army, room * 0.95);
+    if (!force) return;
+    for (const t of targets.slice(0, 4))
+      if (orderMove(state, world, force, t.id)) {
+        force.objective = t.id;
+        return;
+      }
+    mergeInto(state, army, force);
+  }
 }
 
 /** The coalition a country could lead against a target, for the UI. */

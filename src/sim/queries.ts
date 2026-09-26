@@ -9,6 +9,20 @@ export function topLiege(state: GameState, index: number): number {
   return c;
 }
 
+/**
+ * The realm a country is shown with on the map: its top liege, unless it is (or serves) a colonial
+ * nation, which is drawn as a realm of its own.
+ */
+export function realmHead(state: GameState, index: number): number {
+  let c = index;
+  for (let guard = 0; guard < 16; guard++) {
+    const k = state.countries[c];
+    if (!k?.liege || k.colony) return c;
+    c = k.liege;
+  }
+  return c;
+}
+
 /** True if `index` is `owner` or one of its lieges. */
 export function isInRealm(state: GameState, owner: number, index: number): boolean {
   for (let c = owner, guard = 0; c && guard < 16; c = state.countries[c]?.liege ?? 0, guard++)

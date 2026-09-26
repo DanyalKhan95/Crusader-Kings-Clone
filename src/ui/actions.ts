@@ -2,6 +2,7 @@
 import { BOOKMARKS } from '../data/bookmarks';
 import type { MapMode } from '../game/mapModes';
 import * as cmd from '../sim/commands';
+import { fleetById } from '../sim/naval';
 import { armyById, countryByTag, realmProvinces } from '../sim/queries';
 import { createGameState } from '../sim/setup';
 import type { GameState } from '../sim/types';
@@ -24,12 +25,16 @@ export function selectArmy(game: Game, id: number) {
   game.ui.set({ selectedArmy: id, panel: 'army', orderMode: false });
 }
 
+export function selectFleet(game: Game, id: number) {
+  game.ui.set({ selectedFleet: id, panel: 'fleet', orderMode: false });
+}
+
 export function selectWar(game: Game, id: number) {
   game.ui.set({ selectedWar: id, panel: 'war' });
 }
 
 export function closePanel(game: Game) {
-  game.ui.set({ panel: 'none', selectedProvince: 0, selectedArmy: 0, orderMode: false });
+  game.ui.set({ panel: 'none', selectedProvince: 0, selectedArmy: 0, selectedFleet: 0, orderMode: false });
 }
 
 export function setMapMode(game: Game, mode: MapMode) {
@@ -55,12 +60,18 @@ export function run(game: Game, result: cmd.Result): boolean {
   return true;
 }
 
-/** Marches the selected army to a region. */
+/** Marches the selected army, or sails the selected fleet, to a region. */
 export function orderArmy(game: Game, region: number) {
-  const { selectedArmy } = game.ui.get();
+  const { selectedArmy, selectedFleet, panel } = game.ui.get();
   game.ui.set({ orderMode: false });
+  if (!region) return;
+  if (panel === 'fleet') {
+    const fleet = fleetById(game.state, selectedFleet);
+    if (fleet && fleet.owner === game.state.player) run(game, cmd.moveFleet(game.state, game.world, fleet.id, region));
+    return;
+  }
   const army = armyById(game.state, selectedArmy);
-  if (!army || army.owner !== game.state.player || !region) return;
+  if (!army || army.owner !== game.state.player) return;
   run(game, cmd.moveArmy(game.state, game.world, army.id, region));
 }
 

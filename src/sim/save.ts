@@ -1,9 +1,11 @@
 /** Saving and loading: the state is plain JSON. Older saves are brought up to date on load. */
+import { initialKnowledge } from './exploration';
 import { defaultEstates, defaultTasks, initialLaws } from './politics';
 import { initialTech } from './tech';
 import type { CasusBelli, GameState } from './types';
+import type { SimWorld } from './world';
 
-export const SAVE_VERSION = 5;
+export const SAVE_VERSION = 6;
 
 export interface SaveFile {
   format: 'crowns-and-centuries';
@@ -22,7 +24,11 @@ export function serialize(state: GameState): string {
   return JSON.stringify(file);
 }
 
-export function deserialize(json: string): GameState {
+/**
+ * Reads a save. Saves from before terra incognita learn what each realm knows from the world, so pass
+ * it; without it they catch up at the next month.
+ */
+export function deserialize(json: string, world?: SimWorld): GameState {
   const file = JSON.parse(json) as Partial<SaveFile>;
   if (file.format !== 'crowns-and-centuries' || !file.state) throw new Error('This is not a Crowns & Centuries save.');
   if (!file.version || file.version > SAVE_VERSION)
@@ -34,7 +40,26 @@ export function deserialize(json: string): GameState {
   if (file.version < 3) migrateToPolitics(s);
   if (file.version < 4) migrateToFaith(s);
   if (file.version < 5) migrateToTechnology(s);
+  if (file.version < 6) migrateToNavies(s, world);
   return s;
+}
+
+/**
+ * Version 5 (milestone 5) had no navies, colonies or terra incognita: armies sailed without ships.
+ * Realms start with no ships (armies already afloat may finish their crossing), and learn the lands
+ * around their own.
+ */
+function migrateToNavies(s: GameState, world: SimWorld | undefined) {
+  (s as unknown as { version: number }).version = 6;
+  s.fleets ??= [];
+  s.navalBattles ??= [];
+  for (const c of s.countries) {
+    if (!c) continue;
+    c.transports ??= 0;
+    c.colonies ??= [];
+    c.known ??= '';
+  }
+  if (world) initialKnowledge(s, world);
 }
 
 /** Version 4 (milestone 4) had no technology: every realm starts where the realms of 1066 did. */

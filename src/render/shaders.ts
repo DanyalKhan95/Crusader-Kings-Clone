@@ -73,8 +73,26 @@ flat in uint v_flags;
 uniform float u_zoom;
 uniform float u_time;
 uniform float u_alpha;
+uniform int u_parchment; // 1: draw only the unknown, as old parchment
 out vec4 o;
+float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+float noise(vec2 p) {
+  vec2 i = floor(p), f = fract(p);
+  vec2 u = f * f * (3.0 - 2.0 * f);
+  return mix(mix(hash(i), hash(i + vec2(1, 0)), u.x), mix(hash(i + vec2(0, 1)), hash(i + vec2(1, 1)), u.x), u.y);
+}
 void main() {
+  bool unknown = (v_flags & 4u) != 0u;
+  if (u_parchment == 1) {
+    if (!unknown) discard;
+    // Terra incognita: stained, grainy parchment, the same over land and sea so no coast shows through.
+    float stain = noise(v_map / 90.0) * 0.6 + noise(v_map / 23.0) * 0.3 + noise(v_map / 5.0) * 0.1;
+    vec3 paper = mix(vec3(0.80, 0.71, 0.54), vec3(0.90, 0.84, 0.69), stain);
+    float grain = hash(floor(v_map * u_zoom * 1.5)) * 0.04;
+    o = vec4(paper - grain, 1.0);
+    return;
+  }
+  if (unknown) discard;
   vec4 c = v_color;
   if (v_stripe.a > 0.0) {
     float s = fract((v_map.x + v_map.y) * u_zoom / 16.0);
@@ -114,7 +132,13 @@ void main() {
     uvec4 ia = texelFetch(u_info, texel(A), 0);
     uvec4 ib = texelFetch(u_info, texel(B), 0);
     bool landA = (ia.a & WATER) == 0u, landB = (ib.a & WATER) == 0u;
-    if (u_mode == 0) {
+    bool unkA = (ia.a & 4u) != 0u, unkB = (ib.a & 4u) != 0u;
+    if (unkA && unkB) {
+      w = 0.0;
+    } else if (unkA != unkB) {
+      // The edge of the known world.
+      if (u_mode == 0) { w = 1.4 * u_px; col = vec4(0.36, 0.25, 0.14, 0.75); }
+    } else if (u_mode == 0) {
       if (landA && landB) {
         if (ia.r != ib.r && (ia.r != 0u || ib.r != 0u)) {
           if (ia.g != ib.g) { w = 2.4 * u_px; col = vec4(0.07, 0.05, 0.04, 0.9); }

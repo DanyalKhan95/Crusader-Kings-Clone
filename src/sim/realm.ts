@@ -35,6 +35,9 @@ export function destroyCountry(state: GameState, c: Country) {
     if (v.integrating?.vassal === c.index) v.integrating = null;
   }
   state.armies = state.armies.filter((a) => a.owner !== c.index);
+  state.fleets = state.fleets.filter((f) => f.owner !== c.index);
+  c.transports = 0;
+  c.colonies = [];
   for (const w of state.wars) {
     w.attackers = w.attackers.filter((x) => x !== c.index);
     w.defenders = w.defenders.filter((x) => x !== c.index);

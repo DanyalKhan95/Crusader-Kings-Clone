@@ -38,6 +38,8 @@ export function setup1066(state: GameState, world: SimWorld) {
   declareWar(state, world, nrw.index, eng.index, 'throne', eng.index);
   newArmy(state, nrw, york, { spearmen: 3000, archers: 800, levy: 5200 }, nrw.ruler).name = 'Host of Harald Hardrada';
   nrw.manpower = Math.max(0, nrw.manpower - 5200);
+  // Some three hundred ships lie in the Ouse at Riccall.
+  nrw.transports = Math.max(nrw.transports, 300);
   const morcar = makeCharacter(state, world, eng, { name: 'Morcar of Northumbria', age: 21, talent: 1 });
   eng.courtiers.push(morcar.id);
   newArmy(state, eng, york, { levy: 4500, spearmen: 500 }, morcar.id).name = 'Army of the Northern Earls';
@@ -52,6 +54,8 @@ export function setup1066(state: GameState, world: SimWorld) {
   nrm.manpower = Math.max(0, nrm.manpower - 1000);
   nrm.reserve = {};
   nrm.gold += 300;
+  // Seven hundred ships, built and gathered over the summer.
+  nrm.transports = Math.max(nrm.transports, 250);
   state.scheduled.push({ day: state.day + 13, event: 'norman_invasion' });
 }
 

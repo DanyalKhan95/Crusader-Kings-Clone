@@ -182,14 +182,28 @@ describe('saves and years of politics', () => {
     file.state.version = 2;
     delete file.state.factions;
     delete file.state.holyWars;
+    delete file.state.fleets;
+    delete file.state.navalBattles;
     for (const c of file.state.countries) {
       if (!c) continue;
       for (const k of ['laws', 'lawChanged', 'legitimacy', 'estates', 'tasks', 'termEnds']) delete c[k];
-      for (const k of ['accepted', 'converting', 'assimilating', 'blessed', 'tech', 'research', 'focus', 'reformed'])
+      for (const k of [
+        'accepted',
+        'converting',
+        'assimilating',
+        'blessed',
+        'tech',
+        'research',
+        'focus',
+        'reformed',
+        'transports',
+        'known',
+        'colonies',
+      ])
         delete c[k];
     }
     const loaded = deserialize(JSON.stringify(file));
-    expect(loaded.version).toBe(5);
+    expect(loaded.version).toBe(6);
     expect(loaded.countries[tag(s, 'ENG').index].laws.tolerance).toBe(1);
     expect(loaded.countries[tag(s, 'ENG').index].tasks.steward).toBe('taxes');
     for (let d = 0; d < 40; d++) advanceDay(loaded, world);

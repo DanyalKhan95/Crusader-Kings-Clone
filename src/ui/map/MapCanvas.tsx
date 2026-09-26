@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import type { UnitStyle } from '../../render/units';
 import { latToY, lonToX } from '../../shared/projection';
-import { orderArmy, pickRealmAt, selectArmy, selectProvince } from '../actions';
+import { orderArmy, pickRealmAt, selectArmy, selectFleet, selectProvince } from '../actions';
 import { emblemKey, emblemSvg } from '../CoatOfArms';
 import { useGame, type Game, type UIState } from '../game';
 import { attachRunner } from '../runner';
@@ -89,6 +89,9 @@ export function MapCanvas({ onError }: { onError: (message: string) => void }) {
           clickArmy: (id) => {
             if (game.ui.get().phase === 'playing') selectArmy(game, id);
           },
+          clickFleet: (id) => {
+            if (game.ui.get().phase === 'playing') selectFleet(game, id);
+          },
           order: (id) => {
             if (game.ui.get().phase === 'playing') orderArmy(game, id);
           },
@@ -114,7 +117,9 @@ export function MapCanvas({ onError }: { onError: (message: string) => void }) {
       const outline = outlineFor(s);
       if (!prev || s.mapMode !== prev.mapMode || outline !== outlineFor(prev)) map.setMode(s.mapMode, outline);
       map.setSelected(s.phase === 'playing' && s.panel === 'province' ? s.selectedProvince : 0);
-      map.setSelectedArmy(s.phase === 'playing' ? s.selectedArmy : 0);
+      map.setSelectedArmy(s.phase === 'playing' && s.panel === 'army' ? s.selectedArmy : 0);
+      map.setSelectedFleet(s.phase === 'playing' && s.panel === 'fleet' ? s.selectedFleet : 0);
+      map.setFog(s.phase === 'playing' ? s.player : 0);
       host.classList.toggle('ordering', s.orderMode);
       map.drift = s.phase === 'menu' ? MENU_DRIFT : 0;
       prev = s;

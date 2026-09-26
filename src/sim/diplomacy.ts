@@ -6,6 +6,7 @@
 import { CROWN_VASSALS, IDEOLOGY_CLASH, ideologyOf } from '../data/politics';
 import { cultureGroup, faithFamily } from './beliefs';
 import { rulerSkill, seatSkill } from './characters';
+import { knowsId } from './tech';
 import type { Breakdown, Part } from './economy';
 import { headOf, sitesHeldByUnbelievers } from './faith';
 import { log } from './log';
@@ -317,6 +318,11 @@ export function loyalty(state: GameState, world: SimWorld, subject: number): Bre
   if (traits.includes('ambitious')) parts.push({ label: 'An ambitious ruler', value: -15 });
   else if (traits.includes('content')) parts.push({ label: 'A content ruler', value: 10 });
   if (cultureGroup(s.culture) !== cultureGroup(l.culture)) parts.push({ label: 'Foreign masters', value: -10 });
+  if (s.colony) {
+    parts.push({ label: 'An ocean away', value: -5 });
+    // Colonists who read of the rights of man ask why they should answer to a distant crown.
+    if (knowsId(s, 'popular_sovereignty')) parts.push({ label: 'Colonial grievances', value: -25 });
+  }
   const lordMight = strengthOf(state, lord) - (s.liege ? strengthOf(state, subject) : 0);
   const own = Math.max(1, strengthOf(state, subject));
   parts.push({
@@ -370,6 +376,7 @@ export function canIntegrate(state: GameState, world: SimWorld, liege: number, v
   const l = state.countries[liege],
     v = state.countries[vassal];
   if (!l?.alive || !v?.alive || v.liege !== liege) return no('Not your vassal');
+  if (v.colony) return no('A colonial nation governs its lands itself');
   if (l.integrating) return no(`You are already integrating ${state.countries[l.integrating.vassal]?.name}`);
   if (atWar(state, liege, vassal)) return no('You are at war with them');
   const loyal = loyalty(state, world, vassal).total;

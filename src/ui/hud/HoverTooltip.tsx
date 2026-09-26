@@ -2,6 +2,9 @@ import { useEffect, useLayoutEffect, useRef } from 'react';
 import { relationTo, RELATION_INFO, TERRAIN_INFO } from '../../game/mapModes';
 import { faithName, holyTo } from '../../sim/beliefs';
 import { opinionOf } from '../../sim/diplomacy';
+import { colonisedBy } from '../../sim/colonies';
+import { knows } from '../../sim/exploration';
+import { blockades, isOpenOcean } from '../../sim/naval';
 import { topLiege } from '../../sim/queries';
 import { CoatOfArms } from '../CoatOfArms';
 import { useGame } from '../game';
@@ -32,6 +35,16 @@ export function HoverTooltip() {
   }, [game, hovered]);
 
   const r = hovered ? game.world.region(hovered) : null;
+  const viewer = phase === 'playing' ? game.state.countries[player] : undefined;
+  if (r && viewer && !knows(game.world, viewer, r.id))
+    return (
+      <div ref={ref} className="panel tooltip show" role="tooltip">
+        <div className="tt-name">Terra incognita</div>
+        <div className="tt-line dim">
+          {r.kind === 'land' ? 'Unknown lands' : 'Uncharted waters'}: send ships to chart them
+        </div>
+      </div>
+    );
   const p = r ? game.state.provinces[r.id] : null;
   const owner = p?.owner ? game.state.countries[p.owner] : null;
   const top = owner ? game.state.countries[topLiege(game.state, owner.index)] : null;
@@ -42,7 +55,9 @@ export function HoverTooltip() {
         <>
           <div className="tt-name">{r.name}</div>
           {r.kind !== 'land' ? (
-            <div className="tt-line dim">{r.kind === 'lake' ? 'Lake' : 'Sea zone'}</div>
+            <div className="tt-line dim">
+              {r.kind === 'lake' ? 'Lake' : isOpenOcean(game.world, r.id) ? 'Open ocean' : 'Sea zone'}
+            </div>
           ) : owner ? (
             <>
               <div className="tt-owner">
@@ -88,6 +103,14 @@ export function HoverTooltip() {
               {holyTo(r.id)
                 .map((f) => faithName(f))
                 .join(', ')}
+            </div>
+          )}
+          {r.kind === 'land' && !owner && colonisedBy(game.state, r.id) && (
+            <div className="tt-line">Being settled by {colonisedBy(game.state, r.id)!.name}</div>
+          )}
+          {r.kind === 'land' && blockades(game.state).has(r.id) && (
+            <div className="tt-line bad">
+              Blockaded by {game.state.countries[blockades(game.state).get(r.id)!]?.name}
             </div>
           )}
           {phase === 'choose' && owner && <div className="tt-hint caps">Click to view this realm</div>}

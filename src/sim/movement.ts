@@ -1,6 +1,7 @@
 /**
- * Army movement: a travel-time graph over land provinces, straits and sea zones (armies embark and
- * land automatically), and A* on it.
+ * Movement: travel-time graphs and A* on them. Armies march over land provinces and straits, and
+ * cross sea zones on the realm's transports. Fleets sail over sea and lake zones and put in at
+ * coastal provinces.
  */
 import { ADJ_RIVER, ADJ_STRAIT, type RegionData, type Terrain } from '../shared/dataTypes';
 import { distanceKm, type SimWorld } from './world';
@@ -37,6 +38,7 @@ interface Graph {
 }
 
 const graphs = new WeakMap<SimWorld, Graph>();
+const fleetGraphs = new WeakMap<SimWorld, Graph>();
 
 export function isPassable(r: RegionData | undefined): boolean {
   return !!r && (r.kind !== 'land' || !r.impassable);
@@ -72,8 +74,37 @@ export function graph(world: SimWorld): Graph {
   return g;
 }
 
-export function stepDays(world: SimWorld, from: number, to: number): number {
-  return graph(world).edges[from]?.find((e) => e.to === to)?.days ?? 1;
+export const isWater = (r: RegionData | undefined) => !!r && r.kind !== 'land';
+
+/**
+ * The sea lanes: water zones joined to their neighbours, and to the coastal provinces where a fleet
+ * can put in. Days are for a medieval fleet; faster ships divide them.
+ */
+function buildFleetGraph(world: SimWorld): Graph {
+  const edges: Edge[][] = [];
+  for (const r of world.regions) {
+    const list: Edge[] = [];
+    edges[r.id] = list;
+    if (r.kind === 'land' && (!r.coastal || !isPassable(r))) continue;
+    for (const [n] of r.adj) {
+      const o = world.region(n);
+      if (!o) continue;
+      // Water to water, and between water and a port; never overland.
+      if (r.kind === 'land' ? !isWater(o) : !isWater(o) && (!o.coastal || !isPassable(o))) continue;
+      list.push({ to: n, days: Math.max(1, Math.round(distanceKm(r, o) / SAIL_SPEED)) });
+    }
+  }
+  return { edges };
+}
+
+export function fleetGraph(world: SimWorld): Graph {
+  let g = fleetGraphs.get(world);
+  if (!g) fleetGraphs.set(world, (g = buildFleetGraph(world)));
+  return g;
+}
+
+export function stepDays(world: SimWorld, from: number, to: number, fleet = false): number {
+  return (fleet ? fleetGraph(world) : graph(world)).edges[from]?.find((e) => e.to === to)?.days ?? 1;
 }
 
 /** Tiny binary heap keyed by priority. */
@@ -152,6 +183,8 @@ export interface PathOptions {
   penalty?: (region: number) => number;
   /** allow crossing the sea */
   sea?: boolean;
+  /** search the sea lanes of fleets instead of the roads of armies */
+  fleet?: boolean;
   /** give up beyond this many days */
   maxDays?: number;
 }
@@ -164,7 +197,7 @@ export function findPath(world: SimWorld, from: number, to: number, opts: PathOp
   if (from === to) return [];
   const target = world.region(to);
   if (!isPassable(target) || !isPassable(world.region(from))) return null;
-  const { edges } = graph(world);
+  const { edges } = opts.fleet ? fleetGraph(world) : graph(world);
   const sea = opts.sea ?? true;
   const maxDays = opts.maxDays ?? Infinity;
   const { dist, prev, seen, closed, stamp } = buffers(edges.length);
@@ -232,11 +265,11 @@ export function components(world: SimWorld, enterable: (region: number) => boole
 }
 
 /** Total days along a path starting at `from`. */
-export function pathDays(world: SimWorld, from: number, path: number[]): number {
+export function pathDays(world: SimWorld, from: number, path: number[], fleet = false): number {
   let d = 0,
     at = from;
   for (const p of path) {
-    d += stepDays(world, at, p);
+    d += stepDays(world, at, p, fleet);
     at = p;
   }
   return d;

@@ -50,6 +50,14 @@ export interface TechEffects {
   acceptSlots?: number;
   /** points added to the loyalty of the commons */
   commons?: number;
+  /** ships may cross the open ocean */
+  ocean?: number;
+  /** maps are shared each year with the realms of the same faith family that also know this */
+  maps?: number;
+  /** colonies that may be founded at once, beyond the first */
+  colonists?: number;
+  /** km added to how far from the realm a colony may be founded */
+  colonialRange?: number;
 }
 
 export type TechEffectKey = keyof TechEffects;
@@ -133,7 +141,7 @@ const ECONOMY: Row[] = [
     'Joint-stock companies',
     1570,
     'Many investors share the risk of a voyage, and its profits.',
-    { effects: { tax: 0.05 }, building: ['port', 4] },
+    { effects: { tax: 0.05, colonists: 1, colonialRange: 3000 }, building: ['port', 4] },
   ],
   [
     'enclosure',
@@ -191,7 +199,7 @@ const ECONOMY: Row[] = [
     'Steamships',
     1840,
     'Ships that sail against wind and tide.',
-    { effects: { tax: 0.05 }, building: ['port', 5] },
+    { effects: { tax: 0.05, colonialRange: 6000 }, building: ['port', 5] },
   ],
   [
     'fertilisers',
@@ -444,8 +452,8 @@ const SOCIETY: Row[] = [
     'cartography',
     'Cartography',
     1520,
-    'Maps of the world, with the new lands on them.',
-    { effects: { research: 0.05 } },
+    'Charts, compasses and ships that cross the ocean to the new lands.',
+    { effects: { research: 0.05, ocean: 1, maps: 1, colonists: 1, colonialRange: 3000 } },
   ],
   [
     'absolutism',
@@ -518,7 +526,13 @@ const SOCIETY: Row[] = [
     { effects: { research: 0.1, assimilation: 0.2 }, building: ['university', 5] },
   ],
   ['socialism', 'Socialism', 1870, 'The workers organise, and demand their share.', { effects: { commons: 5 } }],
-  ['public_health', 'Public health', 1880, 'Sewers, vaccines and clean water.', { effects: { growth: 0.1 } }],
+  [
+    'public_health',
+    'Public health',
+    1880,
+    'Sewers, vaccines, clean water, and quinine against the fevers of the tropics.',
+    { effects: { growth: 0.1, colonists: 1 } },
+  ],
   ['mass_press', 'Mass press', 1890, 'Newspapers read by millions.', { effects: { research: 0.05, legitimacy: 3 } }],
   [
     'mass_politics',
@@ -612,4 +626,8 @@ export const EFFECT_TEXT: Record<TechEffectKey, (v: number) => string> = {
   assimilation: (v) => `assimilation +${Math.round(v * 100)}%`,
   acceptSlots: (v) => `${v} more accepted culture${v === 1 ? '' : 's'}`,
   commons: (v) => `commons’ loyalty +${v}`,
+  ocean: () => 'ships cross the open ocean',
+  maps: () => 'maps shared with realms of the same faith',
+  colonists: (v) => `${v} more colonist${v === 1 ? '' : 's'}`,
+  colonialRange: (v) => `colonial range +${v.toLocaleString('en-US')} km`,
 };

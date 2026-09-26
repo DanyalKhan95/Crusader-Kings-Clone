@@ -302,14 +302,28 @@ describe('pagans, saves and the long run', () => {
     file.version = 3;
     file.state.version = 3;
     delete file.state.holyWars;
+    delete file.state.fleets;
+    delete file.state.navalBattles;
     for (const c of file.state.countries) {
       if (!c) continue;
       delete c.laws.tolerance;
-      for (const k of ['accepted', 'converting', 'assimilating', 'blessed', 'tech', 'research', 'focus', 'reformed'])
+      for (const k of [
+        'accepted',
+        'converting',
+        'assimilating',
+        'blessed',
+        'tech',
+        'research',
+        'focus',
+        'reformed',
+        'transports',
+        'known',
+        'colonies',
+      ])
         delete c[k];
     }
     const loaded = deserialize(JSON.stringify(file));
-    expect(loaded.version).toBe(5);
+    expect(loaded.version).toBe(6);
     expect(loaded.holyWars).toEqual({});
     const fra = tag(loaded, 'FRA');
     expect(fra.laws.tolerance).toBe(1);

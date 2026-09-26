@@ -34,6 +34,8 @@ export function layoutLabel(
   ids: number[],
   region: (id: number) => RegionData,
   worldW: number,
+  /** a region whose block is preferred (the capital), unless it is small beside the largest */
+  prefer = 0,
 ): LabelLayout | null {
   if (!ids.length) return null;
   const set = new Set(ids);
@@ -41,6 +43,7 @@ export function layoutLabel(
   const seen = new Set<number>();
   let best: number[] = [];
   let bestArea = 0;
+  let preferred: { comp: number[]; area: number } | null = null;
   for (const start of ids) {
     if (seen.has(start)) continue;
     const comp: number[] = [];
@@ -61,7 +64,9 @@ export function layoutLabel(
       bestArea = area;
       best = comp;
     }
+    if (prefer && comp.includes(prefer)) preferred = { comp, area };
   }
+  if (preferred && preferred.area >= bestArea * 0.2) best = preferred.comp;
   const refX = region(best[0]).label[0];
   const pts = best.map((id) => {
     const r = region(id);
@@ -187,7 +192,7 @@ function glyphWidths(ctx: CanvasRenderingContext2D, text: string): number[] {
 
 export interface TextLabel {
   layout: LabelLayout;
-  kind: 'realm' | 'vassal';
+  kind: 'realm' | 'vassal' | 'unknown';
 }
 
 /** Screen-space rectangles already taken by text, bucketed in a coarse grid. */
@@ -233,6 +238,8 @@ export class LabelLayer {
   /** Name widths at 1px font size, per region and font style. */
   private widths = new Map<string, number>();
   realms: TextLabel[] = [];
+  /** Regions whose names are not shown (unknown to the viewer). */
+  hidden: ((id: number) => boolean) | null = null;
 
   constructor(
     readonly canvas: HTMLCanvasElement,
@@ -265,7 +272,7 @@ export class LabelLayer {
   ) {
     const out: { r: RegionData; sx: number; sy: number; size: number }[] = [];
     for (const r of this.regions) {
-      if (r.kind !== kind) continue;
+      if (r.kind !== kind || this.hidden?.(r.id)) continue;
       const size = Math.sqrt(mapArea(r)) * cam.zoom;
       if (size < minSize) continue;
       const [sx, sy] = toScreen(r.label[0], r.label[1]);
@@ -392,7 +399,8 @@ export class LabelLayer {
       ctx.globalAlpha = g.alpha;
       ctx.strokeStyle = 'rgba(245, 236, 214, 0.35)';
       ctx.strokeText(g.ch, 0, 0);
-      ctx.fillStyle = g.kind === 'realm' ? 'rgb(30, 22, 14)' : 'rgb(52, 38, 24)';
+      ctx.fillStyle =
+        g.kind === 'realm' ? 'rgb(30, 22, 14)' : g.kind === 'unknown' ? 'rgb(112, 84, 52)' : 'rgb(52, 38, 24)';
       ctx.fillText(g.ch, 0, 0);
       ctx.restore();
     }

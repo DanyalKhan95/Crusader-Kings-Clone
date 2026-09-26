@@ -17,6 +17,7 @@ export function attachRunner(game: Game) {
   let mapVersion = game.state.mapVersion;
   let borderVersion = game.state.borderVersion;
   let diploVersion = game.state.diploVersion;
+  let known: string | undefined = game.state.countries[game.state.player]?.known;
   let lastMessage = game.state.messages.at(-1)?.id ?? 0;
 
   const sync = (force: boolean) => {
@@ -24,9 +25,12 @@ export function attachRunner(game: Game) {
     const map = game.map;
     if (map) {
       map.invalidateUnits();
-      if (state.borderVersion !== borderVersion) {
+      // What the player knows of the world grew: redraw the unknown and the names.
+      const nowKnown = state.countries[state.player]?.known;
+      if (state.borderVersion !== borderVersion || nowKnown !== known) {
         borderVersion = state.borderVersion;
         mapVersion = state.mapVersion;
+        known = nowKnown;
         map.refresh();
       } else if (state.mapVersion !== mapVersion || state.diploVersion !== diploVersion) {
         mapVersion = state.mapVersion;
@@ -58,6 +62,10 @@ export function attachRunner(game: Game) {
     if (ui.selectedArmy && !state.armies.some((a) => a.id === ui.selectedArmy)) {
       patch.selectedArmy = 0;
       if (ui.panel === 'army') patch.panel = 'none';
+    }
+    if (ui.selectedFleet && !state.fleets.some((f) => f.id === ui.selectedFleet)) {
+      patch.selectedFleet = 0;
+      if (ui.panel === 'fleet') patch.panel = 'none';
     }
     if (ui.selectedWar && !state.wars.some((w) => w.id === ui.selectedWar) && ui.panel === 'war') patch.panel = 'none';
     const now = performance.now();
@@ -94,6 +102,7 @@ export function attachRunner(game: Game) {
     mapVersion = -1;
     borderVersion = -1;
     diploVersion = -1;
+    known = undefined;
     lastMessage = game.state.messages.at(-1)?.id ?? 0;
     sync(true);
   };

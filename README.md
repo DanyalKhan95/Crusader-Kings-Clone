@@ -11,33 +11,31 @@ every push).
 
 ## Status
 
-**Milestone 5: technology and eras.** A thousand years of change, from knights and manors to
-missiles and global finance. Every other realm is run by the AI.
+**Milestone 6: navies, exploration and colonisation.** The seas and the wider world open up.
+Every other realm is run by the AI.
 
-- **Research:** three tracks (economy, military and society), each of 33 levels across six eras,
-  99 technologies in all. Each level has its year in history: it costs more the further it is
-  ahead of its time, and less once others know it, above all your neighbours. Scholars, the
-  council, the estates and universities set the pace, and a focus favours one track.
-- **Arms that modernise:** every arm keeps its role while its weapons change. Spearmen become
-  pikemen, then pike and shot, line infantry, infantry and mechanised infantry; knights become
-  gendarmes, cuirassiers, then tanks; engines become bombards, artillery and rocket artillery.
-  Air wings arrive with military aircraft.
-- **An economy that evolves:** buildings gain levels 4 to 6 as technology allows (enclosed
-  farms, factories, steam ports, financial centres), universities speed research, and
-  development grows towards what the land and the age allow.
-- **New forms of government:** absolute and constitutional monarchy, democracy with elections
-  every four years, dictatorship and the communist state, taken up by reform.
-- **Nationalism and ideologies:** peoples who do not belong rise for a nation of their own and,
-  if they win, found one; liberal, socialist and authoritarian regimes trust their own kind and
-  distrust the others.
-- **Eras you can see:** the interface changes with your era, from Renaissance velvet and baroque
-  navy to Victorian green and brass, modern charcoal and a flat contemporary look; coats of arms
-  become banners, then national flags.
+- **Fleets by era:** war cogs and galleys (longships in the north), carracks, galleons, ships of
+  the line and frigates, ironclads and cruisers, dreadnoughts, destroyers and submarines, then
+  carriers. Build them in any of your ports, give them an admiral, and send them to fight,
+  blockade or explore.
+- **War at sea:** fleets that meet give battle, and the beaten make for port. A blockade cuts the
+  taxes of an enemy coast and hastens its sieges, and victories at sea count in the war score.
+- **Transports:** armies cross the sea only when your transports have room for them, and enemy
+  warships sink the men they catch at sea. William's fleet waits at the mouth of the Somme.
+- **Terra incognita:** you see only the world your realm knows, the lands of your faith and those
+  around your own. Armies and fleets chart what they reach, allies share their maps, and
+  expeditions sail on their own into the unknown. Cartography lets ships cross the open ocean.
+- **Colonies:** settle land no realm rules, among its natives once you have cartography, as far
+  as your colonial range allows. Colonies on another continent are governed by colonial nations,
+  which may one day want their freedom.
 
-![France in 1820, in the industrial era, with its scholars on steam, railways and public health](docs/images/technology-1820.webp)
+![England's fleet in port at London in 1066, and the world as the English know it: Christendom and its seas, and terra incognita beyond](docs/images/navies-1066.webp)
 
 Earlier milestones:
 
+- **Technology and eras (M5):** three tracks of 33 levels over six eras, each level with its
+  year in history; arms, buildings and governments that modernise; nationalism and ideologies;
+  era themes, banners and national flags.
 - **Religion and culture (M4):** other faiths and peoples within the realm; missions, schools and
   accepted cultures; religious policy; heads of faith and holy places; holy wars, crusades and
   jihads, and the Kingdom of Jerusalem; heresies and schisms; the faith map (`Y`).
@@ -57,7 +55,7 @@ Earlier milestones:
 
 ![Byzantium in 1066 on the faith map: the Orthodox empire, its Miaphysite east, and the holy places it holds and has lost](docs/images/faith-1066.webp)
 
-Next up is **Milestone 6: navies, exploration and colonisation**. The full plan is in
+Next up is **Milestone 7: events, decisions and espionage**. The full plan is in
 [docs/ROADMAP.md](docs/ROADMAP.md).
 
 ## Controls
@@ -68,6 +66,7 @@ Next up is **Milestone 6: navies, exploration and colonisation**. The full plan 
 | Zoom              | wheel, pinch, double-click               | `+` / `-`                   |
 | Inspect, treat    | click a province, army or coat of arms   |                             |
 | March             | select an army, then right-click a place |                             |
+| Sail              | select a fleet, then right-click a sea   |                             |
 | Pause, speed      | buttons at the top right                 | `Space`, `1`–`5`            |
 | Map modes         | buttons at the bottom right              | `Q` `W` `E` `R` `T` `Y` `U` |
 | Close panel, menu |                                          | `Esc`                       |

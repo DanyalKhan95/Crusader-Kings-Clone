@@ -4,10 +4,13 @@ import { cultureGroup, registerBeliefs } from './beliefs';
 import { makeCharacter, staffCourt } from './characters';
 import { parseDate, years } from './calendar';
 import { income, maxManpower } from './economy';
+import { initialKnowledge } from './exploration';
+import { newFleet } from './naval';
 import { defaultEstates, defaultTasks, initialLaws } from './politics';
 import { hashString, randInt } from './rng';
 import { setup1066 } from './scripted';
 import { initialTech } from './tech';
+import { TRANSPORT_CAPACITY } from '../data/ships';
 import type { Country, GameState, ProvinceState, Units } from './types';
 import type { SimWorld } from './world';
 
@@ -44,7 +47,7 @@ export function createGameState(world: SimWorld, scenario: ScenarioData, opts: {
   registerBeliefs(world.world, world.regions);
   const seed = opts.seed ?? hashString(scenario.id);
   const state: GameState = {
-    version: 5,
+    version: 6,
     scenario: scenario.id,
     seed,
     rng: seed,
@@ -54,6 +57,8 @@ export function createGameState(world: SimWorld, scenario: ScenarioData, opts: {
     characters: {},
     armies: [],
     battles: [],
+    fleets: [],
+    navalBattles: [],
     wars: [],
     truces: [],
     pacts: [],
@@ -113,6 +118,9 @@ export function createGameState(world: SimWorld, scenario: ScenarioData, opts: {
       research: { economy: 0, military: 0, society: 0 },
       focus: null,
       reformed: parseDate(scenario.start) - years(20),
+      transports: 0,
+      known: '',
+      colonies: [],
       memories: {},
       laws: initialLaws(c.gov, c.tag, cultureGroup(c.culture)),
       lawChanged: 0,
@@ -182,7 +190,51 @@ export function createGameState(world: SimWorld, scenario: ScenarioData, opts: {
     c.ai.nextDiplo = state.day + 20 + (c.index % 100);
   }
 
+  startingNavies(state, world);
+  initialKnowledge(state, world);
   state.proposalCooldown = state.day + 60;
   if (scenario.id === '1066') setup1066(state, world);
   return state;
+}
+
+/** Seafaring realms of 1066 whose fleets were greater than their size alone would give them. */
+const SEAFARERS: Record<string, number> = {
+  VEN: 5,
+  NRW: 2,
+  DEN: 2,
+  SWE: 1.5,
+  NRM: 1.5,
+  BYZ: 1.5,
+  FAT: 1.5,
+  SRV: 2,
+  CHO: 2,
+  SIC: 1.5,
+  ZIR: 1.5,
+  ORK: 2,
+  ISL: 2,
+  JAP: 1.2,
+};
+
+/**
+ * Fleets and transports for every realm with a coast: more for rich realms and those whose land lies
+ * mostly by the sea, and for the seafaring peoples.
+ */
+function startingNavies(state: GameState, world: SimWorld) {
+  for (const c of state.countries) {
+    if (!c?.alive) continue;
+    const own = state.provinces.flatMap((p, id) => (p?.owner === c.index ? [id] : []));
+    const coast = own.filter((id) => world.region(id).coastal);
+    if (!coast.length) continue;
+    const share = coast.length / own.length;
+    const boost = SEAFARERS[c.tag] ?? 1;
+    const men = maxManpower(state, c).total * share * 0.35 * boost;
+    c.transports = Math.round(men / TRANSPORT_CAPACITY[0]);
+    const ships = Math.round((income(state, c).total * share * 0.25 + 1) * boost);
+    if (ships < 4) continue;
+    const port = coast.includes(c.capital)
+      ? c.capital
+      : coast.reduce((a, b) => (state.provinces[b].dev > state.provinces[a].dev ? b : a));
+    const heavy = Math.round(ships * 0.4);
+    newFleet(state, world, c, port, { heavy, light: ships - heavy });
+  }
 }

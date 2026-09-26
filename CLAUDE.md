@@ -66,8 +66,8 @@ when a milestone lands.
     `realmMembers`, the treaty index, `diversity`, army reachability): bump `mapVersion`,
     `borderVersion` or `diploVersion` whenever owners, lieges or treaties change.
   - `routeFor` first asks `canReach` (connected regions an army may enter, cached by border
-    version and rights of passage), so hopeless orders cost nothing. Keep new path searches behind
-    it.
+    version and rights of passage, with and without the sea), so hopeless orders cost nothing.
+    Keep new path searches behind it.
   - Technology (`tech.ts`, data in `src/data/techs.ts` and `eras.ts`): three tracks of 33 levels.
     Effects are summed per track in `CUMULATIVE`, so `techEffect(c, key)` is a lookup; add new
     effect keys to `TechEffects` and `EFFECT_TEXT`. Costs follow the historical years (ahead of
@@ -78,6 +78,27 @@ when a milestone lands.
     technology in `TechDef.building` (`maxBuildingLevel`). Development grows towards `devCap`.
   - New governments come from society technology and `reform`; `termYears` sets election terms.
     National revolts (`demand: 'nation'`) turn into new countries when they win.
+  - Navies (`naval.ts`, AI in `navalAi.ts`, ships in `src/data/ships.ts`): fleets of warships
+    (heavy, light and, from the modern era, submarines) sail the fleet graph of `movement.ts`
+    (water zones and coastal ports; `findPath(…, { fleet: true })`). `shipDef(type, era)` gives
+    stats and `shipLook(country, type)` the name by era. Transports are a pool on the country
+    (`Country.transports`), not ships in fleets: an army may step onto water only if
+    `freeTransport` has room for it (`routeFor(…, men)`, the embark check in `dailyMarch`).
+    Open-ocean zones need the `ocean` technology effect (cartography).
+  - Blockades are worked out once a day (`updateBlockades`) and read with `blockades(state)`, so
+    the economy and sieges need no world. Armies at sea next to enemy warships are caught
+    (`dailyInterception`).
+  - Terra incognita (`exploration.ts`): `Country.known` is a base64 bit set of region ids (`*` for
+    the whole world); use `knows`, `learn` and `revealAround`, never the string. Armies and fleets
+    reveal what they reach, allies and realms share maps monthly, cartography shares them within a
+    faith family each January, and the industrial era knows everything. The map shows the
+    player's knowledge (`MapController.setFog`): unknown regions get `FLAG_UNKNOWN` and are drawn
+    as parchment after the rivers.
+  - Colonies (`colonies.ts`): unowned land settled by colonists (`Country.colonies`, missions of
+    months). Native land needs the `colonists` technology effect. Colonies on another landmass in
+    a colonial region (by modern country code) pass to a colonial nation: a vassal with
+    `colony` set, which cannot be integrated and grows restless once it knows popular
+    sovereignty.
 - **`src/ui/runner.ts`:** runs the simulation from `MapController.onFrame` within a time budget,
   and bumps the store's `tick` at most every 120 ms. Panels with live numbers subscribe to `tick`.
 - **`?debug`** in the address exposes the running game as `window.game` (the e2e tests use it to

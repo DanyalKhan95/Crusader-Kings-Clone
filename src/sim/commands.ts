@@ -44,8 +44,26 @@ import { canReform, reform, setFocus } from './tech';
 import type { TechTrack } from '../data/techs';
 import type { Government } from '../shared/dataTypes';
 import { log } from './log';
-import { disband, inBattle, mergeInto, orderMove, raiseArmy, recruit, split } from './military';
-import { armyById, lordOf, sideOf } from './queries';
+import { canReach, disband, inBattle, mergeInto, orderMove, raiseArmy, recruit, split } from './military';
+import { armyById, armySize, lordOf, sideOf } from './queries';
+import { abandonColony, startColony } from './colonies';
+import { knows, knowsWorld } from './exploration';
+import {
+  buildShips,
+  buildTransports,
+  canBuildShips,
+  disbandFleet,
+  fleetById,
+  fleetInBattle,
+  freeTransport,
+  homePort,
+  isOpenOcean,
+  mayDock,
+  mergeFleets,
+  oceanGoing,
+  orderFleet,
+  splitFleet,
+} from './naval';
 import { canChangeLaw, changeLaw, grantPrivilege, revokePrivilege, setTask } from './politics';
 import { factionWar, grantFreedom } from './revolts';
 import type {
@@ -58,6 +76,7 @@ import type {
   Laws,
   PactKind,
   PeaceTerms,
+  ShipType,
   TaskId,
   UnitType,
 } from './types';
@@ -85,14 +104,128 @@ export function moveArmy(state: GameState, world: SimWorld, armyId: number, to: 
   if (!army || army.owner !== state.player) return no('Not your army');
   if (inBattle(state, army)) return no('The army is in battle');
   if (army.retreating) return no('The army is retreating');
+  if (world.region(to)?.kind !== 'land') return no('Armies march over land: send it to a coast');
+  if (!knows(world, state.countries[army.owner], to)) return no('Your realm knows nothing of that land');
   if (!mayEnter(state, army.owner, to)) {
     const owner = state.countries[state.provinces[to]?.owner ?? 0];
     return no(`${owner?.name ?? 'They'} will not let your armies in: ask for military access`);
   }
-  if (!orderMove(state, world, army, to))
+  if (!orderMove(state, world, army, to)) {
+    const afloat = freeTransport(state, world, army.owner);
+    if (afloat < armySize(army) && canReach(state, world, army.owner, army.location, to, true))
+      return no(
+        `Not enough transports to carry ${formatNumber(armySize(army))} men over the sea: room for ${formatNumber(Math.max(0, afloat))}`,
+      );
     return no('No route there: the way is barred by realms that give you no access');
+  }
   army.objective = 0;
   return ok();
+}
+
+// ── The navy ──────────────────────────────────────────────────────
+
+const formatNumber = (n: number) => Math.round(n).toLocaleString('en-US');
+
+export function moveFleet(state: GameState, world: SimWorld, fleetId: number, to: number): Result {
+  const fleet = fleetById(state, fleetId);
+  if (!fleet || fleet.owner !== state.player) return no('Not your fleet');
+  if (fleetInBattle(state, fleet)) return no('The fleet is in battle');
+  if (fleet.retreating) return no('The fleet is making for port');
+  const r = world.region(to);
+  const c = state.countries[fleet.owner];
+  if (r.kind === 'land' && !r.coastal) return no('Fleets sail the sea: choose a sea, or a port');
+  if (r.kind === 'land' && !mayDock(state, fleet.owner, to)) return no('Your ships may put in only at friendly ports');
+  if (r.kind !== 'land' && isOpenOcean(world, to) && !oceanGoing(c))
+    return no('Your ships cannot cross the open ocean: that needs Cartography');
+  if (!orderFleet(state, world, fleet, to)) return no('There is no way there by sea for your ships');
+  fleet.mission = undefined;
+  fleet.objective = 0;
+  return ok();
+}
+
+export function returnToPort(state: GameState, world: SimWorld, fleetId: number): Result {
+  const fleet = fleetById(state, fleetId);
+  if (!fleet || fleet.owner !== state.player) return no('Not your fleet');
+  if (fleetInBattle(state, fleet)) return no('The fleet is in battle');
+  const home = homePort(state, world, fleet);
+  if (!home) return no('No port of yours can be reached');
+  fleet.mission = undefined;
+  if (!orderFleet(state, world, fleet, home.port)) return no('No port of yours can be reached');
+  return ok(`${fleet.name} makes for ${world.region(home.port).name}.`);
+}
+
+/** Sends a fleet to chart unknown waters on its own, or calls it back. */
+export function explore(state: GameState, fleetId: number, on: boolean): Result {
+  const fleet = fleetById(state, fleetId);
+  if (!fleet || fleet.owner !== state.player) return no('Not your fleet');
+  if (fleetInBattle(state, fleet)) return no('The fleet is in battle');
+  if (on && knowsWorld(state.countries[fleet.owner])) return no('Your realm knows the whole world');
+  fleet.mission = on ? 'explore' : undefined;
+  fleet.replan = state.day;
+  if (!on) {
+    fleet.path = [];
+    fleet.progress = 0;
+  }
+  return ok(on ? `${fleet.name} sails to chart the unknown.` : undefined);
+}
+
+export function buildWarships(
+  state: GameState,
+  world: SimWorld,
+  province: number,
+  type: ShipType,
+  count: number,
+): Result {
+  const c = state.countries[state.player];
+  const check = canBuildShips(state, world, c, province, type, count);
+  if (!check.ok) return no(check.reason);
+  buildShips(state, world, c, province, type, count);
+  return ok();
+}
+
+export function buildTransportShips(state: GameState, world: SimWorld, count: number): Result {
+  const c = state.countries[state.player];
+  const check = buildTransports(state, world, c, count);
+  return check.ok ? ok() : no(check.reason);
+}
+
+export function splitFleetInTwo(state: GameState, world: SimWorld, fleetId: number): Result {
+  const fleet = fleetById(state, fleetId);
+  if (!fleet || fleet.owner !== state.player) return no('Not your fleet');
+  return splitFleet(state, world, fleet) ? ok() : no('Too few ships to split');
+}
+
+export function mergeFleetsHere(state: GameState, ids: number[]): Result {
+  const fleets = ids.map((id) => fleetById(state, id)).filter((f) => f && f.owner === state.player);
+  if (fleets.length < 2) return no('Select two fleets of yours');
+  const [first, ...rest] = fleets;
+  for (const f of rest) {
+    if (f!.location !== first!.location) return no('Fleets must lie in the same place');
+    if (fleetInBattle(state, f!) || fleetInBattle(state, first!)) return no('A fleet is in battle');
+  }
+  for (const f of rest) mergeFleets(state, first!, f!);
+  first!.path = [];
+  return ok();
+}
+
+export function disbandFleetCmd(state: GameState, fleetId: number): Result {
+  const fleet = fleetById(state, fleetId);
+  if (!fleet || fleet.owner !== state.player) return no('Not your fleet');
+  return disbandFleet(state, fleet) ? ok(`${fleet.name} is paid off.`) : no('The fleet is in battle');
+}
+
+// ── Colonies ──────────────────────────────────────────────────────
+
+export function colonise(state: GameState, world: SimWorld, province: number): Result {
+  const c = state.countries[state.player];
+  const check = startColony(state, world, c, province);
+  if (!check.ok) return no(check.reason);
+  return ok(`Colonists set out for ${world.region(province).name}. The colony will take about ${check.months} months.`);
+}
+
+export function abandonColonyCmd(state: GameState, province: number): Result {
+  const c = state.countries[state.player];
+  return abandonColony(c, province) ? ok() : no('No colony of yours is there');
 }
 
 export function raise(state: GameState, world: SimWorld): Result {

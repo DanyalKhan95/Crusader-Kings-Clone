@@ -1,11 +1,13 @@
 /**
- * One day of the world. Daily: marching, battles, sieges, supply, construction, forged claims.
- * Monthly (on the 1st): the economy, wars, mortality, stability, diplomacy, politics and faith. The AI
- * thinks once a month per country, spread over the days so the work is even.
+ * One day of the world. Daily: marching and sailing, battles on land and at sea, blockades, sieges,
+ * supply, construction, forged claims. Monthly (on the 1st): the economy, wars, mortality, stability,
+ * diplomacy, politics, faith, research, maps and colonies. The AI thinks once a month per country,
+ * spread over the days so the work is even.
  */
 import { monthlyAI, planArmies } from './ai';
 import { monthlyMortality, staffCourt } from './characters';
 import { toDate } from './calendar';
+import { monthlyColonies } from './colonies';
 import { dailyBattles, startBattles } from './combat';
 import {
   cleanupDiplomacy,
@@ -16,10 +18,20 @@ import {
   pruneClaims,
 } from './diplomacy';
 import { dailyConstruction, monthlyEconomy } from './economy';
+import { monthlyMaps, revealAround } from './exploration';
 import { monthlyFaith, monthlyHeresies } from './faith';
 import { monthlyGreatHolyWars } from './holywars';
 import { monthlyResearch } from './tech';
 import { dailyMarch, dailyUpkeep, expelArmies } from './military';
+import {
+  dailyFleets,
+  dailyInterception,
+  dailyNavalBattles,
+  dailySail,
+  startNavalBattles,
+  updateBlockades,
+} from './naval';
+import { planFleets } from './navalAi';
 import { estateEffect, monthlyElections, monthlyEstateMoods, monthlyLegitimacy, taskSkill } from './politics';
 import { monthlyFactions, monthlyRevolts, orphanRebels } from './revolts';
 import { chance } from './rng';
@@ -33,9 +45,16 @@ export function advanceDay(state: GameState, world: SimWorld) {
   state.day++;
   const arrived = dailyMarch(state, world);
   startBattles(state, world, arrived);
+  for (const { army } of arrived) revealAround(state, world, army.owner, army.location);
   dailyBattles(state, world);
+  const sailed = dailySail(state, world);
+  startNavalBattles(state, world, sailed);
+  dailyNavalBattles(state, world);
+  dailyInterception(state, world);
+  updateBlockades(state, world);
   dailySieges(state, world);
   dailyUpkeep(state, world);
+  dailyFleets(state, world);
   dailyConstruction(state, world);
   dailyFabrication(state, world);
   if (state.offers.length) expireOffers(state);
@@ -61,6 +80,8 @@ export function advanceDay(state: GameState, world: SimWorld) {
     monthlyHeresies(state, world);
     monthlyGreatHolyWars(state, world);
     monthlyResearch(state, world);
+    monthlyMaps(state, world, date.m === 1);
+    monthlyColonies(state, world);
     expelArmies(state, world);
     if (date.m === 1)
       for (const c of state.countries) if (c?.alive) staffCourt(state, world, c, c.index !== state.player);
@@ -68,6 +89,7 @@ export function advanceDay(state: GameState, world: SimWorld) {
   for (const c of state.countries)
     if (c?.alive && c.index !== state.player && (c.index % 28) + 1 === date.d) monthlyAI(state, world, c);
   planArmies(state, world);
+  planFleets(state, world);
 }
 
 /**

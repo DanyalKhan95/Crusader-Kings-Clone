@@ -5,7 +5,8 @@
  */
 import { applyMapMode, type MapMode } from '../../game/mapModes';
 import type { StaticWorld } from '../../game/world';
-import { topLiege } from '../../sim/queries';
+import { knows } from '../../sim/exploration';
+import { realmHead } from '../../sim/queries';
 import type { GameState } from '../../sim/types';
 import { Camera } from '../../render/camera';
 import { LabelLayer, layoutLabel, type TextLabel } from '../../render/labels';
@@ -22,6 +23,8 @@ export interface MapCallbacks {
   click(region: number): void;
   /** An army banner was clicked. */
   clickArmy(id: number): void;
+  /** A fleet banner was clicked. */
+  clickFleet(id: number): void;
   /** Right-click (or long order tap) on a region. */
   order(region: number): void;
 }
@@ -63,6 +66,7 @@ export class MapController {
   private units: UnitLayer;
   private unitsDirty = true;
   private selectedArmy = 0;
+  private selectedFleet = 0;
   private picker: Picker;
   private raf = 0;
   private lastT = 0;
@@ -73,6 +77,8 @@ export class MapController {
   private selected = 0;
   private mode: MapMode = 'realms';
   private player = 0;
+  /** the country whose knowledge of the world the map shows (0 = all of it) */
+  private fog = 0;
   private labelStyle: 'realms' | 'countries' | '' = '';
   private flight: Flight | null = null;
   private zoomTarget = 0;
@@ -148,11 +154,31 @@ export class MapController {
     this.unitsDirty = true;
   }
 
+  setSelectedFleet(id: number) {
+    if (id === this.selectedFleet) return;
+    this.selectedFleet = id;
+    this.unitsDirty = true;
+  }
+
   /** Recolours for changed owners or controllers without re-laying out the labels. */
   recolor() {
-    applyMapMode(this.renderer, this.world, this.state, this.mode, this.player);
+    applyMapMode(this.renderer, this.world, this.state, this.mode, this.player, this.fog);
     this.glDirty = true;
   }
+
+  /** Shows the world as a country knows it (0 = all of it). */
+  setFog(country: number) {
+    if (country === this.fog) return;
+    this.fog = country;
+    this.refresh();
+    this.invalidate();
+  }
+
+  /** True if the viewer does not know this region. */
+  isUnknown = (id: number): boolean => {
+    const c = this.fog ? this.state.countries[this.fog] : undefined;
+    return !!c && !knows(this.world, c, id);
+  };
 
   /** Loads the always-resident terrain texture; call before the first frame is shown. */
   async load(): Promise<void> {
@@ -188,7 +214,7 @@ export class MapController {
   setMode(mode: MapMode, player: number) {
     this.mode = mode;
     this.player = player;
-    applyMapMode(this.renderer, this.world, this.state, mode, player);
+    applyMapMode(this.renderer, this.world, this.state, mode, player, this.fog);
     const style = mode === 'countries' ? 'countries' : 'realms';
     if (style !== this.labelStyle) {
       this.labelStyle = style;
@@ -293,9 +319,11 @@ export class MapController {
   private buildLabels(style: 'realms' | 'countries'): TextLabel[] {
     const s = this.state;
     const groups = new Map<number, number[]>();
+    const unknown = this.isUnknown;
+    this.labels.hidden = this.fog ? unknown : null;
     s.provinces.forEach((p, id) => {
-      if (!p?.owner) return;
-      const key = style === 'realms' ? topLiege(s, p.owner) : p.owner;
+      if (!p?.owner || unknown(id)) return;
+      const key = style === 'realms' ? realmHead(s, p.owner) : p.owner;
       let g = groups.get(key);
       if (!g) groups.set(key, (g = []));
       g.push(id);
@@ -303,11 +331,44 @@ export class MapController {
     const out: TextLabel[] = [];
     for (const [index, ids] of groups) {
       const c = s.countries[index];
-      const layout = layoutLabel(c.short, ids, this.world.region, this.world.world.width);
+      const layout = layoutLabel(c.short, ids, this.world.region, this.world.world.width, c.capital);
       if (layout) out.push({ layout, kind: style === 'countries' && c.liege ? 'vassal' : 'realm' });
     }
+    // The great unknown lands.
+    if (this.fog)
+      for (const ids of this.unknownLands()) {
+        const layout = layoutLabel('Terra Incognita', ids, this.world.region, this.world.world.width);
+        if (layout) out.push({ layout: { ...layout, size: layout.size * 0.6 }, kind: 'unknown' });
+      }
     // Big names first so small ones draw on top where they overlap.
     out.sort((a, b) => b.layout.size - a.layout.size);
+    return out;
+  }
+
+  /** Large stretches of land the viewer does not know, as lists of regions. */
+  private unknownLands(): number[][] {
+    const seen = new Set<number>();
+    const out: number[][] = [];
+    for (const r of this.world.regions) {
+      if (r.kind !== 'land' || seen.has(r.id) || !this.isUnknown(r.id)) continue;
+      const comp: number[] = [];
+      const stack = [r.id];
+      seen.add(r.id);
+      let area = 0;
+      while (stack.length) {
+        const id = stack.pop()!;
+        comp.push(id);
+        area += this.world.region(id).area;
+        for (const [n] of this.world.region(id).adj) {
+          const o = this.world.region(n);
+          if (o.kind === 'land' && !seen.has(n) && this.isUnknown(n)) {
+            seen.add(n);
+            stack.push(n);
+          }
+        }
+      }
+      if (area > 1.5e6) out.push(comp);
+    }
     return out;
   }
 
@@ -343,7 +404,14 @@ export class MapController {
     }
     if ((moved || this.unitsDirty) && this.unitStyle) {
       this.unitsDirty = false;
-      this.units.render(c, this.state, this.selectedArmy, this.unitStyle);
+      this.units.render(
+        c,
+        this.state,
+        this.selectedArmy,
+        this.unitStyle,
+        this.selectedFleet,
+        this.fog ? this.isUnknown : null,
+      );
     }
   };
 
@@ -495,8 +563,9 @@ export class MapController {
     }
     if (press && !press.moved && e.type === 'pointerup') {
       const [x, y] = this.local(e);
-      const army = this.units.hit(x, y, this.camera.dpr);
-      if (army) this.cb.clickArmy(army);
+      const unit = this.units.hit(x, y, this.camera.dpr);
+      if (unit?.kind === 'army') this.cb.clickArmy(unit.id);
+      else if (unit?.kind === 'fleet') this.cb.clickFleet(unit.id);
       else this.cb.click(this.pickAt(x, y));
     }
   };
