@@ -3,9 +3,11 @@
  * Opinion always comes with its reasons, so the UI can show why a realm likes or hates you, and the
  * AI answers proposals with the same breakdowns the player sees.
  */
+import { CROWN_VASSALS } from '../data/politics';
 import { rulerSkill, seatSkill } from './characters';
 import type { Breakdown, Part } from './economy';
 import { log } from './log';
+import { taskSkill } from './politics';
 import {
   atWar,
   hasTruce,
@@ -134,6 +136,7 @@ export function dropPacts(
 export function canSign(state: GameState, kind: PactKind, index: number): Check {
   const c = state.countries[index];
   if (!c?.alive) return no('No such country');
+  if (c.rebel) return no(`${c.name} is a revolt, not a realm`);
   if (c.liege) return no(`${c.name} is a vassal and has no foreign policy of its own`);
   if (kind === 'alliance' && c.overlord) return no(`${c.name} pays tribute and may not make alliances`);
   return yes;
@@ -273,6 +276,8 @@ export function opinion(state: GameState, world: SimWorld, of: number, about: nu
 
   for (const m of a.memories[about] ?? []) parts.push({ label: MEMORY[m.kind].label, value: Math.round(m.value) });
   parts.push({ label: 'Their ruler’s diplomacy', value: Math.round(rulerSkill(state, b, 'dip') * 1.5) });
+  const embassies = taskSkill(state, b, 'chancellor', 'embassies');
+  if (embassies) parts.push({ label: 'Their embassies', value: Math.round(embassies / 2) });
   const out = breakdown(parts);
   out.total = clamp(out.total, -200, 200);
   return out;
@@ -295,6 +300,10 @@ export function loyalty(state: GameState, world: SimWorld, subject: number): Bre
   const l = state.countries[lord];
   const parts = opinion(state, world, subject, lord).parts.slice();
   parts.push(s.liege ? { label: 'Owes service', value: -5 } : { label: 'Pays tribute', value: -15 });
+  if (s.liege) parts.push({ label: 'Crown authority', value: CROWN_VASSALS[l.laws.crown] });
+  parts.push({ label: 'Legitimacy of the crown', value: Math.round((l.legitimacy - 50) * 0.4) });
+  const watch = taskSkill(state, l, 'spymaster', 'watch');
+  if (watch) parts.push({ label: 'A watchful spymaster', value: Math.round(watch / 2) });
   parts.push({ label: 'Stability of the crown', value: l.stability * 5 });
   const reign = state.day - l.rulerSince;
   if (reign < 5 * 365) parts.push({ label: 'A new ruler', value: -Math.round(20 * (1 - reign / (5 * 365))) });
@@ -417,9 +426,10 @@ export function fabricationCost(state: GameState, province: number): number {
   return Math.round(25 + (state.provinces[province]?.dev ?? 1) * 3);
 }
 
-/** Days to forge a claim: about ten months, quicker with a skilled chancellor. */
+/** Days to forge a claim: about ten months, quicker with a skilled chancellor set to the task. */
 export function fabricationDays(state: GameState, c: Country): number {
-  return Math.max(120, Math.round(300 * (1 - seatSkill(state, c, 'chancellor') * 0.025)));
+  const base = 300 * (1 - seatSkill(state, c, 'chancellor') * 0.02);
+  return Math.max(90, Math.round(base * (c.tasks.chancellor === 'claims' ? 0.67 : 1)));
 }
 
 export function canFabricate(state: GameState, world: SimWorld, index: number, province: number): Check {
@@ -500,6 +510,7 @@ export const AE_FACTOR: Record<CasusBelli, number> = {
   conquest: 1.25,
   independence: 0,
   coalition: 0.5,
+  revolt: 0,
 };
 export const COALITION_AE = -40;
 const LEAVE_AE = -25;
@@ -515,7 +526,7 @@ export function addAggression(
   if (factor <= 0 || !provinces.length) return;
   const top = topLiege(state, conqueror);
   for (const c of state.countries) {
-    if (!c?.alive || c.liege || c.index === top || !c.capital) continue;
+    if (!c?.alive || c.liege || c.rebel || c.index === top || !c.capital) continue;
     const cap = world.region(c.capital);
     let total = 0;
     for (const id of provinces) {
@@ -587,7 +598,7 @@ export function monthlyCoalitions(state: GameState) {
     }
   }
   for (const c of state.countries) {
-    if (!c?.alive || c.liege || c.index === state.player) continue;
+    if (!c?.alive || c.liege || c.rebel || c.index === state.player) continue;
     for (const key of Object.keys(c.memories)) {
       const target = Number(key);
       if (memory(state, c.index, target, 'ae') > COALITION_AE) continue;

@@ -3,7 +3,6 @@
  * truces. Throne wars end with the victor's ruler taking the loser's crown, as William's did in 1066;
  * independence wars free a vassal or tributary; coalition wars punish an aggressor.
  */
-import { seatSkill } from './characters';
 import { years } from './calendar';
 import {
   addAggression,
@@ -23,6 +22,7 @@ import {
 } from './diplomacy';
 import { income, type Breakdown, type Part } from './economy';
 import { log } from './log';
+import { taskSkill } from './politics';
 import {
   atWar,
   hasTruce,
@@ -38,6 +38,7 @@ import {
   warsOf,
 } from './queries';
 import { destroyCountry, fixCapitals } from './realm';
+import { endRevolt, factionWar } from './revolts';
 import type { CasusBelli, Country, GameState, PeaceOffer, PeaceTerms, War } from './types';
 import { distanceKm, type SimWorld } from './world';
 
@@ -66,6 +67,10 @@ export const CB_INFO: Record<CasusBelli, { name: string; blurb: string }> = {
     name: 'Coalition war',
     blurb: 'Strike the realm your coalition fears. Every member of the coalition is called to arms.',
   },
+  revolt: {
+    name: 'Revolt',
+    blurb: 'An estate has risen against the crown. If the rebels win, their demand becomes law.',
+  },
 };
 
 export type Check = { ok: true } | { ok: false; reason: string };
@@ -81,6 +86,9 @@ export function canDeclare(state: GameState, attacker: number, target: number, c
   const a = state.countries[attacker];
   const t = state.countries[target];
   if (!a?.alive || !t?.alive) return no('No such country');
+  if (cb === 'revolt') return no('Revolts are not declared');
+  if (a.rebel) return no('Rebels fight only their own war');
+  if (state.countries[topLiege(state, target)]?.rebel) return no('They are rebels in another realm’s war');
   if (cb === 'independence') {
     const lord = lordOf(state, attacker);
     if (!lord) return no('Only a vassal or a tributary can fight for independence');
@@ -137,6 +145,8 @@ export function warName(world: SimWorld, cb: CasusBelli, attacker: Country, defe
       return `${attacker.adj} War of Independence`;
     case 'coalition':
       return `Coalition War against ${defender.short}`;
+    case 'revolt':
+      return attacker.name;
     default:
       return `${attacker.adj} Invasion of ${defender.short}`;
   }
@@ -504,6 +514,8 @@ function goalHeld(state: GameState, war: War): boolean {
     case 'independence':
       // Rebels who keep their own land free for half a year are winning.
       return state.day - war.start > 180 && occupiedDev(state, war.attackers, war.defenders) === 0;
+    case 'revolt':
+      return state.day - war.start > 90 && occupiedDev(state, war.attackers, war.defenders) === 0;
     default:
       return false;
   }
@@ -525,7 +537,7 @@ export function monthlyWars(state: GameState, world: SimWorld) {
     else if (!anyHeld && state.day - war.start > years(1)) war.ticking = Math.max(-25, war.ticking - 1);
     for (const c of [...war.attackers, ...war.defenders]) {
       const country = state.countries[c];
-      const slower = 1 - seatSkill(state, country, 'chancellor') * 0.02;
+      const slower = 1 - taskSkill(state, country, 'chancellor', 'negotiate') * 0.02;
       country.warExhaustion = Math.min(20, country.warExhaustion + 0.3 * Math.max(0.4, slower));
     }
   }
@@ -540,8 +552,8 @@ export function monthlyWars(state: GameState, world: SimWorld) {
 /** Offers lapse after a month; an unanswered call to arms counts as a refusal. */
 export function expireOffers(state: GameState) {
   for (const o of [...state.offers]) {
-    const war = o.kind === 'pact' ? null : state.wars.find((w) => w.id === o.war);
-    if (o.kind !== 'pact' && !war) {
+    const war = o.kind === 'pact' || o.kind === 'ultimatum' ? null : state.wars.find((w) => w.id === o.war);
+    if (o.kind !== 'pact' && o.kind !== 'ultimatum' && !war) {
       state.offers = state.offers.filter((x) => x !== o);
       continue;
     }
@@ -551,6 +563,8 @@ export function expireOffers(state: GameState) {
       const side = sideOf(war, o.from);
       if (side) refuseCall(state, war, o.to, side, callReason(state, war, o.to, side));
     }
+    // An ultimatum left unanswered is an ultimatum refused.
+    if (o.kind === 'ultimatum') factionWar(state, o.to, o.members, o.from);
   }
 }
 
@@ -589,16 +603,29 @@ export function peaceCost(state: GameState, war: War, winner: 'attacker' | 'defe
     cost += 25 + Math.min(1, dev / loserDev) * 50;
   }
   if (terms.independence) cost += 50;
+  if (terms.demands) cost += 40;
+  if (terms.crush) cost += 30;
   return Math.min(100, cost);
+}
+
+/** A war between a realm and its own rebels. */
+export function isRevolt(state: GameState, war: War): boolean {
+  return state.countries[war.attacker]?.rebel?.realm === war.defender;
 }
 
 /** Which special terms a side may ask for in this war. */
 export function allowedTerms(state: GameState, war: War, winner: 'attacker' | 'defender') {
   const loseLeader = state.countries[winner === 'attacker' ? war.defender : war.attacker];
+  const revolt = isRevolt(state, war);
   return {
     throne: war.cb === 'throne' && winner === 'attacker',
     independence: war.cb === 'independence' && winner === 'attacker',
+    demands: war.cb === 'revolt' && winner === 'attacker',
+    crush: revolt && winner === 'defender',
+    /** land and gold change hands only between realms, not with rebels */
+    spoils: !revolt,
     tributary:
+      !revolt &&
       war.cb !== 'independence' &&
       !!loseLeader &&
       !loseLeader.liege &&
@@ -631,11 +658,14 @@ export function peaceAcceptance(state: GameState, war: War, from: number, terms:
   if (
     (terms.throne && !allowed.throne) ||
     (terms.independence && !allowed.independence) ||
-    (terms.tributary && !allowed.tributary)
+    (terms.tributary && !allowed.tributary) ||
+    (terms.demands && !allowed.demands) ||
+    (terms.crush && !allowed.crush) ||
+    ((terms.provinces.length > 0 || terms.gold > 0) && !allowed.spoils)
   )
     return { accept: false, reason: 'Those terms are not possible in this war' };
   const proposer = state.countries[side === 'attacker' ? war.attacker : war.defender];
-  const discount = 1 - Math.min(0.2, seatSkill(state, proposer, 'chancellor') * 0.01);
+  const discount = 1 - Math.min(0.2, taskSkill(state, proposer, 'chancellor', 'negotiate') * 0.01);
   const cost = peaceCost(state, war, side, terms) * discount;
   if (score >= cost || score >= 99)
     return { accept: true, reason: `War score ${Math.round(score)} covers the cost of ${Math.round(cost)}` };
@@ -684,7 +714,10 @@ export function endWar(
     }
     winLeader.stability = Math.min(3, winLeader.stability + 1);
     loseLeader.stability = Math.max(-3, loseLeader.stability - 1);
-    if (terms.independence) release(state, war.attacker);
+    if (terms.independence)
+      for (const m of war.attackers)
+        if (state.countries[m]?.liege === war.defender || state.countries[m]?.overlord === war.defender)
+          release(state, m);
     if (terms.tributary) {
       addAggression(state, world, winLeader.index, realmProvinces(state, loseLeader.index), 0.25);
       makeTributary(state, loseLeader.index, winLeader.index);
@@ -740,6 +773,7 @@ export function endWar(
     : `${war.name} is over: ${what}.`;
   log(state, participants, 'peace', text, { important: participants.includes(state.player) });
   if (winLeader && loseLeader && terms.throne) inheritThrone(state, winLeader, loseLeader);
+  endRevolt(state, war, winner === 'attacker', terms);
   for (const c of [...state.countries]) if (c?.alive && !provincesOf(state, c.index).length) destroyCountry(state, c);
   fixCapitals(state, world);
   pruneClaims(state);

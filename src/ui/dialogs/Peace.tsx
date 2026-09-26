@@ -37,6 +37,7 @@ export function Peace() {
   const [throne, setThrone] = useState(false);
   const [tributary, setTributary] = useState(false);
   const [freedom, setFreedom] = useState(false);
+  const [settle, setSettle] = useState(false);
   const [white, setWhite] = useState(false);
   if (!war) return null;
   const enemyLeader = state.countries[side === 'attacker' ? war.defender : war.attacker];
@@ -51,10 +52,20 @@ export function Peace() {
         throne: allowed.throne && throne,
         tributary: allowed.tributary && tributary,
         independence: allowed.independence && freedom,
+        demands: allowed.demands && settle,
+        crush: allowed.crush && settle,
       };
   const cost = white ? 0 : peaceCost(state, war, side, terms);
   const answer = peaceAcceptance(state, war, player, terms);
-  const empty = !white && !picked.length && !gold && !terms.throne && !terms.tributary && !terms.independence;
+  const empty =
+    !white &&
+    !picked.length &&
+    !gold &&
+    !terms.throne &&
+    !terms.tributary &&
+    !terms.independence &&
+    !terms.demands &&
+    !terms.crush;
   const maxGold = Math.max(0, Math.floor(enemyLeader.gold));
   const toggle = (id: number) => setPicked((p) => (p.includes(id) ? p.filter((x) => x !== id) : [...p, id]));
   const send = () => {
@@ -97,6 +108,19 @@ export function Peace() {
               </span>
             </label>
           )}
+          {(allowed.demands || allowed.crush) && (
+            <label className={`choice ${settle ? 'active' : ''}`}>
+              <input type="checkbox" checked={settle} onChange={(e) => setSettle(e.target.checked)} />
+              <span>
+                <span className="choice-name">{allowed.crush ? 'Crush the revolt' : 'Our demands are met'}</span>
+                <span className="dim small">
+                  {allowed.crush
+                    ? 'The rebels lay down their arms and their land returns to the crown.'
+                    : 'The crown gives way, and the land returns to it.'}
+                </span>
+              </span>
+            </label>
+          )}
           {allowed.tributary && (
             <label className={`choice ${tributary ? 'active' : ''}`}>
               <input type="checkbox" checked={tributary} onChange={(e) => setTributary(e.target.checked)} />
@@ -109,41 +133,45 @@ export function Peace() {
               </span>
             </label>
           )}
-          <fieldset className="choices">
-            <legend className="caps">Provinces to take</legend>
-            {candidates.length ? (
-              <ul className="peace-provinces">
-                {candidates.map((id) => (
-                  <li key={id}>
-                    <label className={`choice compact ${picked.includes(id) ? 'active' : ''}`}>
-                      <input type="checkbox" checked={picked.includes(id)} onChange={() => toggle(id)} />
-                      <span className="choice-name">{game.world.region(id).name}</span>
-                      <span className="dim small num">
-                        dev {state.provinces[id].dev}
-                        {id === war.goal ? ' · war goal' : ''}
-                        {claimed.has(id) ? ' · claimed' : ''}
-                      </span>
-                    </label>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p className="dim small">You hold none of their land. Occupy provinces to demand them.</p>
-            )}
-          </fieldset>
-          <label className="field">
-            <span className="caps">
-              Gold: <span className="num">{gold}</span> of {maxGold}
-            </span>
-            <input
-              type="range"
-              min={0}
-              max={maxGold}
-              step={10}
-              value={gold}
-              onChange={(e) => setGold(Number(e.target.value))}
-            />
-          </label>
+          {allowed.spoils && (
+            <>
+              <fieldset className="choices">
+                <legend className="caps">Provinces to take</legend>
+                {candidates.length ? (
+                  <ul className="peace-provinces">
+                    {candidates.map((id) => (
+                      <li key={id}>
+                        <label className={`choice compact ${picked.includes(id) ? 'active' : ''}`}>
+                          <input type="checkbox" checked={picked.includes(id)} onChange={() => toggle(id)} />
+                          <span className="choice-name">{game.world.region(id).name}</span>
+                          <span className="dim small num">
+                            dev {state.provinces[id].dev}
+                            {id === war.goal ? ' · war goal' : ''}
+                            {claimed.has(id) ? ' · claimed' : ''}
+                          </span>
+                        </label>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="dim small">You hold none of their land. Occupy provinces to demand them.</p>
+                )}
+              </fieldset>
+              <label className="field">
+                <span className="caps">
+                  Gold: <span className="num">{gold}</span> of {maxGold}
+                </span>
+                <input
+                  type="range"
+                  min={0}
+                  max={maxGold}
+                  step={10}
+                  value={gold}
+                  onChange={(e) => setGold(Number(e.target.value))}
+                />
+              </label>
+            </>
+          )}
         </>
       )}
       <p className={`alert ${answer.accept ? 'good' : ''}`}>
@@ -212,6 +240,7 @@ export function Offer() {
       </Modal>
     );
   }
+  if (offer.kind === 'ultimatum') return <Ultimatum />;
   const war = state.wars.find((w) => w.id === offer.war);
   if (offer.kind === 'call') {
     const enemy = war ? state.countries[war.attackers.includes(offer.from) ? war.defender : war.attacker] : null;
@@ -258,6 +287,48 @@ export function Offer() {
         </button>
         <button className="btn primary" onClick={() => answer(true)}>
           <Icon name="peace-dove" /> Accept
+        </button>
+      </div>
+    </Modal>
+  );
+}
+
+/** Vassals united in a faction demand their freedom. */
+function Ultimatum() {
+  const game = useGame();
+  const state = game.state;
+  const offer = state.offers.find((o) => o.to === state.player && o.kind === 'ultimatum');
+  if (!offer || offer.kind !== 'ultimatum') return null;
+  const answer = (accept: boolean) => {
+    run(game, cmd.answerOffer(state, game.world, offer.id, accept));
+    game.ui.set({ modal: 'none' });
+  };
+  const members = offer.members.map((m) => state.countries[m]).filter((c) => c?.alive);
+  const theirs = members.reduce((n, c) => n + realmStrength(state, c.index), 0);
+  const ours = realmStrength(state, state.player) - theirs;
+  return (
+    <Modal title="Your vassals demand their freedom" kicker="An ultimatum" onClose={() => answer(false)}>
+      <p>
+        {members.map((c) => c.name).join(', ')} {members.length > 1 ? 'have' : 'has'} lost faith in the crown. Free
+        them, or they will take their freedom by the sword.
+      </p>
+      <ul className="chips">
+        {members.map((c) => (
+          <li key={c.index} className="chip with-coa">
+            <CoatOfArms country={c} size={16} />
+            {c.short}
+          </li>
+        ))}
+      </ul>
+      <p className="dim small">
+        They can raise {formatMen(theirs)} men; the rest of the realm {formatMen(ours)}.
+      </p>
+      <div className="modal-actions">
+        <button className="btn" onClick={() => answer(true)}>
+          <Icon name="breaking-chain" /> Grant their freedom
+        </button>
+        <button className="btn primary danger" onClick={() => answer(false)}>
+          <Icon name="crossed-swords" /> Refuse, and fight
         </button>
       </div>
     </Modal>

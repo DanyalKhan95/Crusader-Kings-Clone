@@ -12,63 +12,45 @@ every push).
 
 ## Status
 
-**Milestone 2: diplomacy.** Realms make friends and enemies. Every other realm is run by the AI.
+**Milestone 3: internal politics.** Rule at home as well as abroad. Every other realm is run by the
+AI.
 
-- **Opinion:** every realm has a view of every other, with the reasons on hover: faith and culture,
-  treaties, claims, wars, gifts, betrayals, and fear of your conquests.
-- **Treaties:**
-  - alliances (allies answer calls to arms, or the alliance breaks)
-  - non-aggression pacts
-  - military access (armies may only march through land they have leave to enter)
-  - guarantees of independence
-  - the AI weighs every proposal with the same breakdown you see before you send it
-- **Claims:** your chancellor forges claims on land across your border. A claim is a just cause
-  for war and halves the land's price at the peace table. War without a claim costs stability.
-- **Aggressive expansion and coalitions:** conquests alarm the neighbours. Those who fear you band
-  together, and strike once they are strong enough.
-- **Subjects:** vassal loyalty, integration of loyal vassals, tributaries (won at the peace table),
-  and wars of independence.
-- **Wars with allies:** calls to arms for allies, guarantors, overlords and coalition members;
-  separate peace for those who are not leading a side.
-- **The diplomacy map** (`U`) shows your allies, enemies, pacts, subjects and claims.
+- **Laws:** succession (hereditary, elective, republic or theocratic), crown authority,
+  conscription and taxation. Each has its price in legitimacy and in the estates' goodwill, and
+  after a change the realm needs five years to settle.
+- **Legitimacy:** the ruler's right to rule, with its reasons shown. A child on the throne, a
+  usurper or a lost war weaken it; below 35 the nobles may rise for a pretender.
+- **Estates:** nobility, clergy, burghers and commons, each with power and loyalty. Loyal estates
+  help (levies, legitimacy, taxes, manpower); privileges buy their loyalty at a cost.
+- **Revolts:** an estate pushed too far rises. Part of the realm breaks away as a rebel realm on
+  the map, and a war decides whether its demand becomes law.
+- **Factions:** disloyal vassals band together and send an ultimatum: freedom, or war.
+- **Successions:** the Empire, the Celts and the steppe elect their rulers, Venice elects a doge
+  every eight years, the clergy choose in theocracies.
+- **The council:** each seat has a task: negotiate or send embassies, muster levies or drill the
+  troops, collect taxes or develop the land, and more.
+- **Governments** shape taxes and levies: imperial bureaucracy, tribal war bands, merchant
+  republics and others.
+- **Portraits:** every ruler, heir and councillor has a procedural portrait that ages with them.
 
-![Scotland allied with England: the diplomacy map mode and Scotland's diplomacy panel](docs/images/diplomacy-1066.webp)
+![The court of Harold II in September 1066: portraits of the king, his heir and his council, each with a task](docs/images/court-1066.webp)
 
-From milestone 1:
+Earlier milestones:
 
-- **Time:** real time with pause and five speeds, from a day a second to four months a second.
-  Wars declared on you, lost battles, offers and an empty treasury pause the game.
-- **Economy:** taxes and levies from development, stability, war weariness and the council; six
-  buildings in three levels; a monthly budget with breakdowns, loans and bankruptcy.
-- **Characters:** a ruler, an heir and a council of five, with skills and traits. They age and
-  die; the heir succeeds.
-- **Armies, battles and sieges:** levies and six kinds of men-at-arms, marching by the fastest
-  allowed route over land and sea, supply and attrition; terrain, river crossings, unit counters,
-  commanders, morale, pursuit; forts, siege engines and occupation.
-- **War and peace:** war score from battles, occupation and the war goal; peace deals that cede
-  provinces, pay gold, take a crown or make the loser pay tribute; truces afterwards.
-- **1066:** Harald Hardrada lands at York with Tostig, and William of Normandy sails for England
-  two weeks later.
-- **Saves:** save and load in the browser, plus export and import as a file.
+- **Diplomacy (M2):** opinion with its reasons; alliances, non-aggression pacts, military access
+  and guarantees; calls to arms; forged claims; aggressive expansion and coalitions; vassal
+  loyalty, integration and tributaries; the diplomacy map (`U`).
+- **The first playable (M1):** time with five speeds; an economy of taxes, levies, buildings and
+  loans; armies of levies and men-at-arms, battles, sieges and war score; peace deals and
+  truces; AI; saves; Hardrada and William in 1066.
+- **The world of 1066 (M0):** 3,000 provinces, 498 sea zones and 35 great lakes on hillshaded
+  terrain; 188 realms with rulers, lieges and coats of arms; map modes for realms, countries,
+  terrain, development, culture and faith.
 
-From milestone 0:
+![England on 18 September 1066, and Scotland allied with it on the diplomacy map](docs/images/diplomacy-1066.webp)
 
-- **The map:**
-  - 3,000 land provinces, 498 sea zones and 35 great lakes.
-  - Hillshaded terrain with rivers.
-  - Borders styled by realm, vassal and province.
-  - Curved realm names.
-- **Map modes:** realms, countries, terrain, development, culture and faith.
-- **The world of 1066:**
-  - 188 realms, with lieges and vassals and 1066 rulers.
-  - Cultures and faiths for every province.
-  - A coat of arms for every realm: curated for the major ones, generated for the rest.
-- **Look:** a medieval theme. The UI changes with the era in later milestones.
-
-![Choosing a realm in 1066](docs/images/choose-realm.webp)
-
-Next up is **Milestone 3: internal politics**, with government types, laws, estates, factions and
-civil wars. The full plan is in [docs/ROADMAP.md](docs/ROADMAP.md).
+Next up is **Milestone 4: religion and culture**, with conversion, cultural integration, holy wars
+and heresies. The full plan is in [docs/ROADMAP.md](docs/ROADMAP.md).
 
 ## Controls
 
@@ -132,16 +114,16 @@ Hand-curated tables live in `tools/mapgen/curated`:
 
 ## Project layout
 
-| Path             | What                                                                            |
-| ---------------- | ------------------------------------------------------------------------------- |
-| `src/render/`    | WebGL2 map: terrain, fills, borders, rivers, labels, picking, camera            |
-| `src/sim/`       | The simulation: economy, characters, armies, battles, war, diplomacy, AI, saves |
-| `src/game/`      | Loading the world, and map modes                                                |
-| `src/heraldry/`  | Coats of arms: blazon model, curated arms, generator, SVG                       |
-| `src/ui/`        | React screens, HUD and era themes                                               |
-| `src/shared/`    | Code used by both the game and the pipeline (map format, projection, types)     |
-| `tools/`         | Map pipeline, icon extraction, artifact packaging                               |
-| `tests/`, `e2e/` | Vitest unit tests and Playwright end-to-end tests                               |
+| Path             | What                                                                             |
+| ---------------- | -------------------------------------------------------------------------------- |
+| `src/render/`    | WebGL2 map: terrain, fills, borders, rivers, labels, picking, camera             |
+| `src/sim/`       | The simulation: economy, characters, armies, war, diplomacy, politics, AI, saves |
+| `src/game/`      | Loading the world, and map modes                                                 |
+| `src/heraldry/`  | Coats of arms: blazon model, curated arms, generator, SVG                        |
+| `src/ui/`        | React screens, HUD and era themes                                                |
+| `src/shared/`    | Code used by both the game and the pipeline (map format, projection, types)      |
+| `tools/`         | Map pipeline, icon extraction, artifact packaging                                |
+| `tests/`, `e2e/` | Vitest unit tests and Playwright end-to-end tests                                |
 
 ## Credits and licences
 

@@ -47,6 +47,13 @@ when a milestone lands.
   - `diplomacy.ts` holds treaties, opinion and memories, claims, aggressive expansion, coalitions
     and subjects; `war.ts` holds casus belli, calls to arms and peace; `realm.ts` holds capitals
     and the end of a country. Treaties belong to independent realms only (vassals have none).
+  - `politics.ts` holds laws, legitimacy, estates, council tasks and elections; `revolts.ts`
+    holds revolts and vassal factions. Council bonuses go through `taskSkill(seat, task)`, not
+    `seatSkill`. Call `invalidatePolitics` after changing laws, privileges or tasks outside the
+    functions that do it already.
+  - A revolt is a temporary country with `rebel` set; its land returns to the realm when its war
+    ends (`endRevolt`). Other realms cannot treat or fight with rebels. Dead rebel slots are
+    reused, so a country index may change hands after a year.
   - Hot lookups are cached per day or per version counter (`strengthOf`, `accessSet`,
     `realmMembers`, the treaty index): bump `mapVersion`, `borderVersion` or `diploVersion`
     whenever owners, lieges or treaties change.

@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { UNITS, UNIT_ORDER } from '../../data/units';
 import { formatMen } from '../../render/units';
-import { character, SEAT_INFO, SEAT_SKILL, skill } from '../../sim/characters';
+import { character, SEAT_INFO, SEAT_SKILL, skill, SKILL_NAMES, successorOf } from '../../sim/characters';
 import * as cmd from '../../sim/commands';
 import { expenses, income, loanSize, MAX_LOANS, maxManpower, reserveMen } from '../../sim/economy';
 import { availableMaa, recruitCost } from '../../sim/military';
@@ -9,21 +9,25 @@ import { armiesOf, armySize, provincesOf } from '../../sim/queries';
 import { COUNCIL_SEATS, type Country, type UnitType } from '../../sim/types';
 import { run, selectArmy, selectCountry } from '../actions';
 import { CoatOfArms } from '../CoatOfArms';
-import { capitalize } from '../format';
+import { capitalize, formatDate } from '../format';
 import { countryStats, useGame, type CountryTab } from '../game';
 import { Icon } from '../Icon';
-import { CharacterCard } from '../people';
+import { SEAT_TASKS, TASK_INFO } from '../../data/politics';
+import { toDate } from '../../sim/calendar';
+import { CharacterCard, Portrait } from '../people';
+import { LawsTab } from './PoliticsPanel';
 import { DiplomacyTab, ForeignDiplomacy } from './DiplomacyPanel';
 import { CountryFacts, CountryHeader } from '../realm';
 import { useStore } from '../store';
 import { goToProvince } from './SidePanel';
-import { BreakdownList, fmtSigned } from './Tip';
+import { BreakdownList, fmtSigned, WithTip } from './Tip';
 
 const TABS: { id: CountryTab; label: string }[] = [
   { id: 'realm', label: 'Realm' },
   { id: 'treasury', label: 'Treasury' },
   { id: 'military', label: 'Army' },
   { id: 'court', label: 'Court' },
+  { id: 'laws', label: 'Laws' },
   { id: 'diplomacy', label: 'Diplomacy' },
 ];
 
@@ -61,6 +65,7 @@ export function CountryView({ index }: { index: number }) {
           {tab === 'treasury' && <TreasuryTab c={c} />}
           {tab === 'military' && <MilitaryTab c={c} />}
           {tab === 'court' && <CourtTab c={c} />}
+          {tab === 'laws' && <LawsTab c={c} />}
           {tab === 'diplomacy' && <DiplomacyTab c={c} />}
         </>
       ) : (
@@ -276,10 +281,16 @@ function CourtTab({ c }: { c: Country }) {
   const candidates = [...c.courtiers, ...Object.values(c.council)].filter(
     (id) => character(state, id)?.died === undefined && id,
   );
+  const successor = character(state, successorOf(state, c));
+  const heirTitle =
+    c.laws.succession === 'hereditary' ? 'Heir' : c.laws.succession === 'republic' ? 'Favourite' : 'Likely successor';
   return (
     <>
-      <CharacterCard c={character(state, c.ruler)} role="Ruler" />
-      <CharacterCard c={character(state, c.heir)} role="Heir" />
+      <CharacterCard c={character(state, c.ruler)} role="Ruler" portrait="ruler" />
+      <CharacterCard c={successor} role={heirTitle} portrait="heir" />
+      {c.laws.succession === 'republic' && (
+        <p className="dim small">Next election on {formatDate(toDate(c.termEnds))}.</p>
+      )}
       <section className="sp-section">
         <h3 className="section-title">Council</h3>
         <ul className="council">
@@ -287,29 +298,51 @@ function CourtTab({ c }: { c: Country }) {
             const id = c.council[seat];
             const holder = character(state, id);
             const s = SEAT_SKILL[seat];
+            const task = c.tasks[seat];
             return (
-              <li key={seat}>
-                <div className="seat-head">
-                  <span className="caps">{SEAT_INFO[seat].name}</span>
-                  <span className="dim small">{SEAT_INFO[seat].effect}</span>
+              <li key={seat} className="seat">
+                {holder && holder.died === undefined ? (
+                  <Portrait c={holder} role={seat} size={42} />
+                ) : (
+                  <span className="portrait empty" style={{ width: 42, height: 50 }} />
+                )}
+                <div className="seat-body">
+                  <div className="seat-head">
+                    <span className="caps">{SEAT_INFO[seat].name}</span>
+                    <span className="num dim small">{holder ? `${SKILL_NAMES[s]} ${skill(holder, s)}` : ''}</span>
+                  </div>
+                  <label className="seat-pick">
+                    <span className="sr-only">{SEAT_INFO[seat].name}</span>
+                    <select
+                      value={holder && holder.died === undefined ? id : 0}
+                      onChange={(e) => run(game, cmd.appointCouncillor(state, seat, Number(e.target.value)))}
+                    >
+                      {!holder && <option value={0}>Vacant</option>}
+                      {candidates.map((cid) => {
+                        const ch = character(state, cid)!;
+                        return (
+                          <option key={cid} value={cid}>
+                            {ch.name} ({skill(ch, s)})
+                          </option>
+                        );
+                      })}
+                    </select>
+                  </label>
+                  <div className="tasks" role="radiogroup" aria-label={`${SEAT_INFO[seat].name}’s task`}>
+                    {SEAT_TASKS[seat].map((t) => (
+                      <WithTip key={t} tip={<p className="tip-text">{TASK_INFO[t].blurb}</p>}>
+                        <button
+                          role="radio"
+                          aria-checked={task === t}
+                          className={`task ${task === t ? 'on' : ''}`}
+                          onClick={() => run(game, cmd.councilTask(state, seat, t))}
+                        >
+                          {TASK_INFO[t].name}
+                        </button>
+                      </WithTip>
+                    ))}
+                  </div>
                 </div>
-                <label className="seat-pick">
-                  <span className="sr-only">{SEAT_INFO[seat].name}</span>
-                  <select
-                    value={holder && holder.died === undefined ? id : 0}
-                    onChange={(e) => run(game, cmd.appointCouncillor(state, seat, Number(e.target.value)))}
-                  >
-                    {!holder && <option value={0}>Vacant</option>}
-                    {candidates.map((cid) => {
-                      const ch = character(state, cid)!;
-                      return (
-                        <option key={cid} value={cid}>
-                          {ch.name} ({skill(ch, s)})
-                        </option>
-                      );
-                    })}
-                  </select>
-                </label>
               </li>
             );
           })}

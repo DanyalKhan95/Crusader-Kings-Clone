@@ -3,7 +3,7 @@
  * country falls within days, fortified provinces need a siege whose length grows with every level of
  * walls. Siege engines, a skilled spymaster and a large army all shorten it.
  */
-import { seatSkill } from './characters';
+import { taskSkill } from './politics';
 import { fortLevel } from './economy';
 import { log } from './log';
 import { armySize, atWar } from './queries';
@@ -43,7 +43,7 @@ function dailyRate(state: GameState, id: number, armies: Army[]): number {
   if (men < g) return 0;
   const engines = armies.reduce((s, a) => s + siegePower(a), 0);
   const owner = state.countries[armies[0].owner];
-  const spy = owner ? seatSkill(state, owner, 'spymaster') : 0;
+  const spy = owner ? taskSkill(state, owner, 'spymaster', 'sieges') : 0;
   const numbers = Math.min(1.5, men / (g * 4));
   return ((1 + engines * 0.08) * (1 + spy * 0.02) * (0.5 + numbers)) / (35 * fort);
 }

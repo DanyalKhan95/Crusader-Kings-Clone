@@ -16,6 +16,57 @@ export type Units = Partial<Record<UnitType, number>>;
 
 export type BuildingType = 'farms' | 'market' | 'barracks' | 'castle' | 'workshop' | 'port';
 
+// ── Politics ──────────────────────────────────────────────────────
+
+/** How a ruler is chosen when the throne falls empty. */
+export type Succession = 'hereditary' | 'elective' | 'republic' | 'theocratic';
+
+/** Crown authority, conscription and taxation run from 0 (light) to 3 (harsh). */
+export interface Laws {
+  succession: Succession;
+  crown: number;
+  conscription: number;
+  taxation: number;
+}
+export type LawId = keyof Laws;
+
+export type EstateId = 'nobles' | 'clergy' | 'burghers' | 'commons';
+export const ESTATES: EstateId[] = ['nobles', 'clergy', 'burghers', 'commons'];
+
+export interface EstateState {
+  /** privileges granted to this estate */
+  privileged: boolean;
+  /** how they remember recent dealings; fades each month */
+  mood: number;
+}
+
+/** What a council seat spends its time on. */
+export type TaskId =
+  | 'negotiate'
+  | 'embassies'
+  | 'claims'
+  | 'levies'
+  | 'drill'
+  | 'taxes'
+  | 'develop'
+  | 'sieges'
+  | 'watch'
+  | 'stability'
+  | 'legitimacy';
+
+/** A demand of rebels, enforced if they win. */
+export type Demand = 'lower_taxes' | 'lower_conscription' | 'lower_crown' | 'privileges';
+
+/** A temporary realm raised by a revolt; its land returns to the realm when the revolt ends. */
+export interface RebelInfo {
+  realm: number;
+  estate: EstateId;
+  /** what they want; a pretender wants the throne instead */
+  demand: Demand | 'throne';
+  /** the day the revolt ended; the slot may then be reused for a new revolt */
+  ended?: number;
+}
+
 export interface Character {
   id: number;
   name: string;
@@ -78,6 +129,8 @@ export interface Country {
   ruler: number;
   /** day the ruler came to the throne */
   rulerSince: number;
+  /** republics: the day of the next election */
+  termEnds: number;
   heir: number;
   council: Record<CouncilSeat, number>;
   /** characters at court who can be appointed to the council or lead armies */
@@ -95,6 +148,16 @@ export interface Country {
   integrating: { vassal: number; progress: number; needed: number } | null;
   /** memories of other countries, by country index */
   memories: Record<number, Memory[]>;
+
+  laws: Laws;
+  /** day of the last change of law; laws change at most once in five years */
+  lawChanged: number;
+  /** 0 … 100: the ruler's right to rule */
+  legitimacy: number;
+  estates: Record<EstateId, EstateState>;
+  tasks: Record<CouncilSeat, TaskId>;
+  /** set for a realm raised by a revolt */
+  rebel?: RebelInfo;
 
   ai: { nextWarCheck: number; nextBuild: number; nextDiplo: number };
 }
@@ -169,7 +232,7 @@ export interface Battle {
   defender: BattleSide;
 }
 
-export type CasusBelli = 'claim' | 'throne' | 'conquest' | 'independence' | 'coalition';
+export type CasusBelli = 'claim' | 'throne' | 'conquest' | 'independence' | 'coalition' | 'revolt';
 
 /**
  * Treaties between independent realms. Alliances and non-aggression pacts are mutual; with `access`
@@ -207,6 +270,8 @@ export interface War {
   battleScore: number;
   /** months the war goal has been held, positive for the attacker */
   ticking: number;
+  /** revolts: what the rebels want */
+  demand?: Demand;
 }
 
 export interface Truce {
@@ -225,6 +290,10 @@ export interface PeaceTerms {
   tributary?: boolean;
   /** the rebels of an independence war go free */
   independence?: boolean;
+  /** revolts: the rebels' demand is granted */
+  demands?: boolean;
+  /** revolts: the rebels lay down their arms */
+  crush?: boolean;
   white?: boolean;
 }
 
@@ -255,7 +324,22 @@ export interface PactOffer extends OfferBase {
   pact: PactKind;
 }
 
-export type Offer = PeaceOffer | CallOffer | PactOffer;
+/** Vassals united in a faction demand their freedom, or they will fight for it. */
+export interface UltimatumOffer extends OfferBase {
+  kind: 'ultimatum';
+  /** every vassal in the faction; `from` leads them */
+  members: number[];
+}
+
+export type Offer = PeaceOffer | CallOffer | PactOffer | UltimatumOffer;
+
+/** Disloyal vassals of one realm who want to be free. */
+export interface Faction {
+  id: number;
+  realm: number;
+  members: number[];
+  since: number;
+}
 
 export type MessageKind =
   'war' | 'peace' | 'battle' | 'siege' | 'death' | 'building' | 'economy' | 'army' | 'event' | 'diplomacy';
@@ -272,7 +356,7 @@ export interface Message {
 }
 
 export interface GameState {
-  version: 2;
+  version: 3;
   scenario: string;
   seed: number;
   rng: number;
@@ -287,6 +371,7 @@ export interface GameState {
   truces: Truce[];
   pacts: Pact[];
   coalitions: Coalition[];
+  factions: Faction[];
   /** proposals waiting for the player's answer */
   offers: Offer[];
   /** no AI treaty proposal reaches the player before this day */

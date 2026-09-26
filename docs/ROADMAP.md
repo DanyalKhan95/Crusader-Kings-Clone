@@ -94,8 +94,7 @@ whole world. The player controls a country rather than a dynasty.
   - [x] offers and accepts peace
 - [x] Save and load: gzipped into IndexedDB, plus file export and import.
 - [x] 1066 flavour: the Norwegian invasion of England and William's claim.
-- [x] Headless runs: `npm run simulate -- --years N` runs the whole world under AI (about 1,500
-      days a second with diplomacy).
+- [x] Headless runs: `npm run simulate -- --years N` runs the whole world under AI.
 
 ### M2: Diplomacy (done)
 
@@ -118,13 +117,22 @@ whole world. The player controls a country rather than a dynasty.
       diplomacy map mode, call-to-arms and proposal dialogs.
 - [x] Saves from milestone 1 load (border wars become claim wars).
 
-### M3: Internal politics and the council
+### M3: Internal politics and the council (done)
 
-- Government types and laws: succession, crown authority, conscription and tax.
-- Stability and legitimacy.
-- Estates and interest groups, factions, revolts and civil wars.
-- Elective and republican successions, and council tasks.
-- Stylised procedural portraits.
+- [x] Laws: succession (hereditary, elective, republic, theocratic), crown authority,
+      conscription and taxation, with costs in legitimacy and stability and a five-year cooldown.
+- [x] Legitimacy, with its reasons, set anew at each succession; stability sinks under a ruler
+      of doubtful right.
+- [x] Estates (nobility, clergy, burghers, commons) with power and loyalty, effects on levies,
+      legitimacy, taxes and manpower, and privileges to grant and revoke.
+- [x] Revolts: temporary rebel realms carved out of the map, revolt wars with demands, and
+      pretenders fighting throne wars for the crown.
+- [x] Factions of disloyal vassals, with ultimatums and joint wars of independence.
+- [x] Elective, republican and theocratic successions; republics hold elections every 8 years.
+- [x] Council tasks (two or three per seat) in place of fixed seat bonuses.
+- [x] Government types with their own taxes and levies.
+- [x] Procedural portraits for rulers, heirs, councillors and commanders.
+- [x] Saves from milestone 2 load.
 
 ### M4: Religion and culture
 
@@ -185,5 +193,8 @@ whole world. The player controls a country rather than a dynasty.
   example the Duchy of Naples).
 - **Balance:** in 30-year AI runs there are about 250 wars (nearly all over forged claims), and
   about 25 small realms are conquered. England sometimes falls to the Norman or Norwegian
-  claimant. AI coalitions and rebellions are rare; factions (M3) should make vassals livelier.
+  claimant. AI rulers mostly keep their estates content, so revolts in an AI world are rare;
+  they follow harsh laws, long wars and weak rulers.
+- **Speed:** headless runs manage about 1,100 days a second with politics; estate figures are
+  cached per day. Worth another look in M8.
 - **Navies:** armies embark automatically and cannot be intercepted at sea until M6.

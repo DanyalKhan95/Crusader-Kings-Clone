@@ -16,6 +16,7 @@ import {
   type CouncilSeat,
   type GameState,
   type Skill,
+  type Succession,
 } from './types';
 import type { SimWorld } from './world';
 
@@ -261,24 +262,82 @@ export function die(state: GameState, world: SimWorld, c: Character) {
 }
 
 /** The heir takes the throne. */
+/** Who may be chosen when the throne is not simply inherited: the heir, the council and the court. */
+export function electionCandidates(state: GameState, country: Country): number[] {
+  const ids = [country.heir, ...Object.values(country.council), ...country.courtiers];
+  return ids.filter(
+    (id, i) => id && ids.indexOf(id) === i && alive(state, id) && age(state, character(state, id)!) >= 16,
+  );
+}
+
+/** How electors weigh a candidate: ability, learning for the clergy, and the prime of life. */
+export function candidateScore(state: GameState, id: number, succession: Succession): number {
+  const c = character(state, id);
+  if (!c) return -Infinity;
+  let v = 0;
+  for (const s of SKILLS) v += skill(c, s);
+  if (succession === 'theocratic') v += skill(c, 'lrn') * 2;
+  if (succession === 'republic') v += skill(c, 'stw') + skill(c, 'dip');
+  const a = age(state, c);
+  if (a >= 25 && a <= 60) v += 5;
+  return v;
+}
+
+/** The next ruler under the realm's succession law. */
+export function successorOf(state: GameState, country: Country): number {
+  const law = country.laws.succession;
+  if (law === 'hereditary' && alive(state, country.heir)) return country.heir;
+  let best = 0,
+    bestV = -Infinity;
+  for (const id of electionCandidates(state, country)) {
+    const v = candidateScore(state, id, law) + (id === country.heir ? 3 : 0);
+    if (v > bestV) {
+      bestV = v;
+      best = id;
+    }
+  }
+  return best || country.heir;
+}
+
+const SUCCESSION_NEWS: Record<Succession, string> = {
+  hereditary: 'Long live',
+  elective: 'The electors choose',
+  republic: 'The council elects',
+  theocratic: 'The clergy choose',
+};
+
 export function succeed(state: GameState, world: SimWorld, country: Country) {
   const old = character(state, country.ruler);
   staffCourt(state, world, country, false);
-  const heir = character(state, country.heir)!;
-  heir.name = regnalName(state, country, heir.name);
-  heir.traits = [...heir.traits.filter((t) => t !== '_reigned'), '_reigned'];
-  country.ruler = heir.id;
+  const law = country.laws.succession;
+  const nextId = successorOf(state, country);
+  const next = character(state, nextId)!;
+  if (law !== 'republic') {
+    next.name = regnalName(state, country, next.name);
+    next.traits = [...next.traits.filter((t) => t !== '_reigned'), '_reigned'];
+  }
+  country.ruler = nextId;
   country.rulerSince = state.day;
-  country.heir = 0;
-  for (const seat of COUNCIL_SEATS) if (country.council[seat] === heir.id) country.council[seat] = 0;
-  country.courtiers = country.courtiers.filter((id) => id !== heir.id);
-  country.stability = Math.max(-3, country.stability - 1);
+  if (country.heir === nextId) country.heir = 0;
+  for (const seat of COUNCIL_SEATS) if (country.council[seat] === nextId) country.council[seat] = 0;
+  country.courtiers = country.courtiers.filter((id) => id !== nextId);
+  // A new reign: an heir carries over some of the old legitimacy; the elected start afresh.
+  country.legitimacy =
+    law === 'hereditary'
+      ? Math.round(Math.min(80, Math.max(30, 30 + country.legitimacy * 0.5)))
+      : law === 'elective'
+        ? 55
+        : law === 'republic'
+          ? 70
+          : 65;
+  if (law === 'republic') country.termEnds = state.day + years(8);
+  else country.stability = Math.max(-3, country.stability - 1);
   staffCourt(state, world, country, country.index !== state.player);
   log(
     state,
     [country.index],
     'death',
-    `${old ? old.name : 'The ruler'} of ${country.name} is dead. Long live ${heir.name}!`,
+    `${old ? old.name : 'The ruler'} of ${country.name} is dead. ${SUCCESSION_NEWS[law]} ${next.name}!`,
     { important: country.index === state.player, province: country.capital },
   );
 }

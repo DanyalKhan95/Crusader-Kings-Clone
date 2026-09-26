@@ -24,6 +24,8 @@ import {
 import type { Breakdown } from '../../sim/economy';
 import { income } from '../../sim/economy';
 import { atWar, hasTruce, lordOf, topLiege, tributariesOf, vassalsOf, warsOf } from '../../sim/queries';
+import { estateName } from '../../sim/politics';
+import { DEMAND_INFO } from '../../sim/revolts';
 import type { Country, PactKind } from '../../sim/types';
 import { scoreFor } from '../../sim/war';
 import { formatMen } from '../../render/units';
@@ -132,6 +134,20 @@ export function ForeignDiplomacy({ c }: { c: Country }) {
   const world = game.world;
   const player = state.player;
   if (!player || !c.alive || c.index === player) return null;
+  if (c.rebel) {
+    const realm = state.countries[c.rebel.realm];
+    return (
+      <section className="diplomacy">
+        <p className="alert">
+          <Icon name="tattered-banner" />
+          <span>
+            A revolt of the {estateName(realm, c.rebel.estate).toLowerCase()} against <CountryLink c={realm} />,
+            demanding {DEMAND_INFO[c.rebel.demand]}. When it ends, its land returns to the crown.
+          </span>
+        </p>
+      </section>
+    );
+  }
   const me = state.countries[player];
   const top = topLiege(state, c.index);
   const t = state.countries[top];

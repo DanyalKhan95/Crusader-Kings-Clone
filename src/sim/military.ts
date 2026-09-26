@@ -8,6 +8,7 @@ import { accessSet, mayEnter } from './diplomacy';
 import { buildingEffect } from './economy';
 import { log } from './log';
 import { findPath, stepDays } from './movement';
+import { taskSkill } from './politics';
 import { armySize, atWar, menIn } from './queries';
 import type { Army, Country, GameState, UnitType, Units } from './types';
 import type { SimWorld } from './world';
@@ -222,6 +223,7 @@ export function supplyLimit(state: GameState, world: SimWorld, id: number): numb
 /** Daily losses from hunger and disease, and morale recovery. */
 export function dailyUpkeep(state: GameState, world: SimWorld) {
   for (const army of state.armies) {
+    const owner = state.countries[army.owner];
     const size = armySize(army);
     if (size <= 0) continue;
     const r = world.region(army.location);
@@ -238,7 +240,10 @@ export function dailyUpkeep(state: GameState, world: SimWorld) {
       for (const t of Object.keys(army.units) as UnitType[])
         army.units[t] = Math.max(0, (army.units[t] ?? 0) * (1 - f));
     }
-    if (!inBattle(state, army)) army.morale = Math.min(1, army.morale + 0.03);
+    if (!inBattle(state, army)) {
+      const drill = owner ? taskSkill(state, owner, 'marshal', 'drill') : 0;
+      army.morale = Math.min(1, army.morale + 0.03 * (1 + drill * 0.05));
+    }
   }
   state.armies = state.armies.filter((a) => armySize(a) >= 10);
 }

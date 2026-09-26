@@ -26,7 +26,21 @@ import { canBuild, income, repayLoan, startBuilding, takeLoan } from './economy'
 import { log } from './log';
 import { disband, inBattle, mergeInto, orderMove, raiseArmy, recruit, split } from './military';
 import { armyById, lordOf, sideOf } from './queries';
-import type { BuildingType, CasusBelli, CouncilSeat, GameState, PactKind, PeaceTerms, UnitType } from './types';
+import { canChangeLaw, changeLaw, grantPrivilege, revokePrivilege, setTask } from './politics';
+import { factionWar, grantFreedom } from './revolts';
+import type {
+  BuildingType,
+  CasusBelli,
+  CouncilSeat,
+  EstateId,
+  GameState,
+  LawId,
+  Laws,
+  PactKind,
+  PeaceTerms,
+  TaskId,
+  UnitType,
+} from './types';
 import {
   callReason,
   canDeclare,
@@ -166,6 +180,11 @@ export function answerOffer(state: GameState, world: SimWorld, offerId: number, 
     log(state, [offer.from, offer.to], 'diplomacy', `${PACT_INFO[offer.pact].name} signed with ${from.name}.`);
     return ok();
   }
+  if (offer.kind === 'ultimatum') {
+    if (accept) grantFreedom(state, offer.to, offer.members);
+    else factionWar(state, offer.to, offer.members, offer.from);
+    return ok();
+  }
   const war = state.wars.find((w) => w.id === offer.war);
   if (!war) return no('The war is already over');
   if (offer.kind === 'call') {
@@ -255,4 +274,24 @@ export function releaseSubject(state: GameState, subject: number): Result {
   remember(state, subject, state.player, 'freed_us', 40);
   log(state, [state.player, subject], 'diplomacy', `${state.countries[subject].name} is free.`);
   return ok();
+}
+
+// ── Politics ──────────────────────────────────────────────────────
+
+export function setLaw(state: GameState, law: LawId, value: Laws[LawId]): Result {
+  const c = state.countries[state.player];
+  const check = canChangeLaw(state, c, law, value);
+  if (!check.ok) return no(check.reason);
+  changeLaw(state, c, law, value);
+  return ok('The new law is proclaimed.');
+}
+
+export function councilTask(state: GameState, seat: CouncilSeat, task: TaskId): Result {
+  return setTask(state, state.countries[state.player], seat, task) ? ok() : no('Not a task for that seat');
+}
+
+export function privilege(state: GameState, estate: EstateId, grant: boolean): Result {
+  const c = state.countries[state.player];
+  const done = grant ? grantPrivilege(state, c, estate) : revokePrivilege(state, c, estate);
+  return done ? ok() : no(grant ? 'They already have it' : 'They have none to lose');
 }

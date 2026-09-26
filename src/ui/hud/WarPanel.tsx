@@ -1,6 +1,7 @@
 import { toDate } from '../../sim/calendar';
 import * as cmd from '../../sim/commands';
 import { sideOf } from '../../sim/queries';
+import { DEMAND_INFO } from '../../sim/revolts';
 import { canLeaveWar, CB_INFO, warScore } from '../../sim/war';
 import { run, selectCountry } from '../actions';
 import { CoatOfArms } from '../CoatOfArms';
@@ -18,16 +19,14 @@ export function WarView({ id }: { id: number }) {
   const mySide = sideOf(war, state.player);
   const leader = war.attacker === state.player || war.defender === state.player;
   const shown = mySide === 'defender' ? -score.total : score.total;
-  const goal =
-    war.cb === 'claim'
-      ? `the province of ${game.world.region(war.goal).name}`
-      : war.cb === 'throne'
-        ? `the crown of ${state.countries[war.goal]?.short}`
-        : war.cb === 'independence'
-          ? `the freedom of ${state.countries[war.attacker]?.short}`
-          : war.cb === 'coalition'
-            ? `to humble ${state.countries[war.defender]?.short}`
-            : 'whatever can be taken';
+  const goalText: Record<string, string> = {
+    claim: `the province of ${game.world.region(war.goal)?.name}`,
+    throne: `the crown of ${state.countries[war.goal]?.short}`,
+    independence: `the freedom of ${state.countries[war.attacker]?.short}`,
+    coalition: `to humble ${state.countries[war.defender]?.short}`,
+    revolt: DEMAND_INFO[war.demand ?? 'privileges'],
+  };
+  const goal = goalText[war.cb] ?? 'whatever can be taken';
   const leave = mySide ? canLeaveWar(state, war, state.player) : null;
   const Side = ({ title, members, lead }: { title: string; members: number[]; lead: number }) => (
     <div className="war-side">

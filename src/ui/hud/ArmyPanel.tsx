@@ -11,7 +11,7 @@ import { flyToProvince, run, selectCountry } from '../actions';
 import { CoatOfArms } from '../CoatOfArms';
 import { useGame } from '../game';
 import { Icon } from '../Icon';
-import { Skills } from '../people';
+import { Portrait, Skills } from '../people';
 
 export function ArmyView({ id }: { id: number }) {
   const game = useGame();
@@ -75,12 +75,15 @@ export function ArmyView({ id }: { id: number }) {
       <section className="sp-section">
         <h3 className="section-title">Commander</h3>
         {commander && commander.died === undefined ? (
-          <div className="person">
-            <div className="person-head">
-              <span className="person-name">{commander.name}</span>
-              <span className="dim person-age">Martial {skill(commander, 'mar')}</span>
+          <div className="person with-portrait">
+            <Portrait c={commander} role={commander.id === owner.ruler ? 'ruler' : 'commander'} size={46} />
+            <div className="person-body">
+              <div className="person-head">
+                <span className="person-name">{commander.name}</span>
+                <span className="dim person-age">Martial {skill(commander, 'mar')}</span>
+              </div>
+              <Skills c={commander} highlight="mar" />
             </div>
-            <Skills c={commander} highlight="mar" />
           </div>
         ) : (
           <p className="dim small">No one leads this army.</p>

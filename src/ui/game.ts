@@ -12,7 +12,7 @@ import { createStore, type Store } from './store';
 
 export type Phase = 'menu' | 'choose' | 'playing';
 export type Panel = 'none' | 'province' | 'country' | 'army' | 'war';
-export type CountryTab = 'realm' | 'treasury' | 'military' | 'court' | 'diplomacy';
+export type CountryTab = 'realm' | 'treasury' | 'military' | 'court' | 'laws' | 'diplomacy';
 export type Modal = 'none' | 'credits' | 'menu' | 'declare' | 'peace' | 'offer' | 'fallen';
 
 export interface UIState {

@@ -1,8 +1,9 @@
 /** Builds the starting state of a scenario: realms, rulers and courts, treasuries and armies. */
 import type { CountryData, ScenarioData } from '../shared/dataTypes';
 import { makeCharacter, staffCourt } from './characters';
-import { parseDate } from './calendar';
+import { parseDate, years } from './calendar';
 import { income, maxManpower } from './economy';
+import { defaultEstates, defaultTasks, initialLaws } from './politics';
 import { hashString, randInt } from './rng';
 import { setup1066 } from './scripted';
 import type { Country, GameState, ProvinceState, Units } from './types';
@@ -40,7 +41,7 @@ function strip(u: Units): Units {
 export function createGameState(world: SimWorld, scenario: ScenarioData, opts: { seed?: number } = {}): GameState {
   const seed = opts.seed ?? hashString(scenario.id);
   const state: GameState = {
-    version: 2,
+    version: 3,
     scenario: scenario.id,
     seed,
     rng: seed,
@@ -54,6 +55,7 @@ export function createGameState(world: SimWorld, scenario: ScenarioData, opts: {
     truces: [],
     pacts: [],
     coalitions: [],
+    factions: [],
     offers: [],
     proposalCooldown: 0,
     messages: [],
@@ -90,6 +92,7 @@ export function createGameState(world: SimWorld, scenario: ScenarioData, opts: {
       lastBalance: 0,
       ruler: 0,
       rulerSince: 0,
+      termEnds: 0,
       heir: 0,
       council: { chancellor: 0, marshal: 0, steward: 0, spymaster: 0, chaplain: 0 },
       courtiers: [],
@@ -99,6 +102,11 @@ export function createGameState(world: SimWorld, scenario: ScenarioData, opts: {
       fabricating: null,
       integrating: null,
       memories: {},
+      laws: initialLaws(c.gov, c.tag, world.world.cultures[c.culture]?.group),
+      lawChanged: 0,
+      legitimacy: 60,
+      estates: defaultEstates(),
+      tasks: defaultTasks(),
       ai: { nextWarCheck: 0, nextBuild: 0, nextDiplo: 0 },
     };
     state.countries.push(country);
@@ -144,9 +152,11 @@ export function createGameState(world: SimWorld, scenario: ScenarioData, opts: {
       female: data.ruler?.female ?? false,
       talent: 2,
     });
-    ruler.traits.push('_reigned');
+    if (c.laws.succession !== 'republic') ruler.traits.push('_reigned');
     c.ruler = ruler.id;
     c.rulerSince = state.day - 5 * 365;
+    c.lawChanged = state.day - years(5);
+    if (c.laws.succession === 'republic') c.termEnds = state.day + years(1) + (c.index % 7) * 365;
     staffCourt(state, world, c, true);
   });
 

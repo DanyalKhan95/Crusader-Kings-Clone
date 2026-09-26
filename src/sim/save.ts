@@ -1,7 +1,8 @@
 /** Saving and loading: the state is plain JSON. Older saves are brought up to date on load. */
+import { defaultEstates, defaultTasks, initialLaws } from './politics';
 import type { CasusBelli, GameState } from './types';
 
-export const SAVE_VERSION = 2;
+export const SAVE_VERSION = 3;
 
 export interface SaveFile {
   format: 'crowns-and-centuries';
@@ -29,13 +30,27 @@ export function deserialize(json: string): GameState {
   s.scheduled ??= [];
   s.offers ??= [];
   if (file.version < 2) migrateToDiplomacy(s);
+  if (file.version < 3) migrateToPolitics(s);
   return s;
+}
+
+/** Version 2 (milestone 2) had no laws, estates or council tasks. */
+function migrateToPolitics(s: GameState) {
+  (s as unknown as { version: number }).version = 3;
+  s.factions ??= [];
+  for (const c of s.countries) {
+    if (!c) continue;
+    c.laws ??= initialLaws(c.gov, c.tag, undefined);
+    c.lawChanged ??= s.day - 5 * 365;
+    c.legitimacy ??= 60;
+    c.estates ??= defaultEstates();
+    c.tasks ??= defaultTasks();
+    c.termEnds ??= c.laws.succession === 'republic' ? s.day + 365 : 0;
+  }
 }
 
 /** Version 1 (milestone 1) had no diplomacy: border wars become claim wars, and treaties start empty. */
 function migrateToDiplomacy(s: GameState) {
-  const old = s as unknown as { version: number };
-  old.version = 2;
   s.pacts ??= [];
   s.coalitions ??= [];
   s.diploVersion ??= 1;

@@ -5,6 +5,8 @@
 import { readFileSync } from 'node:fs';
 import { toDate } from '../src/sim/calendar.ts';
 import { loyalty, memory } from '../src/sim/diplomacy.ts';
+import { estateInfluence, estateLoyalty } from '../src/sim/politics.ts';
+import { ESTATES } from '../src/sim/types.ts';
 import { armySize, lordOf, provincesOf, realmProvinces } from '../src/sim/queries.ts';
 import { createGameState } from '../src/sim/setup.ts';
 import { advanceDay } from '../src/sim/tick.ts';
@@ -35,6 +37,7 @@ let wars = 0,
   peaces = 0,
   lastWars = new Set<number>();
 const byCause = new Map<string, number>();
+let revolts = 0;
 const initialOwners = state.provinces.map((p) => p?.owner ?? 0);
 for (let d = 0; d < years * 365; d++) {
   advanceDay(state, world);
@@ -43,6 +46,7 @@ for (let d = 0; d < years * 365; d++) {
     if (!lastWars.has(w.id)) {
       wars++;
       byCause.set(w.cb, (byCause.get(w.cb) ?? 0) + 1);
+      if (state.countries[w.attacker]?.rebel) revolts++;
     }
   for (const id of lastWars) if (!ids.has(id)) peaces++;
   lastWars = ids;
@@ -90,6 +94,24 @@ if (eng) {
   );
 }
 console.log(`messages logged: ${state.messages.length}`);
+console.log(`revolts: ${revolts}; factions now: ${state.factions.length}`);
+for (const e of ESTATES) {
+  const vals = state.countries
+    .filter((c) => c?.alive && !c.rebel)
+    .map((c) => estateLoyalty(state, c!, e).total)
+    .sort((a, b) => a - b);
+  const powerful = state.countries.filter(
+    (c) =>
+      c?.alive && !c.rebel && estateInfluence(state, c!).share[e] >= 0.2 && estateLoyalty(state, c!, e).total < -35,
+  ).length;
+  console.log(
+    `  ${e.padEnd(9)} loyalty min ${Math.round(vals[0])}  median ${Math.round(vals[vals.length >> 1])}  max ${Math.round(vals[vals.length - 1])}  at risk ${powerful}`,
+  );
+}
+const laws = { taxation: [0, 0, 0, 0], conscription: [0, 0, 0, 0], crown: [0, 0, 0, 0] };
+for (const c of state.countries)
+  if (c?.alive && !c.rebel) for (const k of ['taxation', 'conscription', 'crown'] as const) laws[k][c.laws[k]]++;
+console.log(`laws: ${JSON.stringify(laws)}`);
 const subjects = state.countries
   .filter((c) => c?.alive && lordOf(state, c.index))
   .map((c) => ({ c, l: loyalty(state, world, c.index).total }))

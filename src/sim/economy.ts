@@ -10,9 +10,18 @@ import {
   MAX_LEVEL,
   type BuildingEffects,
 } from '../data/buildings';
+import {
+  CONSCRIPTION_LEVY,
+  CONSCRIPTION_TAX,
+  CROWN_TRIBUTE,
+  ESTATE_INFO,
+  GOVERNMENT_INFO,
+  TAXATION_TAX,
+} from '../data/politics';
 import { UNITS } from '../data/units';
-import { rulerSkill, seatSkill } from './characters';
+import { rulerSkill } from './characters';
 import { log } from './log';
+import { estateEffect, taskSkill } from './politics';
 import { armiesOf, atWar, menIn, provincesOf, tributariesOf, vassalsOf } from './queries';
 import { chance } from './rng';
 import type { BuildingType, Country, GameState, ProvinceState, UnitType } from './types';
@@ -50,22 +59,36 @@ export function buildingEffect(p: ProvinceState, key: keyof BuildingEffects): nu
 // ── Multipliers ───────────────────────────────────────────────────
 
 export function taxMultiplier(state: GameState, c: Country): Breakdown {
-  return breakdown([
+  const gov = GOVERNMENT_INFO[c.gov];
+  const parts: Part[] = [
     { label: 'Base', value: 1 },
+    { label: 'Taxation law', value: TAXATION_TAX[c.laws.taxation] - 1 },
+    { label: 'Conscription law', value: CONSCRIPTION_TAX[c.laws.conscription] },
+    { label: gov.name, value: gov.tax },
     { label: 'Ruler’s stewardship', value: rulerSkill(state, c, 'stw') * 0.01 },
-    { label: 'Steward', value: seatSkill(state, c, 'steward') * 0.015 },
+    { label: 'Steward', value: taskSkill(state, c, 'steward', 'taxes') * 0.015 },
+    { label: 'The burghers', value: estateEffect(state, c, 'burghers') * 0.1 },
     { label: 'Stability', value: c.stability * 0.05 },
     { label: 'War weariness', value: -c.warExhaustion * 0.01 },
-  ]);
+  ];
+  for (const e of ['nobles', 'clergy', 'burghers'] as const)
+    if (c.estates[e].privileged) parts.push({ label: ESTATE_INFO[e].privilege, value: -0.05 });
+  return breakdown(parts);
 }
 
 export function levyMultiplier(state: GameState, c: Country): Breakdown {
-  return breakdown([
+  const gov = GOVERNMENT_INFO[c.gov];
+  const parts: Part[] = [
     { label: 'Base', value: 1 },
+    { label: 'Conscription law', value: CONSCRIPTION_LEVY[c.laws.conscription] - 1 },
+    { label: gov.name, value: gov.levy },
     { label: 'Ruler’s martial skill', value: rulerSkill(state, c, 'mar') * 0.01 },
-    { label: 'Marshal', value: seatSkill(state, c, 'marshal') * 0.015 },
+    { label: 'Marshal', value: taskSkill(state, c, 'marshal', 'levies') * 0.015 },
+    { label: 'The nobility', value: estateEffect(state, c, 'nobles') * 0.1 },
     { label: 'Stability', value: c.stability * 0.03 },
-  ]);
+  ];
+  if (c.estates.commons.privileged) parts.push({ label: ESTATE_INFO.commons.privilege, value: -0.1 });
+  return breakdown(parts);
 }
 
 /** Base monthly tax of a province before the realm's multiplier. */
@@ -86,8 +109,7 @@ export function fortLevel(state: GameState, id: number): number {
 
 // ── Income and expenses ───────────────────────────────────────────
 
-/** Share of a vassal's taxes paid to its liege, and of a tributary's to its overlord. */
-export const VASSAL_TRIBUTE = 0.25;
+/** Share of a tributary's taxes paid to its overlord (a vassal's share depends on crown authority). */
 export const TRIBUTARY_TRIBUTE = 0.15;
 
 function ownTaxes(state: GameState, c: Country): number {
@@ -104,7 +126,7 @@ export function income(state: GameState, c: Country): Breakdown {
   let fromVassals = 0,
     fromTributaries = 0;
   for (const v of vassalsOf(state, c.index))
-    if (!atWar(state, v.index, c.index)) fromVassals += ownTaxes(state, v) * VASSAL_TRIBUTE;
+    if (!atWar(state, v.index, c.index)) fromVassals += ownTaxes(state, v) * CROWN_TRIBUTE[c.laws.crown];
   for (const t of tributariesOf(state, c.index))
     if (!atWar(state, t.index, c.index)) fromTributaries += ownTaxes(state, t) * TRIBUTARY_TRIBUTE;
   const paysLiege = c.liege && !atWar(state, c.index, c.liege);
@@ -113,7 +135,10 @@ export function income(state: GameState, c: Country): Breakdown {
     { label: `Taxes from ${provincesOf(state, c.index).length} provinces`, value: taxes },
     { label: 'Tribute from vassals', value: fromVassals },
     { label: 'Tribute from tributaries', value: fromTributaries },
-    { label: 'Tribute to your liege', value: paysLiege ? -taxes * VASSAL_TRIBUTE : 0 },
+    {
+      label: 'Tribute to your liege',
+      value: paysLiege ? -taxes * CROWN_TRIBUTE[state.countries[c.liege].laws.crown] : 0,
+    },
     { label: 'Tribute to your overlord', value: paysOverlord ? -taxes * TRIBUTARY_TRIBUTE : 0 },
   ]);
 }
@@ -236,8 +261,9 @@ export function monthlyEconomy(state: GameState, world: SimWorld) {
     c.gold += balance;
     c.lastBalance = balance;
     const max = maxManpower(state, c).total;
-    // Levies recover a tenth of the full pool a month.
-    if (c.manpower < max) c.manpower = Math.min(max, c.manpower + max * 0.1);
+    // Levies recover a tenth of the full pool a month, faster when the commons are content.
+    const recovery = 0.1 * (1 + 0.2 * estateEffect(state, c, 'commons'));
+    if (c.manpower < max) c.manpower = Math.min(max, c.manpower + max * recovery);
     else c.manpower = Math.max(max, c.manpower - max * 0.05);
     if (c.gold < 0) handleDebt(state, c);
   }
@@ -245,7 +271,12 @@ export function monthlyEconomy(state: GameState, world: SimWorld) {
   state.provinces.forEach((p, id) => {
     if (!p?.owner || p.dev >= MAX_DEV) return;
     const c = state.countries[p.owner];
-    const rate = 0.0025 * (1 + buildingEffect(p, 'growth')) * (c.stability >= 0 ? 1 : 0.5);
+    const rate =
+      0.0025 *
+      (1 + buildingEffect(p, 'growth')) *
+      (c.stability >= 0 ? 1 : 0.5) *
+      (1 + taskSkill(state, c, 'steward', 'develop') * 0.05) *
+      (1 + 0.1 * estateEffect(state, c, 'commons'));
     if (p.controller === p.owner && chance(state, rate)) {
       p.dev++;
       log(state, [p.owner], 'economy', `${world.region(id).name} has grown to development ${p.dev}.`, { province: id });

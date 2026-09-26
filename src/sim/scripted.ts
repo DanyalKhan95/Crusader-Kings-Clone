@@ -3,6 +3,7 @@
  * Godwinson, the northern earls stand against him at York, King Harold is in London, and Duke William
  * waits in Normandy for a south wind.
  */
+import { toDay } from './calendar';
 import { makeCharacter } from './characters';
 import { log } from './log';
 import { newArmy } from './military';
@@ -24,6 +25,9 @@ export function setup1066(state: GameState, world: SimWorld) {
 
   nrm.throneClaims.push(eng.index);
   nrw.throneClaims.push(eng.index);
+  // Harold was crowned in January, on the day Edward the Confessor was buried; his right is disputed.
+  eng.rulerSince = toDay(1066, 1, 6);
+  eng.legitimacy = 45;
 
   const york = provinceNamed(state, world, eng, 'York');
   const london = provinceNamed(state, world, eng, 'London');

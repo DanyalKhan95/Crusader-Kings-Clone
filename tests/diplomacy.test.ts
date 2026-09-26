@@ -286,6 +286,8 @@ describe('saves', () => {
     delete st.pacts;
     delete st.coalitions;
     delete st.diploVersion;
+    delete st.factions;
+    delete st.proposalCooldown;
     for (const c of st.countries) {
       if (!c) continue;
       delete c.overlord;
@@ -294,6 +296,12 @@ describe('saves', () => {
       delete c.memories;
       delete c.rulerSince;
       delete c.ai.nextDiplo;
+      delete c.laws;
+      delete c.lawChanged;
+      delete c.legitimacy;
+      delete c.estates;
+      delete c.tasks;
+      delete c.termEnds;
     }
     const hun = st.countries.find((c: { tag: string } | null) => c?.tag === 'HUN');
     const pol = st.countries.find((c: { tag: string } | null) => c?.tag === 'POL');
@@ -309,8 +317,9 @@ describe('saves', () => {
       defenders: [pol.index],
     });
     const loaded = deserialize(JSON.stringify(file));
-    expect(loaded.version).toBe(2);
+    expect(loaded.version).toBe(3);
     expect(loaded.pacts).toEqual([]);
+    expect(loaded.countries[hun.index].laws.taxation).toBe(1);
     const war = loaded.wars.find((w) => w.id === 9999)!;
     expect(war.cb).toBe('claim');
     expect(loaded.countries[hun.index].claims).toContain(goal);

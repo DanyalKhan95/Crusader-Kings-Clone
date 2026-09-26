@@ -4,7 +4,7 @@
  * month per country, spread over the days so the work is even.
  */
 import { monthlyAI, planArmies } from './ai';
-import { monthlyMortality, seatSkill, staffCourt } from './characters';
+import { monthlyMortality, staffCourt } from './characters';
 import { toDate } from './calendar';
 import { dailyBattles, startBattles } from './combat';
 import {
@@ -17,6 +17,8 @@ import {
 } from './diplomacy';
 import { dailyConstruction, monthlyEconomy } from './economy';
 import { dailyMarch, dailyUpkeep, expelArmies } from './military';
+import { estateEffect, monthlyElections, monthlyEstateMoods, monthlyLegitimacy, taskSkill } from './politics';
+import { monthlyFactions, monthlyRevolts, orphanRebels } from './revolts';
 import { chance } from './rng';
 import { runScheduled } from './scripted';
 import { dailySieges } from './siege';
@@ -42,10 +44,16 @@ export function advanceDay(state: GameState, world: SimWorld) {
     monthlyMortality(state, world);
     monthlyStability(state);
     monthlyMemories(state);
+    monthlyLegitimacy(state);
+    monthlyEstateMoods(state);
+    monthlyElections(state);
     monthlyIntegration(state);
     cleanupDiplomacy(state);
     monthlyCoalitions(state);
     pruneClaims(state);
+    orphanRebels(state);
+    monthlyRevolts(state, world);
+    monthlyFactions(state, world);
     expelArmies(state, world);
     if (date.m === 1)
       for (const c of state.countries) if (c?.alive) staffCourt(state, world, c, c.index !== state.player);
@@ -55,12 +63,19 @@ export function advanceDay(state: GameState, world: SimWorld) {
   planArmies(state, world);
 }
 
-/** Stability drifts back towards +1, faster with a learned chaplain. */
+/**
+ * Stability drifts back towards +1 (towards 0 under a ruler of doubtful right), faster with a
+ * chaplain preaching obedience and a loyal clergy.
+ */
 function monthlyStability(state: GameState) {
   for (const c of state.countries) {
     if (!c?.alive) continue;
-    const p = 0.04 + seatSkill(state, c, 'chaplain') * 0.004;
-    if (c.stability < 1 && chance(state, p)) c.stability++;
-    else if (c.stability > 1 && chance(state, p / 2)) c.stability--;
+    const p = Math.max(
+      0.01,
+      0.04 + taskSkill(state, c, 'chaplain', 'stability') * 0.004 + 0.01 * estateEffect(state, c, 'clergy'),
+    );
+    const target = c.legitimacy < 30 ? 0 : 1;
+    if (c.stability < target && chance(state, p)) c.stability++;
+    else if (c.stability > target && chance(state, p / 2)) c.stability--;
   }
 }

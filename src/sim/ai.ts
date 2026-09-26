@@ -31,6 +31,8 @@ import {
   threatsTo,
 } from './diplomacy';
 import { canBuild, fortLevel, income, repayLoan, startBuilding } from './economy';
+import { changeLaw, estateLoyalty, grantPrivilege, lawCooldown } from './politics';
+import { revoltRisk } from './revolts';
 import { log } from './log';
 import { availableMaa, disband, inBattle, mergeInto, orderMove, raiseArmy, recruit } from './military';
 import {
@@ -48,7 +50,17 @@ import {
   warsOf,
 } from './queries';
 import { chance, pick, random } from './rng';
-import type { Army, Country, GameState, PactKind, PeaceTerms, UnitType, War } from './types';
+import {
+  ESTATES,
+  type Army,
+  type Country,
+  type EstateId,
+  type GameState,
+  type PactKind,
+  type PeaceTerms,
+  type UnitType,
+  type War,
+} from './types';
 import {
   allowedTerms,
   borderProvinces,
@@ -93,6 +105,13 @@ export function offensiveStrength(state: GameState, c: number): number {
 
 export function monthlyAI(state: GameState, world: SimWorld, c: Country) {
   staffCourt(state, world, c, true);
+  if (c.rebel) {
+    // Rebels have one war and one purpose.
+    if (c.manpower > 300) raiseArmy(state, world, c);
+    for (const w of warsOf(state, c.index)) considerPeace(state, world, c, w);
+    return;
+  }
+  politicsAI(state, c);
   diplomacyAI(state, world, c);
   const wars = warsOf(state, c.index);
   if (wars.length) {
@@ -105,7 +124,46 @@ export function monthlyAI(state: GameState, world: SimWorld, c: Country) {
     planClaims(state, world, c);
     considerWar(state, world, c);
   }
-  if (lordOf(state, c.index)) considerIndependence(state, world, c);
+  if (c.overlord) considerIndependence(state, world, c);
+}
+
+// ── Politics ──────────────────────────────────────────────────────
+
+function politicsAI(state: GameState, c: Country) {
+  const fighting = warsOf(state, c.index).length > 0;
+  const loyal = (e: EstateId) => estateLoyalty(state, c, e).total;
+  // Council tasks suited to the moment.
+  c.tasks.chancellor = c.fabricating ? 'claims' : fighting ? 'negotiate' : 'embassies';
+  c.tasks.marshal = fighting ? 'drill' : 'levies';
+  c.tasks.steward = c.gold > Math.max(200, c.lastBalance * 12) ? 'develop' : 'taxes';
+  c.tasks.chaplain = c.legitimacy < 50 ? 'legitimacy' : 'stability';
+  const unrest = ESTATES.some((e) => revoltRisk(state, c, e) > 0) || state.factions.some((f) => f.realm === c.index);
+  c.tasks.spymaster = !fighting && unrest ? 'watch' : 'sieges';
+  // A privilege to calm an estate on the brink.
+  for (const e of ESTATES)
+    if (!c.estates[e].privileged && revoltRisk(state, c, e) > 0) {
+      grantPrivilege(state, c, e);
+      return;
+    }
+  if (lawCooldown(state, c) > 0 || !chance(state, 0.1)) return;
+  const commons = loyal('commons'),
+    burghers = loyal('burghers'),
+    nobles = loyal('nobles');
+  const poor = c.loans.length > 0 || c.lastBalance < 0;
+  const l = c.laws;
+  const vassals = vassalsOf(state, c.index);
+  // Rulers bear some grumbling before they give way; the greedy bear more.
+  const greed = aggression(state, c) > 0.2 ? 10 : 0;
+  if ((commons < -25 - greed || burghers < -25 - greed) && l.taxation > 1)
+    changeLaw(state, c, 'taxation', l.taxation - 1);
+  else if (poor && l.taxation < 2 && commons > -5 && burghers > -5) changeLaw(state, c, 'taxation', l.taxation + 1);
+  else if (c.loans.length >= 2 && l.taxation === 2 && commons > -15) changeLaw(state, c, 'taxation', 3);
+  else if (fighting && l.conscription < 2 && commons > 10) changeLaw(state, c, 'conscription', l.conscription + 1);
+  else if (!fighting && l.conscription > 1 && commons < 10) changeLaw(state, c, 'conscription', l.conscription - 1);
+  else if ((state.factions.some((f) => f.realm === c.index) || nobles < -20) && l.crown > 0)
+    changeLaw(state, c, 'crown', l.crown - 1);
+  else if (vassals.length && nobles > 20 && l.crown < 2 && c.legitimacy >= 60)
+    changeLaw(state, c, 'crown', l.crown + 1);
 }
 
 function economy(state: GameState, world: SimWorld, c: Country) {
@@ -159,6 +217,7 @@ function odds(state: GameState, attacker: number, target: number): number {
 /** Realms we may not attack: friends, protégés, those bound to us. */
 function offLimits(state: GameState, c: number, t: number): boolean {
   return (
+    !!state.countries[t]?.rebel ||
     hasPact(state, 'alliance', c, t) ||
     hasPact(state, 'nap', c, t) ||
     hasPact(state, 'guarantee', c, t) ||
@@ -410,6 +469,15 @@ function bestTerms(state: GameState, war: War, from: number, score: number): Pea
     terms.independence = true;
     return peaceCost(state, war, side, terms) <= score ? terms : null;
   }
+  if (allowed.demands) {
+    terms.demands = true;
+    return peaceCost(state, war, side, terms) <= score ? terms : null;
+  }
+  if (allowed.crush) {
+    terms.crush = true;
+    return peaceCost(state, war, side, terms) <= score ? terms : null;
+  }
+  if (!allowed.spoils) return null;
   // The war goal, then claims we hold, then other occupied land by value.
   const winner = state.countries[from];
   const candidates: number[] = [];

@@ -3,6 +3,7 @@ import type { IconName } from '../../assets/icons';
 import { toDate } from '../../sim/calendar';
 import { character } from '../../sim/characters';
 import { expenses, income, maxManpower, reserveMen } from '../../sim/economy';
+import { legitimacyTarget } from '../../sim/politics';
 import { armiesOf, menIn } from '../../sim/queries';
 import { flyToRealm, selectCountry, setSpeed, togglePause } from '../actions';
 import { CoatOfArms } from '../CoatOfArms';
@@ -120,6 +121,18 @@ function NationPlate() {
                 </li>
               </ul>
             </div>
+          }
+        />
+        <Resource
+          icon="crowned-heart"
+          label="Legitimacy"
+          value={String(Math.round(c.legitimacy))}
+          tone={c.legitimacy < 35 ? 'bad' : c.legitimacy >= 70 ? 'good' : undefined}
+          tip={
+            <>
+              <BreakdownList title="Legitimacy is heading for" b={legitimacyTarget(state, c)} digits={0} />
+              <p className="tip-text">The ruler’s right to rule. See the Laws tab.</p>
+            </>
           }
         />
         <Resource

@@ -114,3 +114,32 @@ test('makes friends: an alliance, the diplomacy map and a forged claim', async (
 
   expect(errors).toEqual([]);
 });
+
+test('rules at home: laws, estates and the council', async ({ page }) => {
+  const errors = watchErrors(page);
+  await page.goto('/');
+  await page.getByRole('button', { name: 'New Campaign' }).click({ timeout: 120_000 });
+  await page.getByRole('button', { name: 'Play as England' }).click();
+  await expect(page.locator('.date-long')).toHaveText('15th of September, 1066 AD');
+
+  // Raise taxes: the commons grumble, and the laws must now rest for five years.
+  await page.getByRole('tab', { name: 'Laws' }).click();
+  await expect(page.locator('.side-panel')).toContainText('Legitimacy');
+  const high = page.getByRole('radiogroup', { name: 'Taxation' }).getByRole('radio', { name: 'High' });
+  await high.click();
+  await expect(high).toHaveAttribute('aria-checked', 'true');
+  await expect(page.locator('.side-panel')).toContainText('Laws may change again on');
+  await expect(
+    page.getByRole('radiogroup', { name: 'Conscription' }).getByRole('radio', { name: 'Heavy' }),
+  ).toBeDisabled();
+  await expect(page.locator('.estate', { hasText: 'Commons' })).toBeVisible();
+
+  // Set the steward to developing the land.
+  await page.getByRole('tab', { name: 'Court' }).click();
+  await expect(page.locator('.portrait').first()).toBeVisible();
+  const develop = page.getByRole('radio', { name: 'Develop the land' });
+  await develop.click();
+  await expect(develop).toHaveAttribute('aria-checked', 'true');
+
+  expect(errors).toEqual([]);
+});
