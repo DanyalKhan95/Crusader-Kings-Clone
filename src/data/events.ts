@@ -759,4 +759,11 @@ export const COMETS: [number, number][] = [
 ];
 
 /** Names of the wars of the great powers of the modern age, in order. */
-export const WORLD_WAR_NAMES = ['the Great War', 'the Second World War', 'the Third World War', 'the Fourth World War'];
+export const WORLD_WAR_NAMES = [
+  'the Great War',
+  'the Second World War',
+  'the Third World War',
+  'the Fourth World War',
+  'the Fifth World War',
+  'the Sixth World War',
+];

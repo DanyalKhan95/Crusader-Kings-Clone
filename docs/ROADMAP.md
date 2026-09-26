@@ -244,11 +244,30 @@ whole world. The player controls a country rather than a dynasty.
       of being traced; the AI spies on its enemies and rivals.
 - [x] Saves from milestone 6 load.
 
-### M8: Endgame and polish
+### M8: Endgame and polish (done)
 
-- End-date score and a world ledger.
-- Balance passes using headless AI runs of 1,000 years.
-- Performance work, a tutorial and help, and optional audio.
+- [x] The standing of nations: each New Year every independent realm scores for its share of the
+      world's development, its tributaries, its learning against the best of its day, its armies,
+      its holy places and its good order. The Realm tab shows its place among the nations.
+- [x] The ledger of nations (`L`): the nations ranked by score, a chart of the great realms'
+      development and score decade by decade, and a chronicle of the thousand years (crusades and
+      jihads, plagues and heresies, new nations, fallen kingdoms, the first realm of each age and
+      of each new form of government, world wars).
+- [x] The end of the age on 1 January 2066: the final ranking, then the title screen, the ledger,
+      or playing on.
+- [x] Development can be bought with gold, and the AI puts its surplus into the land; rich
+      realms keep larger standing armies; gold hoarded beyond three years of income wastes away.
+- [x] Balance from 1,000-year runs: great holy wars end in 1700; heresies rise again only until
+      they settle or 1700; the Reformation spreads by people, fast among Germans, Scandinavians and
+      Balts and hardly at all in the south; crises between rival great powers from 1905 start the
+      wars that become world wars.
+- [x] Performance: the month's work is spread over its first week; the runner leaves heavy days
+      for a fresh frame; each realm's provinces are counted once a month; the long dead leave the
+      save (a save of 2065 shrinks from 14 MB to about 2 MB).
+- [x] How to play (`H`), a guided tour of the first campaign, and an autosave every four minutes.
+- [x] Sound made with Web Audio: effects for the news and for commands, and music in the manner
+      of each era (off until chosen), with volumes in the game menu.
+- [x] Saves from milestone 7 load.
 
 ## After every milestone
 
@@ -277,10 +296,11 @@ whole world. The player controls a country rather than a dynasty.
     harsh laws, long wars and weak rulers.
   - The Christian kingdoms of Iberia tend to be swallowed within a century, often by France.
   - A crusade usually comes within a few years of 1090 and wins; crusades and jihads then trade
-    Jerusalem every generation or so.
-  - Large rich realms (the Song, Srivijaya) hoard gold once everything is built. M5 gives them
-    universities and three more building levels; the M8 balance pass should check that they
-    spend it.
+    Jerusalem every generation or so, until the last is called before 1700.
+  - Gold: once everything is built and developed, rich realms keep larger armies, and whatever
+    lies beyond three years of income wastes away. By 2066 the richest treasuries hold 100,000 to
+    400,000 gold; before M8 the Song and Russia held millions. A few more realms end the age in
+    debt (up to nine with three loans or more).
   - Technology: in a 900-year AI run the great realms stay within a level or two of the
     historical dates, and the average realm is three to eight levels behind. Isolated realms stay
     medieval or renaissance into the modern era.
@@ -309,24 +329,34 @@ whole world. The player controls a country rather than a dynasty.
     decades.
   - The Horde rises between about 1203 and 1210 from the Mongols (or, if they are gone, another
     steppe people of the east), and troubles its neighbours for sixty years.
-  - The Reformation: Protestant and Reformed faiths rise in 1517 and 1536, and 25 to 40 Catholic
-    crowns face the choice. Until 1648 the new faiths gain ground; after it the map of faiths
-    holds. In a 1,000-year run 28 crowns are Catholic in 2066, 9 Reformed and 6 Anglican (238, 158
-    and 102 provinces); on another seed 37 crowns were Protestant and 19 Catholic by 1766. Which
-    reformed faith wins out varies from run to run.
+  - The Reformation: Protestant and Reformed faiths rise in 1517 and 1536 and spread by people:
+    fast among Germans, Scandinavians and Balts, hardly at all among Latin and Iberian peoples.
+    Until 1648 the new faiths gain ground; after it the map of faiths holds. From one world of
+    1500, three seeds gave 3 to 5 Protestant crowns by 1650, or an Anglican England with 76
+    provinces. In the latest 1,000-year run 5 Protestant and 5 Anglican crowns (72 and 105
+    provinces) reach 2066; without the spread by people, two earlier M8 runs lost the new faiths
+    altogether.
   - Nations: Russia is proclaimed in 1450, Great Britain in 1600 and Germany in the 1770s. Spain
     and Italy seldom are, because Iberia and Italy are usually swallowed by their neighbours
     first.
-  - World wars: one to three after 1900, a generation apart, each drawing in the allies of the
-    great powers (in one run the first began in 1930 and the third in 1988).
+  - World wars: from 1905, and forty years after the last, two rival great powers that share a
+    border may come to a crisis and war (about once in ten years), and their alliances decide
+    whether it becomes a world war. Before the crises one run had none; with crises every
+    generation, another had five (1908 to 2039).
+  - Score: the Song Empire has ranked first in every 1,000-year run so far, with 150,000 to
+    200,000 points, ahead of Russia, Byzantium, the Seljuks and Germany; France is usually sixth
+    or seventh. A score means most against the other realms of the same game.
   - Spies: AI realms keep about 150 networks, and some 25 realms are under sabotage at any time.
     Stolen secrets and the learned events bring laggards closer to the historical dates than in
     milestone 5: most realms are industrial by the 1860s and contemporary by 1966.
-- **Speed:** headless runs manage about 600 days a second in the first decades and 420 over 1,000
+- **Speed:** headless runs manage about 490 days a second in the first decades and 410 over 1,000
   years (a 900-year run in M5 averaged about 950): fleets, blockades, expeditions, colonies,
-  events and spies add work, and so do the larger realms of later centuries. Estate and faith figures are cached
-  per day, and routes an army or fleet cannot take are ruled out by cached reachability checks
-  before any search. Worth another look in M8.
+  events and spies add work, and so do the larger realms of later centuries. An ordinary day
+  takes about 1.5 ms (2 ms late in the game); the first of the month about 7 ms early and 11 ms
+  late, down from 19 ms before the month's work was spread over its first week. Estate and faith
+  figures are cached per day, and routes an army or fleet cannot take are ruled out by cached
+  reachability checks before any search. A web worker for the simulation would take the rest
+  off the main thread, but the UI reads the state directly.
 - **Size:** the stylesheet is 1.1 MB, most of it the inlined fonts of the six era themes.
 - **Fleets and armies at sea:** transports are a pool per realm rather than ships in fleets, so
   an escort protects armies only in the sea zone where it sails. Ships are built at once, like

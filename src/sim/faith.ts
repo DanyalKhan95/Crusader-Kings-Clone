@@ -4,7 +4,7 @@
  * conversion of pagan crowns. Great holy wars live in `holywars.ts`.
  */
 import { PLAGUE_PENALTY } from '../data/events';
-import { CONVERSION_SPEED, FAITH_HEADS, FAITH_PENALTY, HERESIES, MAJOR_FAMILIES } from '../data/faiths';
+import { CONVERSION_SPEED, FAITH_HEADS, FAITH_PENALTY, HERESIES, MAJOR_FAMILIES, type HeresyDef } from '../data/faiths';
 import { toDate } from './calendar';
 import { cultureGroup, cultureName, faithFamily, faithName, holySites } from './beliefs';
 import { rulerSkill, seatSkill } from './characters';
@@ -332,6 +332,12 @@ export function monthlyFaith(state: GameState, world: SimWorld) {
 /** A heresy that has died out rises again from its cradle only before this year (or before it settles). */
 export const LAST_PREACHERS = 1700;
 
+/** How readily a province's people take up a heresy their ruler does not follow. */
+function receptive(h: HeresyDef, culture: string | null | undefined): number {
+  if (!h.receptive) return 1;
+  return h.receptive[cultureGroup(culture)] ?? h.receptive.other ?? 1;
+}
+
 /**
  * Heresies appear in their cradle once their time has come and spread among the faithful, faster in
  * a realm that has taken them up; where the old faith rules they die out slowly, unless tolerated. A
@@ -386,7 +392,12 @@ export function monthlyHeresies(state: GameState, world: SimWorld) {
           const to = pick(state, next)[0];
           const lord = state.countries[state.provinces[to].owner];
           const odds =
-            lord?.religion === id ? 1 : settled ? 0 : 0.2 / vigour / (1 + modifierEffect(lord, 'heresyFade'));
+            lord?.religion === id
+              ? 1
+              : settled
+                ? 0
+                : ((0.2 / vigour) * receptive(h, state.provinces[to].culture)) /
+                  (1 + modifierEffect(lord, 'heresyFade'));
           if (chance(state, odds)) {
             state.provinces[to].religion = id;
             state.mapVersion++;

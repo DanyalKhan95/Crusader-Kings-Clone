@@ -11,28 +11,30 @@ every push).
 
 ## Status
 
-**Milestone 7: events, decisions and espionage.** The world happens to you, and you can work in
-the shadows. Every other realm is run by the AI.
+**Milestone 8: the endgame and polish.** All eight milestones of the plan are in: the game can be
+played from 1066 to 2066 and beyond. Every other realm is run by the AI.
 
-- **Events:** some 35 happenings across the eras, from harvests, fires and feuding lords to the
-  printing press, revolution, railways and the space race. Each offers a choice, with its costs
-  and effects shown before you pick; many leave a modifier on the realm for years.
-- **Pestilence:** the Black Death breaks out near Kaffa around 1346 and spreads along roads and
-  sea lanes. Stricken provinces pay and serve half, lose people and sometimes their ruler, and
-  fill again slowly. Later come the Great Plague, cholera and the Spanish Flu.
-- **The world moves:** Halley's comet, the Horde of Genghis Khan, the Reformation spreading from
-  Saxony and Geneva, the King's Great Matter, the Crash of 1929, and world wars when the alliance
-  blocs of the great powers are drawn into one war.
-- **Nations:** hold its heartland to proclaim Spain, Great Britain, Italy, Germany, Russia, or the
-  Roman Empire restored, with new arms and flags and claims on the rest of it.
-- **Espionage:** set your spymaster to build a network in a rival realm, then spend it to forge
-  claims, steal learning, sabotage, stir up revolts or murder a ruler, at the risk of being
-  traced.
+- **The standing of nations:** each New Year every independent realm scores for its share of the
+  world's people and land, its tributaries, its learning, its armies, its holy places and its good
+  order. On 1 January 2066 the age ends and the nations are ranked; you may play on.
+- **The ledger of nations** (`L`): the nations ranked, the great realms charted decade by decade,
+  and a chronicle of the thousand years, from Hastings to the last world war.
+- **Balance** from headless runs of 1,000 years: gold buys development, and hoards waste away;
+  the crusades end with the seventeenth century; the Reformation takes the German and Nordic north;
+  rivalries between great powers start the world wars.
+- **Performance:** the month's work spread over its first week, heavy days kept to a frame of
+  their own, and saves of the late game five times smaller.
+- **How to play** (`H`), a **guided tour** of your first campaign, an **autosave**, and **sound**:
+  effects for the news of the realm and music in the manner of each age, made on the fly with
+  Web Audio.
 
-![August 1343: the Black Death has broken out north of the Black Sea and reached Constantinople, a dark hatch lies over the stricken provinces, and the emperor must choose what to do](docs/images/plague-1343.webp)
+![The end of the age: on 1 January 2066 the nations of the world are ranked](docs/images/end-2066.webp)
 
 Earlier milestones:
 
+- **Events, decisions and espionage (M7):** some 35 events across the eras, each a choice with
+  its costs shown; the Black Death and later pestilences; Halley's comet, the Horde, the
+  Reformation, the Crash and world wars; nations to proclaim; spy networks and plots.
 - **Navies, exploration and colonisation (M6):** warships by era, sea battles and blockades;
   transports for armies at sea; terra incognita, expeditions and shared maps; colonies and
   colonial nations.
@@ -58,8 +60,9 @@ Earlier milestones:
 
 ![Byzantium in 1066 on the faith map: the Orthodox empire, its Miaphysite east, and the holy places it holds and has lost](docs/images/faith-1066.webp)
 
-Next up is **Milestone 8: the endgame and polish**. The full plan is in
-[docs/ROADMAP.md](docs/ROADMAP.md).
+![August 1343: the Black Death has broken out north of the Black Sea and reached Constantinople, a dark hatch lies over the stricken provinces, and the emperor must choose what to do](docs/images/plague-1343.webp)
+
+The plan, what each milestone brought and the known gaps are in [docs/ROADMAP.md](docs/ROADMAP.md).
 
 ## Controls
 
@@ -72,6 +75,8 @@ Next up is **Milestone 8: the endgame and polish**. The full plan is in
 | Sail              | select a fleet, then right-click a sea   |                             |
 | Pause, speed      | buttons at the top right                 | `Space`, `1`–`5`            |
 | Map modes         | buttons at the bottom right              | `Q` `W` `E` `R` `T` `Y` `U` |
+| Ledger of nations | scroll at the top right                  | `L`                         |
+| How to play       | game menu                                | `H`                         |
 | Close panel, menu |                                          | `Esc`                       |
 
 ## Running it

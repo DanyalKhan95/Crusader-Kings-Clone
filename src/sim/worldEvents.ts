@@ -159,21 +159,21 @@ export function greatPowers(state: GameState): number[] {
 }
 
 /** Years between the outbreaks of two world wars, at the least. */
-const WORLD_WAR_GAP = 30;
+const WORLD_WAR_GAP = 40;
 
 /** The first year a crisis between great powers may break out. */
 const CRISIS_FROM = 1905;
 
 /**
  * Once a generation has passed since the last world war, the rivalry of two great powers that
- * share a border may come to a crisis (about once in four years): the stronger marches, and their
+ * share a border may come to a crisis (about once in ten years): the stronger marches, and their
  * alliances decide whether the world follows. The player is never made to strike first.
  */
 function crisis(state: GameState, world: SimWorld, year: number) {
   if (year < CRISIS_FROM || state.wars.some((w) => w.world)) return;
   const last = state.happened.last_world_war;
   if (last !== undefined && state.day - last < WORLD_WAR_GAP * 365) return;
-  if (!chance(state, 1 / 48)) return;
+  if (!chance(state, 1 / 120)) return;
   const powers = greatPowers(state);
   let worst: { a: number; b: number; opinion: number } | null = null;
   for (const a of powers)

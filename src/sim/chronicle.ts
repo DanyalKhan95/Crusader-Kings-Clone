@@ -30,9 +30,12 @@ const TITLED = new RegExp(
   ].join('|'),
 );
 
-/** Whether a realm's name is plural: "the Jurchen Tribes", "the Papal States", but "the County of Flanders". */
+/**
+ * Whether a realm's name is plural: "the Jurchen Tribes", "the Papal States", a dynasty such as "the
+ * Paramaras of Malwa", but not "the County of Flanders".
+ */
 export function isPlural(name: string): boolean {
-  return name.endsWith('s') && !name.includes(' of ');
+  return /^\S+s of /.test(name) || (name.endsWith('s') && !name.includes(' of '));
 }
 
 /** The verb as the realm's name asks for it: agree('Jurchen Tribes', 'falls', 'fall') is "fall". */

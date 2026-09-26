@@ -15,7 +15,7 @@ export type Phase = 'menu' | 'choose' | 'playing';
 export type Panel = 'none' | 'province' | 'country' | 'army' | 'fleet' | 'war';
 export type CountryTab = 'realm' | 'treasury' | 'military' | 'court' | 'laws' | 'faith' | 'diplomacy';
 export type Modal =
-  'none' | 'credits' | 'menu' | 'declare' | 'peace' | 'offer' | 'fallen' | 'tech' | 'event' | 'ledger' | 'end';
+  'none' | 'credits' | 'menu' | 'declare' | 'peace' | 'offer' | 'fallen' | 'tech' | 'event' | 'ledger' | 'end' | 'help';
 
 export interface UIState {
   phase: Phase;
@@ -48,6 +48,8 @@ export interface UIState {
   toasts: number[];
   /** a short line of feedback, e.g. why an order failed */
   notice: string;
+  /** the step of the guided tour on screen (0 = none) */
+  tour: number;
 }
 
 export interface Game {
@@ -85,6 +87,7 @@ export function createGame(world: StaticWorld, scenario: ScenarioData, state: Ga
     orderMode: false,
     toasts: [],
     notice: '',
+    tour: 0,
   });
   return { world, scenario, state, bundle, ui, map: null, runner: null, tooltipEl: null, pointer: { x: 0, y: 0 } };
 }

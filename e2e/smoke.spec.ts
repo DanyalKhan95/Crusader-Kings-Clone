@@ -1,4 +1,11 @@
 import { expect, test, type Page } from '@playwright/test';
+import { toDay } from '../src/sim/calendar';
+
+// The guided tour greets the first campaign in a browser; every test but the tour's own has seen it.
+test.beforeEach(async ({ page }, info) => {
+  if (!info.title.includes('guided tour'))
+    await page.addInitScript(() => localStorage.setItem('crowns-and-centuries:tour', 'done'));
+});
 
 function watchErrors(page: Page): string[] {
   const errors: string[] = [];
@@ -349,5 +356,70 @@ test('meets events: a choice, a modifier, a nation to proclaim and spies abroad'
   await expect(page.getByRole('button', { name: 'Recall the agents' })).toBeVisible();
   await expect(page.locator('.plot', { hasText: 'Assassinate the ruler' }).getByRole('button')).toBeDisabled();
 
+  expect(errors).toEqual([]);
+});
+
+test('shows a new ruler around with the guided tour, and explains the game', async ({ page }) => {
+  const errors = watchErrors(page);
+  await page.goto('/');
+  await page.getByRole('button', { name: 'How to Play' }).click({ timeout: 120_000 });
+  const help = page.getByRole('dialog', { name: 'How to play' });
+  await expect(help).toContainText('There is no single way to win');
+  await help.getByRole('button', { name: 'Keys and mouse' }).click();
+  await expect(help.locator('.help-keys')).toContainText('Pause and resume');
+  await page.keyboard.press('Escape');
+  await expect(help).toHaveCount(0);
+
+  await page.getByRole('button', { name: 'New Campaign' }).click();
+  await page.getByRole('button', { name: 'Play as England' }).click();
+  const tour = page.getByRole('dialog', { name: 'A thousand years to rule' });
+  await expect(tour).toContainText('the Kingdom of England is yours to rule');
+  for (let i = 0; i < 7; i++) await page.getByRole('button', { name: 'Next' }).click();
+  await expect(page.getByRole('dialog', { name: 'The game menu' })).toBeVisible();
+  await page.getByRole('button', { name: 'Begin' }).click();
+  await expect(page.locator('.tour')).toHaveCount(0);
+  await expect(page.locator('.dateplate')).toHaveClass(/paused/);
+  expect(await page.evaluate(() => localStorage.getItem('crowns-and-centuries:tour'))).toBe('done');
+
+  // How to play is always a key away.
+  await page.keyboard.press('h');
+  await expect(page.getByRole('dialog', { name: 'How to play' })).toBeVisible();
+  await page.keyboard.press('Escape');
+  expect(errors).toEqual([]);
+});
+
+test('keeps the ledger of nations and ends the age in 2066', async ({ page }) => {
+  const errors = watchErrors(page);
+  await page.goto('/?debug');
+  await page.getByRole('button', { name: 'New Campaign' }).click({ timeout: 120_000 });
+  await page.locator('.bookmark', { hasText: 'France' }).click();
+  await page.getByRole('button', { name: 'Play as France' }).click();
+  await expect(page.locator('.nation-name')).toHaveText('Kingdom of France');
+
+  await page.keyboard.press('l');
+  const ledger = page.getByRole('dialog', { name: 'The ledger of nations' });
+  await expect(ledger.locator('.ledger-table tr.mine')).toContainText('Kingdom of France');
+  await ledger.getByRole('tab', { name: 'Chronicle' }).click();
+  await expect(ledger).toContainText('Harald Hardrada');
+  await page.keyboard.press('Escape');
+
+  // The last days of 2065: when the year turns, the age ends and the nations are ranked.
+  await page.evaluate(
+    (day) => {
+      (window as unknown as { game: { state: { day: number } } }).game.state.day = day;
+    },
+    toDay(2065, 12, 30),
+  );
+  await page.keyboard.press('5');
+  const end = page.getByRole('dialog', { name: 'The end of the age' });
+  await expect(end).toBeVisible({ timeout: 30_000 });
+  await expect(end).toContainText('The Kingdom of France stands');
+  await end.getByRole('button', { name: 'Play on' }).click();
+  await expect(page.locator('.modal')).toHaveCount(0);
+
+  // The game menu keeps the sound settings.
+  await page.getByRole('button', { name: 'Game menu' }).click();
+  await page.locator('.sound-row', { hasText: 'Music' }).locator('input[type=checkbox]').check();
+  expect(await page.evaluate(() => localStorage.getItem('crowns-and-centuries:audio'))).toContain('"music":true');
   expect(errors).toEqual([]);
 });

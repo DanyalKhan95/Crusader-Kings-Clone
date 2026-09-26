@@ -41,6 +41,12 @@ when a milestone lands.
     `SAVE_VERSION` in `save.ts` (and `version` in `types.ts`) when the shape changes.
   - `tick.ts` `advanceDay` is the only entry point for time. The player and the AI change the
     state through `commands.ts`, which validate and return `{ ok }` or `{ ok: false, reason }`.
+  - The month's business is spread over its first week so that no day carries it all: the
+    economy and wars on the 1st (and the courts and the score on 1 January), the court and
+    estates on the 2nd, treaties and unrest on the 3rd, faith and world events on the 4th,
+    research, maps and colonies on the 5th, events and spies on the 6th, growth on the 7th. Each
+    AI realm thinks on its own day (`aiDay`, never the 1st). Tests that need a monthly system
+    must advance to its day.
   - Messages for the player go through `log.ts`; `important` ones pause the game.
   - Economy numbers, opinions, loyalty and the AI's willingness come as `Breakdown`s, so the UI
     can show where each part comes from. The AI decides with the same breakdowns the player sees.
@@ -112,16 +118,35 @@ when a milestone lands.
   - Pestilence (`plague.ts`, plagues in `PLAGUES`): `ProvinceState.plague` is the day it ends
     there, `immune` the day a new outbreak may take hold, `lost` the development to regrow.
     `provinceFactor` halves a sick province (`PLAGUE_PENALTY`); the map shows `FLAG_PLAGUE`.
-  - World events (`worldEvents.ts`): comets, the Horde, the Crash and world wars. What has
-    happened is in `state.happened` (a day, or the count of world wars).
+  - World events (`worldEvents.ts`): comets, the Horde, the Crash, crises between rival great
+    powers (from 1905) and world wars. What has happened is in `state.happened` (a day, or the
+    count of world wars).
   - Decisions (`decisions.ts`, nations in `src/data/nations.ts`): proclaiming a nation changes
     the realm's tag. `countryByTag` still finds it by its old tag (`happened['tag:XXX']`); call
     `invalidateTags` after changing a tag. Curated arms and flags are keyed by tag.
   - Espionage (`espionage.ts`, plots in `src/data/espionage.ts`): `Country.spies` holds network
     strength by country index, grown while the spymaster's task is `network` and `spyTarget` is
     set. Plots go through `canPlot` and `carryOut`.
+  - The standing of nations (`score.ts`): each New Year every independent realm adds its
+    `standing` (a breakdown) to `Country.score`; `ranking` orders them. `state.ledger` keeps the
+    great realms every ten years as `[index, realm development, score]` rows, and on
+    1 January 2066 (`END_DAY`) the age ends: `happened.end`, then `happened.end_seen` once the
+    player plays on.
+  - The chronicle (`chronicle.ts`): a short history of great happenings, for the ledger. Write
+    realm names with `theName`/`TheName` and verbs with `agree` (plural names such as "the
+    Jurchen Tribes"), and use `firstTime` for things worth recording once.
+  - Dead characters leave `state.characters` a year after death (`pruneCharacters`, each New
+    Year), except the past rulers of living realms that regnal numbers count. Code that keeps a
+    character id elsewhere must expect `character()` to return nothing for it.
 - **`src/ui/runner.ts`:** runs the simulation from `MapController.onFrame` within a time budget,
   and bumps the store's `tick` at most every 120 ms. Panels with live numbers subscribe to `tick`.
+  It remembers what each day of the month costs and leaves a heavy day for a fresh frame, and
+  autosaves every four minutes of play.
+- **Help, tour and sound:** `dialogs/Help.tsx` is How to play (`H`); `tour.tsx` is the guided tour
+  of the first campaign in a browser (remembered in localStorage; the e2e tests mark it seen in
+  `beforeEach`), pointing at `data-tour` anchors and HUD classes. `audio.ts` makes all sound with
+  Web Audio (no files): effects from `actions.run` and the runner's news, and music by era; it
+  starts only after the first touch of the page.
 - **`?debug`** in the address exposes the running game as `window.game` (the e2e tests use it to
   open panels without clicking the map).
 - **`src/shared/`:** code shared by the game and `tools/`: map format, projection and data types.

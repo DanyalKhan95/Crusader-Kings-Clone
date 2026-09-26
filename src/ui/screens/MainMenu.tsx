@@ -31,14 +31,17 @@ export function MainMenu() {
           >
             <Icon name="crown" /> New Campaign
           </button>
+          <button className="btn" onClick={() => game.ui.set({ modal: 'help' })}>
+            <Icon name="scroll-quill" /> How to Play
+          </button>
           <button className="btn" onClick={() => game.ui.set({ modal: 'credits' })}>
             <Icon name="open-book" /> Sources &amp; Credits
           </button>
         </div>
         <p className="menu-note">
-          <strong>Early build.</strong> The whole world as it stood in September 1066: {realms} realms across three
-          thousand provinces. Rule one of them: fill the treasury, raise armies, besiege castles and make war and peace.
-          Diplomacy, faith and the ages to come arrive in later builds.
+          The whole world as it stood in September 1066: {realms} realms across three thousand provinces, and a thousand
+          years ahead of them. Rule one: fill the treasury, make war and peace, keep the estates loyal and the faith
+          strong, and carry your people through the ages to 2066.
         </p>
       </main>
     </div>

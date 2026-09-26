@@ -3097,3 +3097,176 @@ p.tight {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+/* ── How to play and the guided tour (milestone 8) ───────────── */
+
+.modal.help {
+  width: min(860px, 100%);
+}
+.help-layout {
+  display: grid;
+  grid-template-columns: 230px minmax(0, 1fr);
+  gap: 18px;
+  min-height: min(56vh, 460px);
+}
+.help-nav {
+  display: grid;
+  align-content: start;
+  gap: 2px;
+  padding-right: 14px;
+  border-right: 1px solid var(--line-soft);
+}
+.help-topic {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 6px 8px;
+  font: inherit;
+  font-size: 14.5px;
+  text-align: left;
+  color: var(--text-dim);
+  background: none;
+  border: 1px solid transparent;
+  border-radius: var(--radius);
+  cursor: pointer;
+}
+.help-topic .icon {
+  flex: none;
+  width: 18px;
+  height: 18px;
+}
+.help-topic:hover {
+  color: var(--gold-bright);
+}
+.help-topic.active {
+  color: var(--gold-bright);
+  background: var(--panel-inset);
+  border-color: var(--line-soft);
+}
+.help-body {
+  display: grid;
+  align-content: start;
+  gap: 12px;
+  max-width: 62ch;
+  line-height: 1.5;
+}
+.help-body .section-title {
+  margin: 0;
+}
+kbd {
+  display: inline-block;
+  min-width: 1.6em;
+  padding: 0 5px;
+  font-family: var(--font-caps);
+  font-size: 0.85em;
+  line-height: 1.5;
+  text-align: center;
+  color: var(--gold-bright);
+  background: var(--panel-inset);
+  border: 1px solid var(--line);
+  border-bottom-width: 2px;
+  border-radius: var(--radius);
+}
+.help-keys {
+  border-collapse: collapse;
+}
+.help-keys th,
+.help-keys td {
+  padding: 5px 10px 5px 0;
+  text-align: left;
+  vertical-align: top;
+}
+.help-keys th {
+  font-weight: normal;
+  white-space: nowrap;
+}
+@media (max-width: 640px) {
+  .help-layout {
+    grid-template-columns: 1fr;
+    min-height: 0;
+  }
+  .help-nav {
+    display: flex;
+    gap: 4px;
+    overflow-x: auto;
+    padding: 0 0 8px;
+    border-right: 0;
+    border-bottom: 1px solid var(--line-soft);
+  }
+  .help-topic {
+    flex: none;
+    white-space: nowrap;
+  }
+}
+
+.tour {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+}
+.tour-dim {
+  position: fixed;
+  inset: 0;
+  background: rgba(6, 4, 2, 0.6);
+}
+.tour-spot {
+  position: fixed;
+  border-radius: 8px;
+  box-shadow:
+    0 0 0 2px var(--gold),
+    0 0 0 9999px rgba(6, 4, 2, 0.6);
+  pointer-events: none;
+  transition:
+    left 0.25s ease,
+    top 0.25s ease,
+    width 0.25s ease,
+    height 0.25s ease;
+}
+.tour-card {
+  position: fixed;
+  width: min(360px, calc(100vw - 32px));
+  display: grid;
+  gap: 8px;
+  padding: 16px 18px 14px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.55);
+}
+.tour-card .sp-kicker {
+  margin: 0;
+}
+.tour-title {
+  margin: 0;
+  font-size: 26px;
+  line-height: 1.1;
+}
+.tour-text {
+  margin: 0;
+  line-height: 1.5;
+}
+.tour-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+}
+.tour-gap {
+  flex: 1;
+}
+@media (prefers-reduced-motion: reduce) {
+  .tour-spot {
+    transition: none;
+  }
+}
+
+.sound-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 130px;
+  align-items: center;
+  gap: 12px;
+}
+.sound-row input[type='range'] {
+  width: 100%;
+  accent-color: var(--gold);
+}
+.sound-row + .sound-row {
+  margin-top: 6px;
+}

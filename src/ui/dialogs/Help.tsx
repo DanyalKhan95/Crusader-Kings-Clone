@@ -1,0 +1,300 @@
+/** How to play: a short reference to every part of the game, by topic, with the keys. */
+import { useState, type ReactNode } from 'react';
+import type { IconName } from '../../assets/icons';
+import { MAP_MODES } from '../../game/mapModes';
+import { useGame } from '../game';
+import { Icon } from '../Icon';
+import { useStore } from '../store';
+import { startTour } from '../tour';
+import { Modal } from './Modal';
+
+interface Topic {
+  id: string;
+  title: string;
+  icon: IconName;
+  body: ReactNode;
+}
+
+const TOPICS: Topic[] = [
+  {
+    id: 'age',
+    title: 'Your realm and the age',
+    icon: 'crown',
+    body: (
+      <>
+        <p>
+          You rule a country, not a family: a kingdom, an empire, a duchy under a greater crown or a band of tribes,
+          from the autumn of 1066 to the first day of 2066. Rulers come and go; the realm is yours throughout.
+        </p>
+        <p>
+          There is no single way to win. Each New Year every independent realm scores for its standing in the world: its
+          share of the world’s people and land, its tributaries, its learning against the best of its day, its armies,
+          the holy places it holds and its good order. The ledger of nations keeps the tally, and on 1 January 2066 the
+          age ends with a final ranking. You may play on after it.
+        </p>
+        <p>
+          Every figure in the game can be explained: hover over a number to see the parts it is made of, and the reasons
+          a button is closed to you.
+        </p>
+      </>
+    ),
+  },
+  {
+    id: 'map',
+    title: 'Time and the map',
+    icon: 'hourglass',
+    body: (
+      <>
+        <p>
+          The game begins paused. Press <kbd>Space</kbd> or the play button to let the days run, and <kbd>1</kbd> to{' '}
+          <kbd>5</kbd> to set the speed. News that needs you, a war declared on you, an offer, an event, pauses the
+          game; lesser news appears at the side and fades.
+        </p>
+        <p>
+          Drag the map to move it and turn the wheel to zoom, or use the arrow keys and <kbd>+</kbd> <kbd>−</kbd>. Click
+          a province or a realm to see it in the panel. Map modes show the world by realm, country, terrain,
+          development, people, faith or, from your point of view, friends and foes.
+        </p>
+        <p>
+          Beyond the lands your people know lies unknown country, drawn as bare parchment. Armies and fleets reveal what
+          they reach, allies share their maps, and by the industrial age the whole world is known.
+        </p>
+      </>
+    ),
+  },
+  {
+    id: 'treasury',
+    title: 'Treasury and land',
+    icon: 'coins-pile',
+    body: (
+      <>
+        <p>
+          Provinces pay taxes and raise levies by their development. Provinces of another faith or people pay less,
+          plague halves them, and an enemy blockade takes a share of a coastal province’s taxes. Laws, the steward, the
+          estates, stability and technology raise or lower the whole.
+        </p>
+        <p>
+          Spend gold on buildings (farms, markets, barracks, castles, workshops, ports, universities), six levels each,
+          the later ones opened by technology; on developing a province directly; on men-at-arms and ships. When the
+          treasury runs dry the realm borrows, and when no one will lend it goes bankrupt. Gold hoarded beyond three
+          years of income slowly goes to waste.
+        </p>
+      </>
+    ),
+  },
+  {
+    id: 'war',
+    title: 'War and peace',
+    icon: 'crossed-swords',
+    body: (
+      <>
+        <p>
+          A war needs a cause: a claim on a province, forged by your chancellor or won by inheritance; a claim on a
+          crown; a holy war against unbelievers; a coalition; your freedom from a liege. A war of conquest needs no
+          cause but costs stability. Declare war from the other realm’s panel; your allies and vassals are called to
+          arms.
+        </p>
+        <p>
+          Levies come from your provinces and return home at peace; men-at-arms are paid soldiers kept in reserve. Raise
+          your army from the Army tab, select it on the map and <strong>right-click</strong> where it should march (on a
+          touch screen, tap March and then the place). Battles turn on numbers, the kinds of soldiers, the terrain,
+          rivers and the commander; castles must be besieged. Armies need supply, and starve in barren or crowded lands.
+        </p>
+        <p>
+          Victories, occupied land and the goal of the war fill the war score. Negotiate peace from the war’s panel:
+          provinces, gold or a white peace, as much as the score will bear. A truce follows. Conquest angers the
+          neighbours, and too much of it binds them in a coalition against you.
+        </p>
+      </>
+    ),
+  },
+  {
+    id: 'diplomacy',
+    title: 'Diplomacy and subjects',
+    icon: 'shaking-hands',
+    body: (
+      <>
+        <p>
+          Independent realms make alliances, non-aggression pacts, grants of military access and guarantees; each side
+          weighs an offer by its opinion of you, its fears and its interests, and says why. Gifts and old services warm
+          opinion; broken pacts and plots are remembered.
+        </p>
+        <p>
+          Vassals pay tribute and fight in your wars, and can be integrated in time; tributaries pay tribute but keep
+          their own crowns. Disloyal vassals form factions and may fight for their freedom.
+        </p>
+      </>
+    ),
+  },
+  {
+    id: 'crown',
+    title: 'Crown, laws and estates',
+    icon: 'stone-throne',
+    body: (
+      <>
+        <p>
+          Your government decides who rules next: heirs by blood, elections or terms of office. Laws set the succession,
+          the crown’s authority, taxation, conscription and religious policy. Stability, from −3 to +3, and the
+          legitimacy of the ruler colour everything else.
+        </p>
+        <p>
+          Four estates (the nobles, the clergy, the burghers and the commons) share the power of the realm. Loyal
+          estates help; disloyal ones hinder, and a powerful estate pushed too far rises in revolt. The council of five
+          (chancellor, marshal, steward, spymaster and chaplain) each takes a task on the Court tab.
+        </p>
+      </>
+    ),
+  },
+  {
+    id: 'faith',
+    title: 'Faith and culture',
+    icon: 'church',
+    body: (
+      <>
+        <p>
+          Provinces of another faith or people are less loyal and less useful. Your chaplain can send missionaries to
+          convert them and your steward can found schools to teach them your tongue; peoples long in your realm may be
+          accepted as your own. Heads of faith bless, and call great holy wars for the holy cities until the age of
+          crusades passes.
+        </p>
+        <p>
+          Heresies rise in their time, above all the Reformation of the sixteenth century, which spreads fastest in the
+          north. A crown may defend the old faith, embrace the new or let each follow his conscience.
+        </p>
+      </>
+    ),
+  },
+  {
+    id: 'ages',
+    title: 'Learning and the ages',
+    icon: 'graduate-cap',
+    body: (
+      <>
+        <p>
+          Scholars learn in three tracks, economy, military and society, from the medieval age through the renaissance,
+          the early modern, the industrial and the modern to the contemporary. Knowledge ahead of its time costs more;
+          what neighbours know comes cheaper.
+        </p>
+        <p>
+          Each age brings new soldiers and ships, higher buildings, new forms of government and new ideas: nations that
+          want a state of their own, and peoples who want a vote. The interface dresses in the colours of your age, and
+          coats of arms give way to flags.
+        </p>
+      </>
+    ),
+  },
+  {
+    id: 'sea',
+    title: 'Fleets, explorers and colonies',
+    icon: 'galleon',
+    body: (
+      <>
+        <p>
+          Warships fight for the seas and blockade enemy ports; transports carry armies over water, and an army at sea
+          near enemy warships may be caught. Ocean crossings need cartography.
+        </p>
+        <p>
+          Colonists settle empty land, and native land once your technology allows. Colonies on another continent become
+          colonial nations: loyal subjects at first, restless ones once they hear of popular sovereignty.
+        </p>
+      </>
+    ),
+  },
+  {
+    id: 'events',
+    title: 'Events, decisions and intrigue',
+    icon: 'scroll-quill',
+    body: (
+      <>
+        <p>
+          Events come to every realm: famines and good harvests, scholars and schisms, plagues, the Horde, the crash of
+          the stock exchanges and wars that draw in the whole world. Each asks you to choose, and shows what each choice
+          costs.
+        </p>
+        <p>
+          Decisions let a realm that holds the heartland of a nation proclaim it: Spain, Great Britain, Italy, Germany,
+          Russia, the Roman Empire restored. Your spymaster can build a network in a foreign court, then forge claims,
+          steal secrets, sabotage, incite revolts or strike at the ruler, at the risk of being traced.
+        </p>
+      </>
+    ),
+  },
+];
+
+const KEYS: [string, string][] = [
+  ['Space', 'Pause and resume'],
+  ['1 – 5', 'Game speed'],
+  [MAP_MODES.map((m) => m.key).join(' '), `Map modes: ${MAP_MODES.map((m) => m.label.toLowerCase()).join(', ')}`],
+  ['L', 'The ledger of nations'],
+  ['H', 'How to play'],
+  ['Esc', 'Close a window or panel; the game menu'],
+  ['Arrows, + −', 'Move and zoom the map'],
+  ['Right-click', 'March the selected army or sail the selected fleet'],
+  ['Double-click', 'Zoom in on a place'],
+];
+
+/** How to play, from the title screen or the game menu. */
+export function Help() {
+  const game = useGame();
+  const phase = useStore(game.ui, (s) => s.phase);
+  const [topic, setTopic] = useState(TOPICS[0].id);
+  const t = TOPICS.find((x) => x.id === topic);
+  return (
+    <Modal title="How to play" kicker="Crowns & Centuries" wide className="help">
+      <div className="help-layout">
+        <nav className="help-nav" aria-label="Topics">
+          {TOPICS.map((x) => (
+            <button
+              key={x.id}
+              className={`help-topic ${x.id === topic ? 'active' : ''}`}
+              aria-current={x.id === topic ? 'true' : undefined}
+              onClick={() => setTopic(x.id)}
+            >
+              <Icon name={x.icon} />
+              <span>{x.title}</span>
+            </button>
+          ))}
+          <button
+            className={`help-topic ${topic === 'keys' ? 'active' : ''}`}
+            aria-current={topic === 'keys' ? 'true' : undefined}
+            onClick={() => setTopic('keys')}
+          >
+            <Icon name="cog" />
+            <span>Keys and mouse</span>
+          </button>
+        </nav>
+        <article className="help-body">
+          {t ? (
+            <>
+              <h3 className="section-title">{t.title}</h3>
+              {t.body}
+            </>
+          ) : (
+            <>
+              <h3 className="section-title">Keys and mouse</h3>
+              <table className="help-keys">
+                <tbody>
+                  {KEYS.map(([k, v]) => (
+                    <tr key={k}>
+                      <th scope="row">
+                        <kbd>{k}</kbd>
+                      </th>
+                      <td>{v}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </>
+          )}
+        </article>
+      </div>
+      {phase === 'playing' && (
+        <div className="modal-actions">
+          <button className="btn" onClick={() => startTour(game)}>
+            <Icon name="compass" /> Show me around
+          </button>
+        </div>
+      )}
+    </Modal>
+  );
+}

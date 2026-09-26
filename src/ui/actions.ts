@@ -6,7 +6,9 @@ import { fleetById } from '../sim/naval';
 import { armyById, countryByTag, realmProvinces } from '../sim/queries';
 import { createGameState } from '../sim/setup';
 import type { GameState } from '../sim/types';
+import { sound } from './audio';
 import type { Game } from './game';
+import { tourSeen } from './tour';
 
 export function selectProvince(game: Game, id: number) {
   if (!id) {
@@ -52,9 +54,11 @@ export function notice(game: Game, text: string) {
 /** Runs a player command and refreshes the screen, or explains why it failed. */
 export function run(game: Game, result: cmd.Result): boolean {
   if (!result.ok) {
+    sound.play('deny');
     notice(game, result.reason);
     return false;
   }
+  sound.play('click');
   if (result.message) notice(game, result.message);
   game.runner?.sync();
   return true;
@@ -147,6 +151,8 @@ export function startAs(game: Game, index: number) {
   game.state.player = index;
   game.runner?.reset();
   game.ui.set({
+    // The first campaign in this browser begins with the guided tour.
+    tour: tourSeen() ? 0 : 1,
     phase: 'playing',
     player: index,
     selectedCountry: index,

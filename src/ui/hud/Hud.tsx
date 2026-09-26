@@ -9,6 +9,7 @@ import { TECH_TRACKS, TECHS, TRACK_INFO } from '../../data/techs';
 import { eraOf } from '../../sim/tech';
 import { armiesOf, menIn } from '../../sim/queries';
 import { flyToRealm, selectCountry, setSpeed, togglePause } from '../actions';
+import { sound } from '../audio';
 import { CoatOfArms } from '../CoatOfArms';
 import { formatDate } from '../format';
 import { useGame } from '../game';
@@ -174,13 +175,15 @@ function NationPlate() {
 function EraButton() {
   const game = useGame();
   const c = game.state.countries[game.state.player];
-  const era = ERAS[c ? eraOf(c) : 0];
+  const index = c ? eraOf(c) : 0;
+  const era = ERAS[index];
   useEffect(() => {
+    sound.setEra(index);
     document.documentElement.dataset.era = era.id;
     return () => {
       document.documentElement.dataset.era = 'medieval';
     };
-  }, [era.id]);
+  }, [era.id, index]);
   if (!c) return null;
   return (
     <WithTip
@@ -247,6 +250,7 @@ function TimeControls() {
       </div>
       <button
         className="btn ghost icon-btn"
+        data-tour="ledger"
         onClick={() => game.ui.set({ modal: 'ledger', speed: 0 })}
         aria-label="The ledger of nations (L)"
         title="The ledger of nations (L)"
@@ -255,6 +259,7 @@ function TimeControls() {
       </button>
       <button
         className="btn ghost icon-btn"
+        data-tour="menu"
         onClick={() => game.ui.set({ modal: 'menu', speed: 0 })}
         aria-label="Game menu"
         title="Game menu"

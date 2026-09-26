@@ -6,6 +6,7 @@ import { toDate } from '../sim/calendar';
 import { playerEvent } from '../sim/events';
 import { serialize } from '../sim/save';
 import { advanceDay } from '../sim/tick';
+import { sound } from './audio';
 import { formatDate } from './format';
 import { saveGame } from './storage';
 import type { Game } from './game';
@@ -63,6 +64,7 @@ export function attachRunner(game: Game) {
     // News
     const fresh = state.messages.filter((m) => m.id > lastMessage);
     if (fresh.length) {
+      sound.news(fresh, state.player);
       lastMessage = fresh[fresh.length - 1].id;
       patch.toasts = [...ui.toasts, ...fresh.map((m) => m.id)].slice(-MAX_TOASTS);
       if (fresh.some((m) => m.important)) patch.speed = 0;
@@ -73,9 +75,11 @@ export function attachRunner(game: Game) {
     } else if (playerEvent(state) && ui.modal === 'none') {
       patch.speed = 0;
       patch.modal = 'event';
+      sound.play('bell', 0.7);
     } else if (state.happened.end !== undefined && state.happened.end_seen === undefined && ui.modal === 'none') {
       patch.speed = 0;
       patch.modal = 'end';
+      sound.play('fanfare');
     }
     if (state.player !== ui.player) {
       patch.player = state.player;

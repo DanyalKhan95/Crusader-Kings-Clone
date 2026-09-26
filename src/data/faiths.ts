@@ -92,6 +92,11 @@ export interface HeresyDef {
   spawn?: boolean;
   /** from this year it spreads no more across borders, only within realms that follow it */
   settles?: number;
+  /**
+   * How readily each culture group takes it up where the crown does not, as a multiplier on its
+   * spread (`other` for the groups not named); without it, every people alike.
+   */
+  receptive?: Record<string, number>;
 }
 
 export const HERESIES: Record<string, HeresyDef> = {
@@ -162,6 +167,8 @@ export const HERESIES: Record<string, HeresyDef> = {
     vigour: 2,
     // The Peace of Westphalia: the ruler's faith is the realm's.
     settles: 1648,
+    // Luther's teaching took the German and Nordic north and the Baltic shore; the south held firm.
+    receptive: { germanic: 2.5, norse: 2.5, baltic: 2, finno_ugric: 1.2, west_slavic: 1, celtic: 0.8, other: 0.3 },
   },
   reformed: {
     name: 'Reformed',
@@ -172,6 +179,8 @@ export const HERESIES: Record<string, HeresyDef> = {
     cradle: [6.1, 46.2, 400],
     vigour: 1.5,
     settles: 1648,
+    // Calvin's Geneva reached the Swiss, the Dutch, the Scots, the Huguenots and the Magyars.
+    receptive: { germanic: 1.8, celtic: 2, frankish: 1, finno_ugric: 1.5, west_slavic: 1, norse: 0.8, other: 0.3 },
   },
   anglican: {
     name: 'Anglican',
@@ -182,6 +191,8 @@ export const HERESIES: Record<string, HeresyDef> = {
     cradle: [-0.2, 51.5, 300],
     spawn: false,
     settles: 1648,
+    // The Church of England kept to the English and the lands their crown held longest.
+    receptive: { germanic: 1, celtic: 0.6, other: 0.25 },
   },
 };
 

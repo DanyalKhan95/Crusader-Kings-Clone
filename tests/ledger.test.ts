@@ -17,6 +17,7 @@ import {
 } from '../src/sim/economy';
 import { monthlyHeresies } from '../src/sim/faith';
 import { canCallHolyWar, holyWarLeader } from '../src/sim/holywars';
+import { greatPowers, monthlyWorldEvents } from '../src/sim/worldEvents';
 import { countryByTag, provincesOf } from '../src/sim/queries';
 import { deserialize, serialize } from '../src/sim/save';
 import { END_DAY, ranking, rankOf, standing, yearlyScore } from '../src/sim/score';
@@ -111,6 +112,8 @@ describe('the chronicle', () => {
     expect(theName('Sámi Siidas')).toBe('the Sámi Siidas');
     expect(agree('Jurchen Tribes', 'falls', 'fall')).toBe('fall');
     expect(agree('County of Flanders', 'falls', 'fall')).toBe('falls');
+    expect(agree('Paramaras of Malwa', 'falls', 'fall')).toBe('fall');
+    expect(agree('Emirate of Tiflis', 'falls', 'fall')).toBe('falls');
   });
 
   it('remembers each heresy the first time it is preached, and lets none rise again after 1700', () => {
@@ -154,6 +157,38 @@ describe('the end of the crusades', () => {
       ok: false,
       reason: 'The age of the great holy wars has passed',
     });
+  });
+});
+
+describe('crises between great powers', () => {
+  it('set two rival neighbours at war in the modern age, the player never striking first', () => {
+    const s = fresh(9);
+    s.player = tag(s, 'FRA').index;
+    for (const c of s.countries) if (c) c.tech = { economy: 26, military: 26, society: 26 };
+    s.day = toDay(1950, 1, 1);
+    const powers = greatPowers(s);
+    expect(powers.length).toBeGreaterThanOrEqual(3);
+    const crisis = () =>
+      s.wars.find((w) => w.cb === 'conquest' && powers.includes(w.attacker) && powers.includes(w.defender));
+    for (let m = 0; m < 1200 && !crisis(); m++) {
+      monthlyWorldEvents(s, world);
+      s.day += 30;
+    }
+    expect(crisis()).toBeDefined();
+    expect(crisis()!.attacker).not.toBe(s.player);
+    expect(s.messages.some((m) => m.text.startsWith('A crisis between'))).toBe(true);
+  });
+
+  it('do not break out before 1905', () => {
+    const s = fresh(9);
+    for (const c of s.countries) if (c) c.tech = { economy: 26, military: 26, society: 26 };
+    s.day = toDay(1850, 1, 1);
+    const wars = s.wars.length;
+    for (let m = 0; m < 400; m++) {
+      monthlyWorldEvents(s, world);
+      s.day += 1;
+    }
+    expect(s.wars.length).toBe(wars);
   });
 });
 
