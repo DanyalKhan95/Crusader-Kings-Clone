@@ -1,6 +1,6 @@
 /**
  * Final step: write the game's data files into public/data.
- *   map.ccmp            gzipped CCMP geometry (arcs, polygons, rivers)
+ *   map.json            gzipped CCMP geometry (arcs, polygons, rivers), base64 in a JSON wrapper
  *   provinces.json      static region attributes
  *   world.json          cultures, religions, map size, terrain tiles
  *   scenario-1066.json  countries and province owners/cultures/religions
@@ -8,7 +8,7 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { gzipSync } from 'node:zlib';
-import { encodeMap, type MapGeometry } from '../../../src/shared/mapFormat.ts';
+import { encodeMap, MAP_MAGIC, type MapFile, type MapGeometry } from '../../../src/shared/mapFormat.ts';
 import type { RegionData, ScenarioData, WorldData } from '../../../src/shared/dataTypes.ts';
 import { CULTURES, RELIGIONS } from '../curated/cultures.ts';
 import { OUT_DIR } from '../lib/paths.ts';
@@ -94,8 +94,17 @@ export async function buildExport(): Promise<void> {
   };
   const raw = encodeMap(geometry);
   const gz = gzipSync(raw, { level: 9 });
-  writeFileSync(join(OUT_DIR, 'map.ccmp'), gz);
-  console.log(`  map.ccmp ${(raw.length / 1e6).toFixed(2)} MB raw, ${(gz.length / 1e6).toFixed(2)} MB gzipped`);
+  const file: MapFile = {
+    format: MAP_MAGIC,
+    compression: 'gzip',
+    encoding: 'base64',
+    bytes: gz.length,
+    data: Buffer.from(gz).toString('base64'),
+  };
+  writeFileSync(join(OUT_DIR, 'map.json'), JSON.stringify(file));
+  console.log(
+    `  map.json: ${(raw.length / 1e6).toFixed(2)} MB of geometry, ${(gz.length / 1e6).toFixed(2)} MB gzipped`,
+  );
 
   const regions: RegionData[] = attrs.map((a) => {
     const r: RegionData = {

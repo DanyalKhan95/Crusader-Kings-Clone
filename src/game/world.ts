@@ -96,7 +96,7 @@ export async function loadWorld(
     fetchJSON<ScenarioData>(`${base}/scenario-1066.json`),
   ]);
   onProgress({ stage: 'Surveying the realms', fraction: 0.15 });
-  const bytes = await fetchBytes(`${base}/map.ccmp`, (f) =>
+  const bytes = await fetchBytes(`${base}/map.json`, (f) =>
     onProgress({ stage: 'Surveying the realms', fraction: 0.15 + f * 0.35 }),
   );
   onProgress({ stage: 'Drawing the borders', fraction: 0.55 });

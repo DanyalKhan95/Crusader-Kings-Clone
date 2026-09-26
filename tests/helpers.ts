@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import { gunzipSync } from 'node:zlib';
 import { createGameState, type StaticWorld } from '../src/game/world';
 import type { RegionData, ScenarioData, WorldData } from '../src/shared/dataTypes';
-import { decodeMap, type MapGeometry } from '../src/shared/mapFormat';
+import { decodeMap, mapFilePayload, type MapGeometry } from '../src/shared/mapFormat';
 
 const dataPath = (file: string) => new URL(`../public/data/${file}`, import.meta.url);
 
@@ -22,8 +22,9 @@ export function loadData() {
   return cache;
 }
 
+/** The raw CCMP bytes of the shipped map. */
 export function mapBytes(): Uint8Array {
-  return gunzipSync(readFileSync(dataPath('map.ccmp')));
+  return gunzipSync(mapFilePayload(readFileSync(dataPath('map.json'), 'utf8')));
 }
 
 let geometry: MapGeometry | null = null;

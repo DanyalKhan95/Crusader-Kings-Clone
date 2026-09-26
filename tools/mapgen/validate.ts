@@ -2,7 +2,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { gunzipSync } from 'node:zlib';
-import { decodeMap } from '../../src/shared/mapFormat.ts';
+import { decodeMap, mapFilePayload } from '../../src/shared/mapFormat.ts';
 import type { RegionData, ScenarioData, WorldData } from '../../src/shared/dataTypes.ts';
 import { checkData } from './lib/checks.ts';
 import { OUT_DIR } from './lib/paths.ts';
@@ -14,11 +14,11 @@ const scenario = read<ScenarioData>('scenario-1066.json');
 
 const result = checkData(world, regions, scenario);
 
-const map = decodeMap(gunzipSync(readFileSync(join(OUT_DIR, 'map.ccmp'))));
+const map = decodeMap(gunzipSync(mapFilePayload(readFileSync(join(OUT_DIR, 'map.json'), 'utf8'))));
 if (map.regionCount !== regions.length)
-  result.errors.push(`map.ccmp has ${map.regionCount} regions, provinces.json has ${regions.length}`);
+  result.errors.push(`map.json has ${map.regionCount} regions, provinces.json has ${regions.length}`);
 for (let r = 1; r <= map.regionCount; r++)
-  if (!map.polygons[r]?.length) result.errors.push(`region ${r} has no polygon in map.ccmp`);
+  if (!map.polygons[r]?.length) result.errors.push(`region ${r} has no polygon in map.json`);
 
 const { cols, rows } = world.terrainTiles;
 const missing: string[] = [];

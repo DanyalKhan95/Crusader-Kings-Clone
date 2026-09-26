@@ -10,6 +10,30 @@
  *   riverCount × (width, n, points…)
  */
 export const MAP_MAGIC = 'CCMP';
+
+/**
+ * map.json wraps the gzipped CCMP bytes as base64, so hosts that refuse binary files (claude.ai
+ * artifacts) serve the map too. Servers compress it on the wire, so it costs little over raw bytes.
+ */
+export interface MapFile {
+  format: typeof MAP_MAGIC;
+  compression: 'gzip';
+  encoding: 'base64';
+  /** length of the gzipped payload */
+  bytes: number;
+  data: string;
+}
+
+/** The gzipped CCMP bytes inside a map.json document. */
+export function mapFilePayload(json: string): Uint8Array<ArrayBuffer> {
+  const f = JSON.parse(json) as Partial<MapFile>;
+  if (f.format !== MAP_MAGIC || f.encoding !== 'base64' || typeof f.data !== 'string')
+    throw new Error('Not a map file');
+  const bin = atob(f.data);
+  const out = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+  return out;
+}
 export const MAP_VERSION = 1;
 const Q = 4;
 
