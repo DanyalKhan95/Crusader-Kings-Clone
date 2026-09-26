@@ -5,6 +5,9 @@ world. You rule a **country**, not a dynasty: pick any of the 188 realms of 15 S
 (in later milestones) guide it through a thousand years of war, diplomacy, faith and invention until
 1 January 2066.
 
+**Play in the browser:** https://danyalkhan95.github.io/Crusader-Kings-Clone/ (GitHub Pages, rebuilt on
+every push).
+
 ![Choosing a realm in 1066](docs/images/choose-realm.webp)
 
 ## Status
