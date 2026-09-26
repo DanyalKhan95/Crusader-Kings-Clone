@@ -41,6 +41,8 @@ export class MapRenderer {
   readonly countryData = new Uint8Array(TEX * TEX * 4);
   private dirty = { fill: true, info: true, country: true };
   drawWaterFills = false;
+  /** 0 … 1: how far fills lean towards opaque when zoomed in, for map modes whose colours carry meaning */
+  fillBoost = 0;
   frame = 0;
 
   constructor(
@@ -168,7 +170,8 @@ export class MapRenderer {
     gl.useProgram(fp.prog);
     this.bindCommon(fp, cam);
     gl.uniform1f(fp.u.u_time, timeSec);
-    gl.uniform1f(fp.u.u_alpha, 0.4 + 0.53 * farness);
+    const alpha = 0.4 + 0.53 * farness;
+    gl.uniform1f(fp.u.u_alpha, alpha + (0.93 - alpha) * this.fillBoost);
     this.bindTextures(fp);
     const fill = this.fills[lod];
     gl.bindVertexArray(fill.mesh.vao);

@@ -1,5 +1,5 @@
 import type { IconName } from '../../assets/icons';
-import { MAP_MODES, TERRAIN_INFO, type MapMode } from '../../game/mapModes';
+import { CLAIM_COLOR, MAP_MODES, RELATION_INFO, TERRAIN_INFO, type MapMode, type Relation } from '../../game/mapModes';
 import { setMapMode } from '../actions';
 import { useGame } from '../game';
 import { Icon } from '../Icon';
@@ -12,6 +12,7 @@ const MODE_ICONS: Record<MapMode, IconName> = {
   development: 'village',
   culture: 'meeple-group',
   religion: 'prayer',
+  diplomacy: 'shaking-hands',
 };
 
 export function MapModeBar() {
@@ -57,6 +58,36 @@ function Legend({ mode }: { mode: MapMode }) {
               {t.name}
             </li>
           ))}
+        </ul>
+      </div>
+    );
+  }
+  if (mode === 'diplomacy') {
+    const shown: Relation[] = [
+      'self',
+      'ally',
+      'war',
+      'coalition',
+      'protected',
+      'nap',
+      'access',
+      'subject',
+      'lord',
+      'truce',
+    ];
+    return (
+      <div className="panel legend" aria-label="Diplomacy legend">
+        <ul className="legend-list">
+          {shown.map((r) => (
+            <li key={r}>
+              <span className="swatch" style={{ background: RELATION_INFO[r].color }} aria-hidden="true" />
+              {RELATION_INFO[r].name}
+            </li>
+          ))}
+          <li>
+            <span className="swatch" style={{ background: CLAIM_COLOR }} aria-hidden="true" />
+            Your claims
+          </li>
         </ul>
       </div>
     );

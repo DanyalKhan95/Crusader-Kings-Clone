@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useRef } from 'react';
-import { TERRAIN_INFO } from '../../game/mapModes';
+import { relationTo, RELATION_INFO, TERRAIN_INFO } from '../../game/mapModes';
+import { opinionOf } from '../../sim/diplomacy';
 import { topLiege } from '../../sim/queries';
 import { CoatOfArms } from '../CoatOfArms';
 import { useGame } from '../game';
@@ -12,6 +13,8 @@ export function HoverTooltip() {
   const game = useGame();
   const hovered = useStore(game.ui, (s) => s.hovered);
   const phase = useStore(game.ui, (s) => s.phase);
+  const mode = useStore(game.ui, (s) => s.mapMode);
+  const player = useStore(game.ui, (s) => s.player);
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -46,6 +49,18 @@ export function HoverTooltip() {
                 <span>{owner.name}</span>
               </div>
               {top && top !== owner && <div className="tt-line dim">Vassal of {top.name}</div>}
+              {mode === 'diplomacy' && player > 0 && owner.index !== player && (
+                <div className="tt-line">
+                  {(() => {
+                    const rel = relationTo(game.state, player, owner.index);
+                    return rel === 'neutral' ? 'No treaties with you' : RELATION_INFO[rel].name;
+                  })()}{' '}
+                  · opinion of you {Math.round(opinionOf(game.state, game.world, owner.index, player))}
+                </div>
+              )}
+              {mode === 'diplomacy' && player > 0 && game.state.countries[player]?.claims.includes(r.id) && (
+                <div className="tt-line">You hold a claim here</div>
+              )}
             </>
           ) : (
             <div className="tt-line dim">

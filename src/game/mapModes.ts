@@ -1,12 +1,13 @@
 /** Map modes: how each region is coloured, and which data the renderer gets per region. */
 import type { Terrain } from '../shared/dataTypes';
 import { FLAG_IMPASSABLE, FLAG_LAKE, FLAG_WATER, type MapRenderer } from '../render/mapRenderer';
-import { topLiege } from '../sim/queries';
+import { coalitionAgainst, hasPact } from '../sim/diplomacy';
+import { atWar, hasTruce, isInRealm, topLiege } from '../sim/queries';
 import { hexToRgb } from '../sim/setup';
 import type { GameState } from '../sim/types';
 import type { StaticWorld } from './world';
 
-export type MapMode = 'realms' | 'countries' | 'terrain' | 'development' | 'culture' | 'religion';
+export type MapMode = 'realms' | 'countries' | 'terrain' | 'development' | 'culture' | 'religion' | 'diplomacy';
 
 export const MAP_MODES: { id: MapMode; label: string; key: string; hint: string }[] = [
   { id: 'realms', label: 'Realms', key: 'Q', hint: 'Countries with their vassals, in the colour of their liege' },
@@ -15,7 +16,62 @@ export const MAP_MODES: { id: MapMode; label: string; key: string; hint: string 
   { id: 'development', label: 'Development', key: 'R', hint: 'How settled and prosperous each province is' },
   { id: 'culture', label: 'Culture', key: 'T', hint: 'The peoples who live in each province' },
   { id: 'religion', label: 'Faith', key: 'Y', hint: 'The faith practised in each province' },
+  {
+    id: 'diplomacy',
+    label: 'Diplomacy',
+    key: 'U',
+    hint: 'Friends, foes, subjects and claims, as your realm sees them',
+  },
 ];
+
+/** How one realm stands towards another, for the diplomacy map. */
+export type Relation =
+  | 'self'
+  | 'realm'
+  | 'subject'
+  | 'lord'
+  | 'war'
+  | 'ally'
+  | 'protected'
+  | 'coalition'
+  | 'nap'
+  | 'access'
+  | 'truce'
+  | 'neutral';
+
+export const RELATION_INFO: Record<Relation, { name: string; color: string }> = {
+  self: { name: 'Your realm', color: '#f2c14e' },
+  realm: { name: 'Your liege’s realm', color: '#d9a55a' },
+  subject: { name: 'Your tributaries', color: '#f4e39a' },
+  lord: { name: 'Your overlord', color: '#b58cf2' },
+  war: { name: 'At war with you', color: '#ec3b27' },
+  ally: { name: 'Allies', color: '#3f8cff' },
+  protected: { name: 'Guarantees', color: '#8cc8ff' },
+  coalition: { name: 'In a coalition against you', color: '#ff8a1c' },
+  nap: { name: 'Non-aggression pact', color: '#2fc4ae' },
+  access: { name: 'Military access', color: '#9ae0a4' },
+  truce: { name: 'Truce', color: '#a9a49a' },
+  neutral: { name: 'Others', color: '#cbbfa4' },
+};
+export const CLAIM_COLOR = '#d25ee0';
+
+export function relationTo(state: GameState, viewer: number, other: number): Relation {
+  if (!viewer || !other) return 'neutral';
+  if (isInRealm(state, other, viewer)) return 'self';
+  const me = topLiege(state, viewer),
+    them = topLiege(state, other);
+  if (me === them) return 'realm';
+  if (atWar(state, viewer, other)) return 'war';
+  if (state.countries[them]?.overlord === me) return 'subject';
+  if (state.countries[me]?.overlord === them) return 'lord';
+  if (hasPact(state, 'alliance', me, them)) return 'ally';
+  if (hasPact(state, 'guarantee', me, them) || hasPact(state, 'guarantee', them, me)) return 'protected';
+  if (coalitionAgainst(state, me)?.members.includes(them)) return 'coalition';
+  if (hasPact(state, 'nap', me, them)) return 'nap';
+  if (hasPact(state, 'access', me, them) || hasPact(state, 'access', them, me)) return 'access';
+  if (hasTruce(state, me, them)) return 'truce';
+  return 'neutral';
+}
 
 export const TERRAIN_INFO: Record<Terrain, { name: string; color: string }> = {
   plains: { name: 'Plains', color: '#b7c46a' },
@@ -59,6 +115,8 @@ function devColor(dev: number): [number, number, number] {
 export function applyMapMode(r: MapRenderer, world: StaticWorld, state: GameState, mode: MapMode, player: number) {
   const cultures = world.world.cultures;
   const religions = world.world.religions;
+  const relations = new Map<number, Relation>();
+  const claimed = new Set(state.countries[player]?.claims ?? []);
   for (const reg of world.regions) {
     const id = reg.id;
     const p = state.provinces[id];
@@ -109,6 +167,25 @@ export function applyMapMode(r: MapRenderer, world: StaticWorld, state: GameStat
       case 'religion':
         if (p?.religion) c = hexToRgb(religions[p.religion]?.color ?? '#888888');
         break;
+      case 'diplomacy': {
+        if (!owner) {
+          if (p?.culture) {
+            c = NATIVE;
+            a = 90;
+          }
+          break;
+        }
+        if (claimed.has(id)) {
+          c = hexToRgb(CLAIM_COLOR);
+          a = 245;
+          break;
+        }
+        let rel = relations.get(owner);
+        if (!rel) relations.set(owner, (rel = relationTo(state, player, owner)));
+        c = hexToRgb(RELATION_INFO[rel].color);
+        a = rel === 'neutral' ? 70 : 245;
+        break;
+      }
     }
     if (reg.impassable && mode !== 'terrain' && mode !== 'development') c = null;
     if (c) r.setFill(id, c[0], c[1], c[2], a);
@@ -118,5 +195,6 @@ export function applyMapMode(r: MapRenderer, world: StaticWorld, state: GameStat
     if (!country) continue;
     r.setCountryColor(country.index, ...country.color);
   }
+  r.fillBoost = mode === 'diplomacy' ? 0.6 : 0;
   r.markFillDirty();
 }

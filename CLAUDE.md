@@ -42,9 +42,18 @@ when a milestone lands.
   - `tick.ts` `advanceDay` is the only entry point for time. The player and the AI change the
     state through `commands.ts`, which validate and return `{ ok }` or `{ ok: false, reason }`.
   - Messages for the player go through `log.ts`; `important` ones pause the game.
-  - Economy numbers come as `Breakdown`s, so the UI can show where each part comes from.
+  - Economy numbers, opinions, loyalty and the AI's willingness come as `Breakdown`s, so the UI
+    can show where each part comes from. The AI decides with the same breakdowns the player sees.
+  - `diplomacy.ts` holds treaties, opinion and memories, claims, aggressive expansion, coalitions
+    and subjects; `war.ts` holds casus belli, calls to arms and peace; `realm.ts` holds capitals
+    and the end of a country. Treaties belong to independent realms only (vassals have none).
+  - Hot lookups are cached per day or per version counter (`strengthOf`, `accessSet`,
+    `realmMembers`, the treaty index): bump `mapVersion`, `borderVersion` or `diploVersion`
+    whenever owners, lieges or treaties change.
 - **`src/ui/runner.ts`:** runs the simulation from `MapController.onFrame` within a time budget,
   and bumps the store's `tick` at most every 120 ms. Panels with live numbers subscribe to `tick`.
+- **`?debug`** in the address exposes the running game as `window.game` (the e2e tests use it to
+  open panels without clicking the map).
 - **`src/shared/`:** code shared by the game and `tools/`: map format, projection and data types.
   Tools import `src/` with explicit `.ts` extensions and run under `tsx`; `tools/tsconfig.json` uses
   Bundler resolution so that `tools/simulate.ts` can pull in `src/sim` and `src/data` as they are.

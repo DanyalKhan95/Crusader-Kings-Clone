@@ -1,7 +1,8 @@
 import { toDate } from '../../sim/calendar';
+import * as cmd from '../../sim/commands';
 import { sideOf } from '../../sim/queries';
-import { CB_INFO, warScore } from '../../sim/war';
-import { selectCountry } from '../actions';
+import { canLeaveWar, CB_INFO, warScore } from '../../sim/war';
+import { run, selectCountry } from '../actions';
 import { CoatOfArms } from '../CoatOfArms';
 import { formatDate } from '../format';
 import { useGame } from '../game';
@@ -18,20 +19,26 @@ export function WarView({ id }: { id: number }) {
   const leader = war.attacker === state.player || war.defender === state.player;
   const shown = mySide === 'defender' ? -score.total : score.total;
   const goal =
-    war.cb === 'border'
+    war.cb === 'claim'
       ? `the province of ${game.world.region(war.goal).name}`
       : war.cb === 'throne'
         ? `the crown of ${state.countries[war.goal]?.short}`
-        : 'whatever can be taken';
-  const Side = ({ title, members }: { title: string; members: number[] }) => (
+        : war.cb === 'independence'
+          ? `the freedom of ${state.countries[war.attacker]?.short}`
+          : war.cb === 'coalition'
+            ? `to humble ${state.countries[war.defender]?.short}`
+            : 'whatever can be taken';
+  const leave = mySide ? canLeaveWar(state, war, state.player) : null;
+  const Side = ({ title, members, lead }: { title: string; members: number[]; lead: number }) => (
     <div className="war-side">
       <span className="caps">{title}</span>
       <ul>
-        {members.map((m) => {
+        {[lead, ...members.filter((m) => m !== lead)].map((m) => {
           const c = state.countries[m];
+          if (!c) return null;
           return (
             <li key={m}>
-              <button className="chip with-coa" onClick={() => selectCountry(game, m)}>
+              <button className={`chip with-coa ${m === lead ? 'leader' : ''}`} onClick={() => selectCountry(game, m)}>
                 <CoatOfArms country={c} size={16} />
                 {c.short}
               </button>
@@ -67,15 +74,26 @@ export function WarView({ id }: { id: number }) {
         digits={0}
       />
       <div className="war-sides">
-        <Side title="Attackers" members={war.attackers} />
-        <Side title="Defenders" members={war.defenders} />
+        <Side title="Attackers" members={war.attackers} lead={war.attacker} />
+        <Side title="Defenders" members={war.defenders} lead={war.defender} />
       </div>
       {leader && (
         <button className="btn primary" onClick={() => game.ui.set({ modal: 'peace', selectedWar: war.id, speed: 0 })}>
           <Icon name="peace-dove" /> Negotiate peace
         </button>
       )}
-      {mySide && !leader && <p className="dim small">Only the war leader can make peace.</p>}
+      {mySide && !leader && leave?.ok && (
+        <button className="btn" onClick={() => run(game, cmd.separatePeace(state, war.id))}>
+          <Icon name="peace-dove" /> Make a separate peace
+        </button>
+      )}
+      {mySide && !leader && (
+        <p className="dim small">
+          {leave?.ok
+            ? 'The leaders make peace for their side. You may leave on your own, with nothing gained or lost, but those you fought for will remember if you leave within the year.'
+            : leave?.reason}
+        </p>
+      )}
     </div>
   );
 }

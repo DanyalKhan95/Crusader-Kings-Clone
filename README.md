@@ -12,34 +12,46 @@ every push).
 
 ## Status
 
-**Milestone 1: the first playable.** Time runs, the treasury fills and empties, and armies march,
-fight and besiege. Every other realm is run by the AI.
+**Milestone 2: diplomacy.** Realms make friends and enemies. Every other realm is run by the AI.
+
+- **Opinion:** every realm has a view of every other, with the reasons on hover: faith and culture,
+  treaties, claims, wars, gifts, betrayals, and fear of your conquests.
+- **Treaties:**
+  - alliances (allies answer calls to arms, or the alliance breaks)
+  - non-aggression pacts
+  - military access (armies may only march through land they have leave to enter)
+  - guarantees of independence
+  - the AI weighs every proposal with the same breakdown you see before you send it
+- **Claims:** your chancellor forges claims on land across your border. A claim is a just cause
+  for war and halves the land's price at the peace table. War without a claim costs stability.
+- **Aggressive expansion and coalitions:** conquests alarm the neighbours. Those who fear you band
+  together, and strike once they are strong enough.
+- **Subjects:** vassal loyalty, integration of loyal vassals, tributaries (won at the peace table),
+  and wars of independence.
+- **Wars with allies:** calls to arms for allies, guarantors, overlords and coalition members;
+  separate peace for those who are not leading a side.
+- **The diplomacy map** (`U`) shows your allies, enemies, pacts, subjects and claims.
+
+![Scotland allied with England: the diplomacy map mode and Scotland's diplomacy panel](docs/images/diplomacy-1066.webp)
+
+From milestone 1:
 
 - **Time:** real time with pause and five speeds, from a day a second to four months a second.
-  Wars declared on you, lost battles, peace offers and an empty treasury pause the game.
-- **Economy:**
-  - Taxes and levies come from each province's development, stability, war weariness and the
-    council.
-  - Six buildings in three levels each: farms, markets, barracks, castles, workshops and ports.
-  - Monthly budget with a breakdown of every source, loans at 12% a year, and bankruptcy.
-- **Characters:** a ruler, an heir and a council of five (chancellor, marshal, steward, spymaster
-  and court chaplain), each with skills and traits. They age and die; the heir succeeds.
-- **Armies:**
-  - Levies plus men-at-arms: spearmen, archers, light cavalry, knights, horse archers and siege
-    engines.
-  - Raise, recruit, merge, split and disband. Commanders lead with their martial skill.
-  - Marching by the fastest route over land, rivers, straits and seas, with supply limits and
-    attrition.
-- **Battles and sieges:** terrain, river crossings, unit counters, commander skill, morale,
-  pursuit and retreat. Forts need a siege; siege engines shorten it. Taken provinces show stripes.
-- **War and peace:** claims on thrones, border wars and conquest; war score from battles,
-  occupation and the war goal; peace deals that cede provinces, pay gold or press a claim to a
-  throne; truces afterwards.
+  Wars declared on you, lost battles, offers and an empty treasury pause the game.
+- **Economy:** taxes and levies from development, stability, war weariness and the council; six
+  buildings in three levels; a monthly budget with breakdowns, loans and bankruptcy.
+- **Characters:** a ruler, an heir and a council of five, with skills and traits. They age and
+  die; the heir succeeds.
+- **Armies, battles and sieges:** levies and six kinds of men-at-arms, marching by the fastest
+  allowed route over land and sea, supply and attrition; terrain, river crossings, unit counters,
+  commanders, morale, pursuit; forts, siege engines and occupation.
+- **War and peace:** war score from battles, occupation and the war goal; peace deals that cede
+  provinces, pay gold, take a crown or make the loser pay tribute; truces afterwards.
 - **1066:** Harald Hardrada lands at York with Tostig, and William of Normandy sails for England
   two weeks later.
 - **Saves:** save and load in the browser, plus export and import as a file.
 
-Carried over from milestone 0:
+From milestone 0:
 
 - **The map:**
   - 3,000 land provinces, 498 sea zones and 35 great lakes.
@@ -55,20 +67,20 @@ Carried over from milestone 0:
 
 ![Choosing a realm in 1066](docs/images/choose-realm.webp)
 
-Next up is **Milestone 2: diplomacy**, with opinion, alliances, vassal loyalty, claims and
-coalitions. The full plan is in [docs/ROADMAP.md](docs/ROADMAP.md).
+Next up is **Milestone 3: internal politics**, with government types, laws, estates, factions and
+civil wars. The full plan is in [docs/ROADMAP.md](docs/ROADMAP.md).
 
 ## Controls
 
-| Action            | Mouse / touch                            | Keys                    |
-| ----------------- | ---------------------------------------- | ----------------------- |
-| Pan               | drag                                     | arrow keys              |
-| Zoom              | wheel, pinch, double-click               | `+` / `-`               |
-| Inspect           | click a province, army or coat of arms   |                         |
-| March             | select an army, then right-click a place |                         |
-| Pause, speed      | buttons at the top right                 | `Space`, `1`–`5`        |
-| Map modes         | buttons at the bottom right              | `Q` `W` `E` `R` `T` `Y` |
-| Close panel, menu |                                          | `Esc`                   |
+| Action            | Mouse / touch                            | Keys                        |
+| ----------------- | ---------------------------------------- | --------------------------- |
+| Pan               | drag                                     | arrow keys                  |
+| Zoom              | wheel, pinch, double-click               | `+` / `-`                   |
+| Inspect, treat    | click a province, army or coat of arms   |                             |
+| March             | select an army, then right-click a place |                             |
+| Pause, speed      | buttons at the top right                 | `Space`, `1`–`5`            |
+| Map modes         | buttons at the bottom right              | `Q` `W` `E` `R` `T` `Y` `U` |
+| Close panel, menu |                                          | `Esc`                       |
 
 ## Running it
 
@@ -120,16 +132,16 @@ Hand-curated tables live in `tools/mapgen/curated`:
 
 ## Project layout
 
-| Path             | What                                                                         |
-| ---------------- | ---------------------------------------------------------------------------- |
-| `src/render/`    | WebGL2 map: terrain, fills, borders, rivers, labels, picking, camera         |
-| `src/sim/`       | The simulation: economy, characters, armies, battles, sieges, war, AI, saves |
-| `src/game/`      | Loading the world, and map modes                                             |
-| `src/heraldry/`  | Coats of arms: blazon model, curated arms, generator, SVG                    |
-| `src/ui/`        | React screens, HUD and era themes                                            |
-| `src/shared/`    | Code used by both the game and the pipeline (map format, projection, types)  |
-| `tools/`         | Map pipeline, icon extraction, artifact packaging                            |
-| `tests/`, `e2e/` | Vitest unit tests and Playwright end-to-end tests                            |
+| Path             | What                                                                            |
+| ---------------- | ------------------------------------------------------------------------------- |
+| `src/render/`    | WebGL2 map: terrain, fills, borders, rivers, labels, picking, camera            |
+| `src/sim/`       | The simulation: economy, characters, armies, battles, war, diplomacy, AI, saves |
+| `src/game/`      | Loading the world, and map modes                                                |
+| `src/heraldry/`  | Coats of arms: blazon model, curated arms, generator, SVG                       |
+| `src/ui/`        | React screens, HUD and era themes                                               |
+| `src/shared/`    | Code used by both the game and the pipeline (map format, projection, types)     |
+| `tools/`         | Map pipeline, icon extraction, artifact packaging                               |
+| `tests/`, `e2e/` | Vitest unit tests and Playwright end-to-end tests                               |
 
 ## Credits and licences
 

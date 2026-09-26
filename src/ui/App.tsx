@@ -21,7 +21,11 @@ export function App() {
       if (!cancelled) setProgress(p);
     })
       .then(({ world, scenario, bundle }) => {
-        if (!cancelled) setGame(createGame(world, scenario, createGameState(world, scenario), bundle));
+        if (cancelled) return;
+        const g = createGame(world, scenario, createGameState(world, scenario), bundle);
+        // Tests and the curious can reach the running game with ?debug in the address.
+        if (new URLSearchParams(location.search).has('debug')) (window as unknown as { game: Game }).game = g;
+        setGame(g);
       })
       .catch((e: unknown) => {
         if (!cancelled) setError(e instanceof Error ? e.message : String(e));

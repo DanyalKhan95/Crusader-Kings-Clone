@@ -40,7 +40,7 @@ function strip(u: Units): Units {
 export function createGameState(world: SimWorld, scenario: ScenarioData, opts: { seed?: number } = {}): GameState {
   const seed = opts.seed ?? hashString(scenario.id);
   const state: GameState = {
-    version: 1,
+    version: 2,
     scenario: scenario.id,
     seed,
     rng: seed,
@@ -52,12 +52,16 @@ export function createGameState(world: SimWorld, scenario: ScenarioData, opts: {
     battles: [],
     wars: [],
     truces: [],
+    pacts: [],
+    coalitions: [],
     offers: [],
+    proposalCooldown: 0,
     messages: [],
     nextId: 1,
     player: 0,
     mapVersion: 1,
     borderVersion: 1,
+    diploVersion: 1,
     scheduled: [],
   };
   const byTag = new Map<string, Country>();
@@ -73,6 +77,7 @@ export function createGameState(world: SimWorld, scenario: ScenarioData, opts: {
       color: hexToRgb(c.color),
       colorHex: c.color,
       liege: 0,
+      overlord: 0,
       capital: c.capital,
       culture: c.culture,
       religion: c.religion,
@@ -84,13 +89,17 @@ export function createGameState(world: SimWorld, scenario: ScenarioData, opts: {
       loans: [],
       lastBalance: 0,
       ruler: 0,
+      rulerSince: 0,
       heir: 0,
       council: { chancellor: 0, marshal: 0, steward: 0, spymaster: 0, chaplain: 0 },
       courtiers: [],
       reserve: strip(startingMaa(c)),
       throneClaims: [],
       claims: [],
-      ai: { nextWarCheck: 0, nextBuild: 0 },
+      fabricating: null,
+      integrating: null,
+      memories: {},
+      ai: { nextWarCheck: 0, nextBuild: 0, nextDiplo: 0 },
     };
     state.countries.push(country);
     byTag.set(c.tag, country);
@@ -137,6 +146,7 @@ export function createGameState(world: SimWorld, scenario: ScenarioData, opts: {
     });
     ruler.traits.push('_reigned');
     c.ruler = ruler.id;
+    c.rulerSince = state.day - 5 * 365;
     staffCourt(state, world, c, true);
   });
 
@@ -147,8 +157,10 @@ export function createGameState(world: SimWorld, scenario: ScenarioData, opts: {
     c.gold = Math.round(income(state, c).total * 4 + 25);
     c.ai.nextWarCheck = state.day + 60 + (c.index % 90);
     c.ai.nextBuild = state.day + (c.index % 60);
+    c.ai.nextDiplo = state.day + 20 + (c.index % 100);
   }
 
+  state.proposalCooldown = state.day + 60;
   if (scenario.id === '1066') setup1066(state, world);
   return state;
 }

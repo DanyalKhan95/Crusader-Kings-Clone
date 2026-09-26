@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { formatMen } from '../../render/units';
 import * as cmd from '../../sim/commands';
-import { realmStrength, topLiege } from '../../sim/queries';
+import { coalitionAgainst } from '../../sim/diplomacy';
+import { lordOf, realmStrength, topLiege } from '../../sim/queries';
 import type { CasusBelli } from '../../sim/types';
-import { borderTargets, canDeclare, CB_INFO } from '../../sim/war';
+import { canDeclare, CB_INFO, CALL_REASON, claimTargets, previewCalls, type CallPreview } from '../../sim/war';
 import { run, selectWar } from '../actions';
 import { CoatOfArms } from '../CoatOfArms';
 import { useGame } from '../game';
@@ -11,44 +12,81 @@ import { Icon } from '../Icon';
 import { useStore } from '../store';
 import { Modal } from './Modal';
 
+const ANSWER: Record<CallPreview['answer'], string> = {
+  join: 'will come',
+  refuse: 'will refuse, and the treaty will break',
+  cannot: 'cannot come',
+  asked: 'you decide',
+};
+
 export function DeclareWar() {
   const game = useGame();
   const target = useStore(game.ui, (s) => s.dialogCountry);
   const state = game.state;
   const player = state.player;
-  const defender = topLiege(state, target);
-  const d = state.countries[defender];
   const me = state.countries[player];
-  const border = borderTargets(state, game.world, player, target).sort(
-    (a, b) => state.provinces[b].dev - state.provinces[a].dev,
-  );
+  const independence = lordOf(state, player) === target;
+  const defender = independence ? target : topLiege(state, target);
+  const d = state.countries[defender];
+  const claims = claimTargets(state, player, defender).sort((a, b) => state.provinces[b].dev - state.provinces[a].dev);
   const options: CasusBelli[] = [];
-  if (me.throneClaims.includes(defender)) options.push('throne');
-  if (border.length) options.push('border');
-  options.push('conquest');
+  if (independence) options.push('independence');
+  else {
+    if (me.throneClaims.includes(defender)) options.push('throne');
+    if (claims.length) options.push('claim');
+    if (coalitionAgainst(state, defender)?.members.includes(player)) options.push('coalition');
+    options.push('conquest');
+  }
   const [cb, setCb] = useState<CasusBelli>(options[0]);
-  const [goal, setGoal] = useState<number>(border[0] ?? 0);
-  if (!d) return null;
-  const check = canDeclare(
-    state,
-    game.world,
-    player,
-    target,
-    cb,
-    cb === 'border' ? goal : cb === 'throne' ? defender : 0,
-  );
-  const ours = realmStrength(state, player),
-    theirs = realmStrength(state, defender);
+  const [goal, setGoal] = useState<number>(claims[0] ?? 0);
+  if (!d || !me) return null;
+  const goalFor = cb === 'claim' ? goal : cb === 'throne' ? defender : 0;
+  const check = canDeclare(state, player, target, cb, goalFor);
+  const calls = previewCalls(state, game.world, player, target, cb);
+  const joining = (side: 'attacker' | 'defender') =>
+    calls
+      .filter((x) => x.side === side && x.answer === 'join')
+      .reduce((n, x) => n + realmStrength(state, x.country), 0);
+  const ours = realmStrength(state, player) + joining('attacker');
+  const theirs =
+    (independence ? realmStrength(state, defender) - realmStrength(state, player) : realmStrength(state, defender)) +
+    joining('defender');
   const declare = () => {
-    const ok = run(game, cmd.declare(state, game.world, target, cb, cb === 'border' ? goal : defender));
+    const ok = run(game, cmd.declare(state, game.world, target, cb, goalFor));
     if (ok) {
       const war = state.wars.find((w) => w.attacker === player && w.defender === defender);
       game.ui.set({ modal: 'none' });
       if (war) selectWar(game, war.id);
     }
   };
+  const Friends = ({ side }: { side: 'attacker' | 'defender' }) => {
+    const list = calls.filter((x) => x.side === side);
+    if (!list.length) return null;
+    return (
+      <div className="call-list">
+        <span className="caps">{side === 'attacker' ? 'Your friends' : 'Their friends'}</span>
+        <ul>
+          {list.map((x) => {
+            const c = state.countries[x.country];
+            return (
+              <li key={x.country} className={`answer-${x.answer}`}>
+                <CoatOfArms country={c} size={18} />
+                <span>
+                  {c.name} <span className="dim small">({CALL_REASON[x.reason].toLowerCase()})</span>
+                </span>
+                <span className="small call-answer">
+                  {ANSWER[x.answer]}
+                  {x.why ? `: ${x.why}` : ''}
+                </span>
+              </li>
+            );
+          })}
+        </ul>
+      </div>
+    );
+  };
   return (
-    <Modal title={`War with ${d.name}`} kicker="Declare war">
+    <Modal title={independence ? `Independence from ${d.name}` : `War with ${d.name}`} kicker="Declare war">
       <div className="versus">
         <div>
           <CoatOfArms country={me} size={46} />
@@ -60,7 +98,8 @@ export function DeclareWar() {
           <span className="num">{formatMen(theirs)} men</span>
         </div>
       </div>
-      {defender !== target && (
+      <p className="dim small">Counting the realms on each side that would answer the call.</p>
+      {!independence && defender !== target && (
         <p className="dim">
           {state.countries[target].name} is a vassal: its liege, {d.name}, will defend it with the whole realm.
         </p>
@@ -77,11 +116,16 @@ export function DeclareWar() {
           </label>
         ))}
       </fieldset>
-      {cb === 'border' && (
+      {!claims.length && !independence && (
+        <p className="dim small">
+          No claims on their land yet. Forge one from the panel of a province of theirs on your border.
+        </p>
+      )}
+      {cb === 'claim' && (
         <label className="field">
           <span className="caps">Province to take</span>
           <select value={goal} onChange={(e) => setGoal(Number(e.target.value))}>
-            {border.map((id) => (
+            {claims.map((id) => (
               <option key={id} value={id}>
                 {game.world.region(id).name} (development {state.provinces[id].dev})
               </option>
@@ -89,12 +133,14 @@ export function DeclareWar() {
           </select>
         </label>
       )}
+      <Friends side="attacker" />
+      <Friends side="defender" />
       {!check.ok && <p className="alert">{check.reason}</p>}
       <div className="modal-actions">
         <button className="btn ghost" onClick={() => game.ui.set({ modal: 'none' })}>
           Not now
         </button>
-        <button className="btn primary" disabled={!check.ok} onClick={declare}>
+        <button className="btn primary danger" disabled={!check.ok} onClick={declare}>
           <Icon name="crossed-swords" /> Declare war
         </button>
       </div>

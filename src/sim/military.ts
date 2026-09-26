@@ -4,7 +4,9 @@
  */
 import { MAA_TYPES, UNITS } from '../data/units';
 import { alive, character, makeCharacter, skill } from './characters';
+import { accessSet, mayEnter } from './diplomacy';
 import { buildingEffect } from './economy';
+import { log } from './log';
 import { findPath, stepDays } from './movement';
 import { armySize, atWar, menIn } from './queries';
 import type { Army, Country, GameState, UnitType, Units } from './types';
@@ -156,6 +158,17 @@ export function inBattle(state: GameState, army: Army): boolean {
 
 // ── Orders ────────────────────────────────────────────────────────
 
+/** The route an army of `owner` may take: only through land it has the right to enter. */
+export function routeFor(state: GameState, world: SimWorld, owner: number, from: number, to: number): number[] | null {
+  const allowed = accessSet(state, owner);
+  return findPath(world, from, to, {
+    penalty: (id) => {
+      const o = state.provinces[id]?.owner ?? 0;
+      return !o || allowed.has(o) ? 0 : Infinity;
+    },
+  });
+}
+
 /** Orders an army to march; false if there is no route. */
 export function orderMove(state: GameState, world: SimWorld, army: Army, to: number): boolean {
   if (inBattle(state, army) || army.retreating) return false;
@@ -166,7 +179,7 @@ export function orderMove(state: GameState, world: SimWorld, army: Army, to: num
   }
   // Keep going to the next region if already underway, so the army does not teleport back.
   const from = army.path.length && army.progress > 0 ? army.path[0] : army.location;
-  const path = findPath(world, from, to);
+  const path = routeFor(state, world, army.owner, from, to);
   if (!path) return false;
   if (from !== army.location) {
     army.path = [from, ...path];
@@ -240,6 +253,18 @@ export function dailyMarch(state: GameState, world: SimWorld): { army: Army; fro
     if (army.stepDays <= 0) army.stepDays = stepDays(world, army.location, army.path[0]);
     army.progress++;
     if (army.progress < army.stepDays) continue;
+    // The way ahead may have closed since the order was given (a treaty ended): find another.
+    if (!army.retreating && !mayEnter(state, army.owner, army.path[0])) {
+      const dest = army.path[army.path.length - 1];
+      army.progress = 0;
+      army.path = [];
+      const path = mayEnter(state, army.owner, dest) ? routeFor(state, world, army.owner, army.location, dest) : null;
+      if (path?.length) {
+        army.path = path;
+        army.stepDays = stepDays(world, army.location, path[0]);
+      }
+      continue;
+    }
     const from = army.location;
     army.location = army.path.shift()!;
     army.progress = 0;
@@ -248,6 +273,29 @@ export function dailyMarch(state: GameState, world: SimWorld): { army: Army; fro
     arrived.push({ army, from });
   }
   return arrived;
+}
+
+/**
+ * Armies standing in land they have no right to be in (a war ended, a treaty lapsed) march home, or
+ * are shipped home when no road leads there.
+ */
+export function expelArmies(state: GameState, world: SimWorld) {
+  for (const army of state.armies) {
+    if (army.retreating || inBattle(state, army) || world.region(army.location).kind !== 'land') continue;
+    if (mayEnter(state, army.owner, army.location)) continue;
+    const c = state.countries[army.owner];
+    const home = c?.capital ?? 0;
+    if (!home || state.provinces[home]?.owner !== c.index) continue;
+    if (army.path.length && mayEnter(state, army.owner, army.path[army.path.length - 1])) continue;
+    if (orderMove(state, world, army, home)) continue;
+    army.location = home;
+    army.path = [];
+    army.progress = 0;
+    army.objective = 0;
+    log(state, [army.owner], 'army', `${army.name} had no right to stay abroad and has returned home.`, {
+      province: home,
+    });
+  }
 }
 
 /** Fraction of the way to the next region, for drawing. */

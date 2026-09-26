@@ -4,7 +4,8 @@
  */
 import { readFileSync } from 'node:fs';
 import { toDate } from '../src/sim/calendar.ts';
-import { armySize, provincesOf, realmProvinces } from '../src/sim/queries.ts';
+import { loyalty, memory } from '../src/sim/diplomacy.ts';
+import { armySize, lordOf, provincesOf, realmProvinces } from '../src/sim/queries.ts';
 import { createGameState } from '../src/sim/setup.ts';
 import { advanceDay } from '../src/sim/tick.ts';
 import { makeSimWorld } from '../src/sim/world.ts';
@@ -16,6 +17,7 @@ const arg = (name: string, fallback: number) => {
 };
 const years = arg('years', 20);
 const seed = arg('seed', 0);
+const every = arg('every', 5);
 
 const read = <T>(f: string): T => JSON.parse(readFileSync(`public/data/${f}`, 'utf8')) as T;
 const world = makeSimWorld(read<WorldData>('world.json'), read<RegionData[]>('provinces.json'));
@@ -32,25 +34,37 @@ const t0 = performance.now();
 let wars = 0,
   peaces = 0,
   lastWars = new Set<number>();
+const byCause = new Map<string, number>();
 const initialOwners = state.provinces.map((p) => p?.owner ?? 0);
 for (let d = 0; d < years * 365; d++) {
   advanceDay(state, world);
   const ids = new Set(state.wars.map((w) => w.id));
-  for (const id of ids) if (!lastWars.has(id)) wars++;
+  for (const w of state.wars)
+    if (!lastWars.has(w.id)) {
+      wars++;
+      byCause.set(w.cb, (byCause.get(w.cb) ?? 0) + 1);
+    }
   for (const id of lastWars) if (!ids.has(id)) peaces++;
   lastWars = ids;
-  if (d % (365 * 5) === 0 || d === years * 365 - 1) {
+  if (d % Math.round(365 * every) === 0 || d === years * 365 - 1) {
     const alive = state.countries.filter((c) => c?.alive).length;
     const men = state.armies.reduce((s, a) => s + armySize(a), 0);
+    const pacts = (k: string) => state.pacts.filter((p) => p.kind === k).length;
+    const claims = state.countries.reduce((s, c) => s + (c?.alive ? c.claims.length : 0), 0);
+    const forging = state.countries.filter((c) => c?.alive && c.fabricating).length;
+    const tributaries = state.countries.filter((c) => c?.alive && c.overlord).length;
     console.log(
       `${fmt(state.day)}  countries ${alive}  wars ${state.wars.length}  armies ${state.armies.length} (${Math.round(men / 1000)}k men)  battles ${state.battles.length}`,
+    );
+    console.log(
+      `            alliances ${pacts('alliance')}  naps ${pacts('nap')}  guarantees ${pacts('guarantee')}  access ${pacts('access')}  tributaries ${tributaries}  coalitions ${state.coalitions.length}  claims ${claims} (+${forging} forging)`,
     );
   }
 }
 const ms = performance.now() - t0;
 const days = state.day - start;
 console.log(`\n${days} days in ${(ms / 1000).toFixed(1)} s: ${Math.round((days / ms) * 1000)} days per second`);
-console.log(`wars started ${wars}, ended ${peaces}`);
+console.log(`wars started ${wars}, ended ${peaces}: ${[...byCause].map(([k, n]) => `${k} ${n}`).join(', ')}`);
 const changed = state.provinces.filter((p, id) => p && p.owner !== initialOwners[id]).length;
 console.log(`provinces that changed hands: ${changed}`);
 const ranking = state.countries
@@ -76,3 +90,24 @@ if (eng) {
   );
 }
 console.log(`messages logged: ${state.messages.length}`);
+const subjects = state.countries
+  .filter((c) => c?.alive && lordOf(state, c.index))
+  .map((c) => ({ c, l: loyalty(state, world, c.index).total }))
+  .sort((a, b) => a.l - b.l);
+console.log(
+  `least loyal subjects: ${subjects
+    .slice(0, 6)
+    .map(({ c, l }) => `${c.tag}→${state.countries[lordOf(state, c.index)].tag} ${Math.round(l)}`)
+    .join(', ')}`,
+);
+let worst = { v: 0, of: 0, about: 0 };
+for (const c of state.countries)
+  if (c?.alive)
+    for (const k of Object.keys(c.memories)) {
+      const v = memory(state, c.index, Number(k), 'ae');
+      if (v < worst.v) worst = { v, of: c.index, about: Number(k) };
+    }
+if (worst.of)
+  console.log(
+    `worst aggressive expansion: ${state.countries[worst.of].tag} about ${state.countries[worst.about].tag}: ${Math.round(worst.v)}`,
+  );

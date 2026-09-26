@@ -1,5 +1,6 @@
 /** Read-only questions about the state: realms, wars, strength. Cached where it matters. */
 import type { Army, Country, GameState, Units, War } from './types';
+import type { SimWorld } from './world';
 
 /** Top liege of a country (itself if independent). */
 export function topLiege(state: GameState, index: number): number {
@@ -49,6 +50,74 @@ export function realmProvinces(state: GameState, index: number): number[] {
 
 export function vassalsOf(state: GameState, index: number): Country[] {
   return state.countries.filter((c) => c?.alive && c.liege === index);
+}
+
+export function tributariesOf(state: GameState, index: number): Country[] {
+  return state.countries.filter((c) => c?.alive && c.overlord === index);
+}
+
+/** The country a subject answers to: its liege, or else its overlord (0 when independent). */
+export function lordOf(state: GameState, index: number): number {
+  const c = state.countries[index];
+  return c ? c.liege || c.overlord : 0;
+}
+
+interface MemberCache {
+  version: number;
+  byRealm: Map<number, number[]>;
+}
+const memberCache = new WeakMap<GameState, MemberCache>();
+
+/** Every living country in a realm: the ruler's own and all vassals below. A fresh array. */
+export function realmMembers(state: GameState, index: number): number[] {
+  let c = memberCache.get(state);
+  if (!c || c.version !== state.borderVersion)
+    memberCache.set(state, (c = { version: state.borderVersion, byRealm: new Map() }));
+  let list = c.byRealm.get(index);
+  if (!list) {
+    list = state.countries.filter((x) => x?.alive && isInRealm(state, x.index, index)).map((x) => x.index);
+    c.byRealm.set(index, list);
+  }
+  return list.slice();
+}
+
+/** True if the province touches land of the realm (across a border, river or strait). */
+export function touchesRealm(state: GameState, world: SimWorld, realm: number, province: number): boolean {
+  for (const [n] of world.region(province).adj) {
+    const o = state.provinces[n]?.owner ?? 0;
+    if (o && isInRealm(state, o, realm)) return true;
+  }
+  return false;
+}
+
+interface NeighbourCache {
+  version: number;
+  sets: Map<number, Set<number>>;
+}
+const neighbourCache = new WeakMap<GameState, NeighbourCache>();
+
+/** Independent realms whose land touches this realm's land. Keyed by top liege. */
+export function realmNeighbours(state: GameState, world: SimWorld, index: number): Set<number> {
+  let c = neighbourCache.get(state);
+  if (!c || c.version !== state.borderVersion) {
+    const sets = new Map<number, Set<number>>();
+    const top = state.countries.map((x) => (x?.alive ? topLiege(state, x.index) : 0));
+    state.provinces.forEach((p, id) => {
+      if (!p?.owner) return;
+      const a = top[p.owner];
+      for (const [n] of world.region(id).adj) {
+        const o = state.provinces[n]?.owner ?? 0;
+        const b = o ? top[o] : 0;
+        if (!b || b === a) continue;
+        let set = sets.get(a);
+        if (!set) sets.set(a, (set = new Set()));
+        set.add(b);
+      }
+    });
+    c = { version: state.borderVersion, sets };
+    neighbourCache.set(state, c);
+  }
+  return c.sets.get(topLiege(state, index)) ?? new Set();
 }
 
 export function countryByTag(state: GameState, tag: string): Country | undefined {
@@ -118,4 +187,34 @@ export function realmStrength(state: GameState, index: number): number {
   for (const c of state.countries)
     if (c?.alive && isInRealm(state, c.index, index)) n += militaryStrength(state, c.index);
   return n;
+}
+
+interface StrengthCache {
+  key: string;
+  own: Float64Array;
+  realm: Map<number, number>;
+}
+const strengthCache = new WeakMap<GameState, StrengthCache>();
+
+/**
+ * `realmStrength` as of the start of the day, for the AI and for opinions, which ask for it thousands
+ * of times a month. The UI shows the exact figure.
+ */
+export function strengthOf(state: GameState, index: number): number {
+  const key = `${state.day}:${state.borderVersion}`;
+  let c = strengthCache.get(state);
+  if (!c || c.key !== key) {
+    const own = new Float64Array(state.countries.length);
+    for (const x of state.countries) if (x?.alive) own[x.index] = x.manpower + menIn(x.reserve);
+    for (const a of state.armies) if (a.owner < own.length) own[a.owner] += armySize(a);
+    c = { key, own, realm: new Map() };
+    strengthCache.set(state, c);
+  }
+  let v = c.realm.get(index);
+  if (v === undefined) {
+    v = 0;
+    for (const m of realmMembers(state, index)) v += c.own[m] ?? 0;
+    c.realm.set(index, v);
+  }
+  return v;
 }

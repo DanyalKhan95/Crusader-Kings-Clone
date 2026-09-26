@@ -3,9 +3,10 @@ import { BUILDING_ORDER, BUILDINGS, MAX_LEVEL } from '../../data/buildings';
 import { TERRAIN_INFO } from '../../game/mapModes';
 import { formatMen } from '../../render/units';
 import * as cmd from '../../sim/commands';
+import { canFabricate, fabricationCost, fabricationDays } from '../../sim/diplomacy';
 import { canBuild, fortLevel, provinceLevy, provinceTax } from '../../sim/economy';
 import { supplyLimit } from '../../sim/military';
-import { armiesAt, armySize, atWar, topLiege } from '../../sim/queries';
+import { armiesAt, armySize, atWar, isInRealm, topLiege, touchesRealm } from '../../sim/queries';
 import { garrison } from '../../sim/siege';
 import { ADJ_RIVER, type RegionData } from '../../shared/dataTypes';
 import { closePanel, flyToProvince, run, selectArmy, selectCountry, selectProvince } from '../actions';
@@ -17,6 +18,7 @@ import { useMapInsets } from '../map/useMapInsets';
 import { cultureName, religionName, Swatch } from '../realm';
 import { useStore } from '../store';
 import { ArmyView } from './ArmyPanel';
+import { WithTip } from './Tip';
 import { CountryView } from './CountryPanel';
 import { WarView } from './WarPanel';
 
@@ -131,6 +133,8 @@ function LandView({ r }: { r: RegionData }) {
         </div>
       )}
 
+      {owner && <Claims id={r.id} />}
+
       <dl className="facts">
         <div>
           <dt>Terrain</dt>
@@ -193,6 +197,77 @@ function LandView({ r }: { r: RegionData }) {
       <ArmiesHere id={r.id} />
       <Neighbours r={r} />
     </div>
+  );
+}
+
+/** Who claims this province, and forging a claim of our own on land across the border. */
+function Claims({ id }: { id: number }) {
+  const game = useGame();
+  const state = game.state;
+  const player = state.player;
+  const me = state.countries[player];
+  const p = state.provinces[id];
+  const claimants = state.countries.filter((c) => c?.alive && c.claims.includes(id));
+  const foreign = !!me && !!p.owner && !isInRealm(state, p.owner, topLiege(state, player));
+  const reachable = foreign && touchesRealm(state, game.world, player, id);
+  const forging = me?.fabricating?.province === id ? me.fabricating : null;
+  const check = reachable && !me.claims.includes(id) && !forging ? canFabricate(state, game.world, player, id) : null;
+  if (!claimants.length && !forging && !check) return null;
+  const cost = fabricationCost(state, id);
+  const months = me ? Math.round(fabricationDays(state, me) / 30) : 0;
+  return (
+    <section className="sp-section claims">
+      {claimants.length > 0 && (
+        <div className="claimants">
+          <span className="caps">Claimed by</span>
+          <ul className="chips">
+            {claimants.map((c) => (
+              <li key={c.index}>
+                <button className="chip with-coa" onClick={() => selectCountry(game, c.index)}>
+                  <CoatOfArms country={c} size={16} />
+                  {c.index === player ? 'You' : c.short}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+      {forging && (
+        <div className="construction">
+          <Icon name="scroll-quill" />
+          <span>
+            Your chancellor is forging a claim
+            <span className="bar">
+              <span
+                style={{
+                  width: `${Math.min(100, ((state.day - forging.start) / (forging.done - forging.start)) * 100)}%`,
+                }}
+              />
+            </span>
+          </span>
+          <span className="num dim">{forging.done - state.day} days</span>
+        </div>
+      )}
+      {check && (
+        <WithTip
+          tip={
+            <p className="tip-text">
+              {check.ok
+                ? `Your chancellor digs through old charters to prove this land is rightfully yours: about ${months} months. A claim is a just cause for war and halves the land's price at the peace table.`
+                : `${check.reason}.`}
+            </p>
+          }
+        >
+          <button
+            className="btn small"
+            disabled={!check.ok}
+            onClick={() => run(game, cmd.fabricate(state, game.world, id))}
+          >
+            <Icon name="scroll-quill" /> Forge a claim · {cost} gold
+          </button>
+        </WithTip>
+      )}
+    </section>
   );
 }
 

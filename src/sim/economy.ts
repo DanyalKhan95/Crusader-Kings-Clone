@@ -13,7 +13,7 @@ import {
 import { UNITS } from '../data/units';
 import { rulerSkill, seatSkill } from './characters';
 import { log } from './log';
-import { armiesOf, menIn, provincesOf, vassalsOf } from './queries';
+import { armiesOf, atWar, menIn, provincesOf, tributariesOf, vassalsOf } from './queries';
 import { chance } from './rng';
 import type { BuildingType, Country, GameState, ProvinceState, UnitType } from './types';
 import type { SimWorld } from './world';
@@ -86,7 +86,9 @@ export function fortLevel(state: GameState, id: number): number {
 
 // ── Income and expenses ───────────────────────────────────────────
 
-const VASSAL_TRIBUTE = 0.25;
+/** Share of a vassal's taxes paid to its liege, and of a tributary's to its overlord. */
+export const VASSAL_TRIBUTE = 0.25;
+export const TRIBUTARY_TRIBUTE = 0.15;
 
 function ownTaxes(state: GameState, c: Country): number {
   let t = 0;
@@ -99,12 +101,20 @@ function ownTaxes(state: GameState, c: Country): number {
 
 export function income(state: GameState, c: Country): Breakdown {
   const taxes = ownTaxes(state, c);
-  let tribute = 0;
-  for (const v of vassalsOf(state, c.index)) tribute += ownTaxes(state, v) * VASSAL_TRIBUTE;
+  let fromVassals = 0,
+    fromTributaries = 0;
+  for (const v of vassalsOf(state, c.index))
+    if (!atWar(state, v.index, c.index)) fromVassals += ownTaxes(state, v) * VASSAL_TRIBUTE;
+  for (const t of tributariesOf(state, c.index))
+    if (!atWar(state, t.index, c.index)) fromTributaries += ownTaxes(state, t) * TRIBUTARY_TRIBUTE;
+  const paysLiege = c.liege && !atWar(state, c.index, c.liege);
+  const paysOverlord = c.overlord && !atWar(state, c.index, c.overlord);
   return breakdown([
     { label: `Taxes from ${provincesOf(state, c.index).length} provinces`, value: taxes },
-    { label: 'Tribute from vassals', value: tribute },
-    { label: 'Tribute to your liege', value: c.liege ? -taxes * VASSAL_TRIBUTE : 0 },
+    { label: 'Tribute from vassals', value: fromVassals },
+    { label: 'Tribute from tributaries', value: fromTributaries },
+    { label: 'Tribute to your liege', value: paysLiege ? -taxes * VASSAL_TRIBUTE : 0 },
+    { label: 'Tribute to your overlord', value: paysOverlord ? -taxes * TRIBUTARY_TRIBUTE : 0 },
   ]);
 }
 

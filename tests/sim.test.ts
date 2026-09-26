@@ -156,7 +156,9 @@ describe('sieges and peace', () => {
       world.region(id).adj.some(([n]) => state.provinces[n]?.owner === hun.index),
     );
     expect(goal).toBeTruthy();
-    expect(cmd.declare(state, world, pol.index, 'border', goal!).ok).toBe(true);
+    expect(cmd.declare(state, world, pol.index, 'claim', goal!).ok).toBe(false);
+    hun.claims.push(goal!);
+    expect(cmd.declare(state, world, pol.index, 'claim', goal!).ok).toBe(true);
     const war = state.wars.find((w) => w.attacker === hun.index)!;
     newArmy(state, hun, goal!, { spearmen: 3000, siege: 300, levy: 5000 });
     for (let i = 0; i < 400 && state.provinces[goal!].controller !== hun.index; i++) dailySieges(state, world);
@@ -179,6 +181,7 @@ describe('sieges and peace', () => {
     const york = named(state, 'York');
     state.offers.push({
       id: 999,
+      kind: 'peace',
       war: war.id,
       from: nrw.index,
       to: eng.index,
@@ -189,6 +192,7 @@ describe('sieges and peace', () => {
     expect(state.wars).toContain(war);
     state.offers.push({
       id: 1000,
+      kind: 'peace',
       war: war.id,
       from: nrw.index,
       to: eng.index,

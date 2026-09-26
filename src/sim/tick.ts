@@ -1,19 +1,27 @@
 /**
- * One day of the world. Daily: marching, battles, sieges, supply, construction. Monthly (on the 1st):
- * the economy, wars, mortality. The AI thinks once a month per country, spread over the days so the
- * work is even.
+ * One day of the world. Daily: marching, battles, sieges, supply, construction, forged claims.
+ * Monthly (on the 1st): the economy, wars, mortality, stability and diplomacy. The AI thinks once a
+ * month per country, spread over the days so the work is even.
  */
 import { monthlyAI, planArmies } from './ai';
 import { monthlyMortality, seatSkill, staffCourt } from './characters';
 import { toDate } from './calendar';
 import { dailyBattles, startBattles } from './combat';
+import {
+  cleanupDiplomacy,
+  dailyFabrication,
+  monthlyCoalitions,
+  monthlyIntegration,
+  monthlyMemories,
+  pruneClaims,
+} from './diplomacy';
 import { dailyConstruction, monthlyEconomy } from './economy';
-import { dailyMarch, dailyUpkeep } from './military';
+import { dailyMarch, dailyUpkeep, expelArmies } from './military';
 import { chance } from './rng';
 import { runScheduled } from './scripted';
 import { dailySieges } from './siege';
 import type { GameState } from './types';
-import { monthlyWars } from './war';
+import { expireOffers, monthlyWars } from './war';
 import type { SimWorld } from './world';
 
 export function advanceDay(state: GameState, world: SimWorld) {
@@ -24,6 +32,8 @@ export function advanceDay(state: GameState, world: SimWorld) {
   dailySieges(state, world);
   dailyUpkeep(state, world);
   dailyConstruction(state, world);
+  dailyFabrication(state, world);
+  if (state.offers.length) expireOffers(state);
   runScheduled(state, world);
   const date = toDate(state.day);
   if (date.d === 1) {
@@ -31,6 +41,12 @@ export function advanceDay(state: GameState, world: SimWorld) {
     monthlyWars(state, world);
     monthlyMortality(state, world);
     monthlyStability(state);
+    monthlyMemories(state);
+    monthlyIntegration(state);
+    cleanupDiplomacy(state);
+    monthlyCoalitions(state);
+    pruneClaims(state);
+    expelArmies(state, world);
     if (date.m === 1)
       for (const c of state.countries) if (c?.alive) staffCourt(state, world, c, c.index !== state.player);
   }

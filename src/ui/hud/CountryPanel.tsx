@@ -1,20 +1,19 @@
 import { useMemo } from 'react';
 import { UNITS, UNIT_ORDER } from '../../data/units';
 import { formatMen } from '../../render/units';
-import { toDate } from '../../sim/calendar';
 import { character, SEAT_INFO, SEAT_SKILL, skill } from '../../sim/characters';
 import * as cmd from '../../sim/commands';
 import { expenses, income, loanSize, MAX_LOANS, maxManpower, reserveMen } from '../../sim/economy';
 import { availableMaa, recruitCost } from '../../sim/military';
-import { armiesOf, armySize, atWar, hasTruce, provincesOf, topLiege, warsOf } from '../../sim/queries';
+import { armiesOf, armySize, provincesOf } from '../../sim/queries';
 import { COUNCIL_SEATS, type Country, type UnitType } from '../../sim/types';
-import { scoreFor } from '../../sim/war';
-import { run, selectArmy, selectCountry, selectWar } from '../actions';
+import { run, selectArmy, selectCountry } from '../actions';
 import { CoatOfArms } from '../CoatOfArms';
-import { capitalize, formatDate } from '../format';
+import { capitalize } from '../format';
 import { countryStats, useGame, type CountryTab } from '../game';
 import { Icon } from '../Icon';
 import { CharacterCard } from '../people';
+import { DiplomacyTab, ForeignDiplomacy } from './DiplomacyPanel';
 import { CountryFacts, CountryHeader } from '../realm';
 import { useStore } from '../store';
 import { goToProvince } from './SidePanel';
@@ -25,7 +24,7 @@ const TABS: { id: CountryTab; label: string }[] = [
   { id: 'treasury', label: 'Treasury' },
   { id: 'military', label: 'Army' },
   { id: 'court', label: 'Court' },
-  { id: 'wars', label: 'Wars' },
+  { id: 'diplomacy', label: 'Diplomacy' },
 ];
 
 export function CountryView({ index }: { index: number }) {
@@ -62,11 +61,11 @@ export function CountryView({ index }: { index: number }) {
           {tab === 'treasury' && <TreasuryTab c={c} />}
           {tab === 'military' && <MilitaryTab c={c} />}
           {tab === 'court' && <CourtTab c={c} />}
-          {tab === 'wars' && <WarsTab c={c} />}
+          {tab === 'diplomacy' && <DiplomacyTab c={c} />}
         </>
       ) : (
         <>
-          <Relations c={c} />
+          <ForeignDiplomacy c={c} />
           <RealmTab c={c} />
         </>
       )}
@@ -119,38 +118,6 @@ function RealmTab({ c }: { c: Country }) {
         </section>
       )}
     </>
-  );
-}
-
-/** Diplomacy with a foreign realm: war and truces (alliances arrive in the next milestone). */
-function Relations({ c }: { c: Country }) {
-  const game = useGame();
-  const state = game.state;
-  const player = state.player;
-  if (!player || !c.alive || c.index === player) return null;
-  const top = topLiege(state, c.index);
-  const sameRealm = topLiege(state, player) === top;
-  const war = atWar(state, player, c.index);
-  const truce = state.truces.find(
-    (t) => ((t.a === player && t.b === top) || (t.b === player && t.a === top)) && t.until > state.day,
-  );
-  return (
-    <section className="relations">
-      {war && <p className="alert war">We are at war with {c.name}.</p>}
-      {truce && <p className="dim">Truce until {formatDate(toDate(truce.until))}.</p>}
-      {state.countries[player].throneClaims.includes(top) && (
-        <p className="dim">Your ruler has a claim to the throne of {state.countries[top].name}.</p>
-      )}
-      {!war && !sameRealm && (
-        <button
-          className="btn primary"
-          disabled={hasTruce(state, player, top)}
-          onClick={() => game.ui.set({ modal: 'declare', dialogCountry: c.index, speed: 0 })}
-        >
-          <Icon name="crossed-swords" /> Declare war
-        </button>
-      )}
-    </section>
   );
 }
 
@@ -348,51 +315,6 @@ function CourtTab({ c }: { c: Country }) {
           })}
         </ul>
       </section>
-    </>
-  );
-}
-
-function WarsTab({ c }: { c: Country }) {
-  const game = useGame();
-  const state = game.state;
-  const wars = warsOf(state, c.index);
-  const truces = state.truces.filter((t) => (t.a === c.index || t.b === c.index) && t.until > state.day);
-  return (
-    <>
-      {wars.length ? (
-        <ul className="war-list">
-          {wars.map((w) => {
-            const score = scoreFor(state, w, c.index);
-            return (
-              <li key={w.id}>
-                <button className="war-row" onClick={() => selectWar(game, w.id)}>
-                  <Icon name="crossed-swords" />
-                  <span className="war-row-name">{w.name}</span>
-                  <span className={`num ${score < 0 ? 'bad' : 'good'}`}>{fmtSigned(score, 0)}%</span>
-                </button>
-              </li>
-            );
-          })}
-        </ul>
-      ) : (
-        <p className="dim">The realm is at peace. Declare war from the panel of a neighbouring realm.</p>
-      )}
-      {truces.length > 0 && (
-        <section className="sp-section">
-          <h3 className="section-title">Truces</h3>
-          <ul className="ranked">
-            {truces.map((t, i) => {
-              const other = state.countries[t.a === c.index ? t.b : t.a];
-              return (
-                <li key={i} className="ranked-row static">
-                  <span>{other?.name}</span>
-                  <span className="dim small">until {formatDate(toDate(t.until))}</span>
-                </li>
-              );
-            })}
-          </ul>
-        </section>
-      )}
     </>
   );
 }

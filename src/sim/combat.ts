@@ -6,6 +6,7 @@
 import { UNITS, UNIT_ORDER } from '../data/units';
 import { ADJ_RIVER, ADJ_STRAIT } from '../shared/dataTypes';
 import { character, die, skill } from './characters';
+import { mayEnter } from './diplomacy';
 import { log } from './log';
 import { isPassable, stepDays } from './movement';
 import { armySize, atWar, menIn, sideOf } from './queries';
@@ -203,6 +204,8 @@ function retreatTarget(state: GameState, world: SimWorld, army: Army): number {
     let score = -stepDays(world, army.location, n);
     if (ctrl === army.owner) score += 20;
     else if (ctrl && !atWar(state, ctrl, army.owner)) score += 8;
+    // Fleeing into a realm that never gave leave is the last resort.
+    if (!mayEnter(state, army.owner, n)) score -= 30;
     if (score > bestScore) {
       bestScore = score;
       best = n;

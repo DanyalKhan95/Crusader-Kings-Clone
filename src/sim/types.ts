@@ -1,6 +1,6 @@
 /**
  * The simulation state. Everything here is plain JSON so a game can be saved and loaded as is;
- * derived lookups (by tag, provinces per owner) live in `derived.ts` and are rebuilt on load.
+ * derived lookups (provinces per owner, neighbours) are cached in `queries.ts` and rebuilt on demand.
  */
 import type { Government, Rank } from '../shared/dataTypes';
 
@@ -29,6 +29,15 @@ export interface Character {
   died?: number;
 }
 
+/** What one country remembers about another; the value fades month by month. */
+export type MemoryKind =
+  'ae' | 'took_land' | 'gift' | 'betrayed' | 'broke_pact' | 'fought_beside' | 'freed_us' | 'refused';
+
+export interface Memory {
+  kind: MemoryKind;
+  value: number;
+}
+
 export interface Loan {
   amount: number;
   /** gold per month */
@@ -46,7 +55,10 @@ export interface Country {
   rank: Rank;
   color: [number, number, number];
   colorHex: string;
+  /** the realm this country is a vassal of (0 = none); vassals are part of their liege's realm */
   liege: number;
+  /** the country this one pays tribute to (0 = none); tributaries keep their own realm */
+  overlord: number;
   capital: number;
   culture: string;
   religion: string;
@@ -64,6 +76,8 @@ export interface Country {
   lastBalance: number;
 
   ruler: number;
+  /** day the ruler came to the throne */
+  rulerSince: number;
   heir: number;
   council: Record<CouncilSeat, number>;
   /** characters at court who can be appointed to the council or lead armies */
@@ -75,8 +89,14 @@ export interface Country {
   throneClaims: number[];
   /** provinces this one claims */
   claims: number[];
+  /** a claim being fabricated */
+  fabricating: { province: number; start: number; done: number } | null;
+  /** a vassal being integrated into the realm */
+  integrating: { vassal: number; progress: number; needed: number } | null;
+  /** memories of other countries, by country index */
+  memories: Record<number, Memory[]>;
 
-  ai: { nextWarCheck: number; nextBuild: number };
+  ai: { nextWarCheck: number; nextBuild: number; nextDiplo: number };
 }
 
 export interface Construction {
@@ -149,13 +169,34 @@ export interface Battle {
   defender: BattleSide;
 }
 
-export type CasusBelli = 'throne' | 'border' | 'conquest';
+export type CasusBelli = 'claim' | 'throne' | 'conquest' | 'independence' | 'coalition';
+
+/**
+ * Treaties between independent realms. Alliances and non-aggression pacts are mutual; with `access`
+ * country `a` lets `b` march through its land; with `guarantee` country `a` defends `b`.
+ */
+export type PactKind = 'alliance' | 'nap' | 'access' | 'guarantee';
+
+export interface Pact {
+  kind: PactKind;
+  a: number;
+  b: number;
+  since: number;
+}
+
+/** Countries that fear an aggressive neighbour and will fight it together. */
+export interface Coalition {
+  id: number;
+  target: number;
+  members: number[];
+  since: number;
+}
 
 export interface War {
   id: number;
   name: string;
   cb: CasusBelli;
-  /** province id for border wars, country index for throne wars, 0 otherwise */
+  /** province id for claim wars, country index for throne wars, 0 otherwise */
   goal: number;
   attacker: number;
   defender: number;
@@ -180,20 +221,44 @@ export interface PeaceTerms {
   gold: number;
   /** enforce the war goal of a throne war */
   throne?: boolean;
+  /** the losing leader becomes the winner's tributary */
+  tributary?: boolean;
+  /** the rebels of an independence war go free */
+  independence?: boolean;
   white?: boolean;
 }
 
-export interface PeaceOffer {
+interface OfferBase {
   id: number;
-  war: number;
-  /** who proposes: the side that gains */
+  /** who proposes */
   from: number;
   to: number;
-  terms: PeaceTerms;
   expires: number;
 }
 
-export type MessageKind = 'war' | 'peace' | 'battle' | 'siege' | 'death' | 'building' | 'economy' | 'army' | 'event';
+/** Peace terms; `from` is the side that gains. */
+export interface PeaceOffer extends OfferBase {
+  kind: 'peace';
+  war: number;
+  terms: PeaceTerms;
+}
+
+/** An ally, guarantor or overlord is asked to join a war on `from`'s side. */
+export interface CallOffer extends OfferBase {
+  kind: 'call';
+  war: number;
+}
+
+/** A proposed treaty. For `access`, `from` asks to march through `to`'s land. */
+export interface PactOffer extends OfferBase {
+  kind: 'pact';
+  pact: PactKind;
+}
+
+export type Offer = PeaceOffer | CallOffer | PactOffer;
+
+export type MessageKind =
+  'war' | 'peace' | 'battle' | 'siege' | 'death' | 'building' | 'economy' | 'army' | 'event' | 'diplomacy';
 
 export interface Message {
   id: number;
@@ -207,7 +272,7 @@ export interface Message {
 }
 
 export interface GameState {
-  version: 1;
+  version: 2;
   scenario: string;
   seed: number;
   rng: number;
@@ -220,7 +285,12 @@ export interface GameState {
   battles: Battle[];
   wars: War[];
   truces: Truce[];
-  offers: PeaceOffer[];
+  pacts: Pact[];
+  coalitions: Coalition[];
+  /** proposals waiting for the player's answer */
+  offers: Offer[];
+  /** no AI treaty proposal reaches the player before this day */
+  proposalCooldown: number;
   messages: Message[];
   nextId: number;
   player: number;
@@ -228,6 +298,8 @@ export interface GameState {
   mapVersion: number;
   /** bumped whenever borders change (owners, lieges) */
   borderVersion: number;
+  /** bumped whenever treaties, wars or subjects change, for the diplomacy map */
+  diploVersion: number;
   /** one-off scripted happenings still to come */
   scheduled: { day: number; event: string }[];
 }

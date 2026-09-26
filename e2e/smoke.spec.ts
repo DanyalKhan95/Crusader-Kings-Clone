@@ -68,3 +68,49 @@ test('plays England: armies, time and a saved game', async ({ page }) => {
 
   expect(errors).toEqual([]);
 });
+
+test('makes friends: an alliance, the diplomacy map and a forged claim', async ({ page }) => {
+  const errors = watchErrors(page);
+  await page.goto('/?debug');
+  await page.getByRole('button', { name: 'New Campaign' }).click({ timeout: 120_000 });
+  await page.getByRole('button', { name: 'Play as England' }).click();
+  await expect(page.locator('.date-long')).toHaveText('15th of September, 1066 AD');
+
+  // Open panels the way a click on the map would (the camera may still be moving).
+  const open = (what: { province?: string; country?: string }) =>
+    page.evaluate((w) => {
+      type G = {
+        ui: { set: (p: object) => void };
+        world: { regions: { id: number; name: string; kind: string }[] };
+        state: { countries: ({ tag: string; index: number } | null)[] };
+      };
+      const g = (window as unknown as { game: G }).game;
+      if (w.province) {
+        const r = g.world.regions.find((x) => x.name === w.province && x.kind === 'land')!;
+        g.ui.set({ panel: 'province', selectedProvince: r.id });
+      } else {
+        const c = g.state.countries.find((x) => x?.tag === w.country)!;
+        g.ui.set({ panel: 'country', selectedCountry: c.index });
+      }
+    }, what);
+
+  // Edinburgh, across the border in Scotland: a claim can be forged on it.
+  await open({ province: 'Edinburgh' });
+  await expect(page.locator('.side-panel .holder')).toContainText('Kingdom of Alba');
+  await expect(page.locator('.side-panel button', { hasText: 'Forge a claim' })).toBeEnabled();
+
+  // Scotland will ally with England.
+  await page.locator('.side-panel .holder').click();
+  await expect(page.getByRole('heading', { name: 'Kingdom of Alba' })).toBeVisible();
+  await page.locator('.diplo-actions button', { hasText: 'Propose an alliance' }).click();
+  await expect(page.locator('.fact-chip', { hasText: 'Allies' })).toBeVisible();
+
+  await page.keyboard.press('u');
+  await expect(page.getByRole('button', { name: 'Diplomacy map (U)' })).toHaveAttribute('aria-pressed', 'true');
+
+  await page.locator('.nation-coa').click();
+  await page.getByRole('tab', { name: 'Diplomacy' }).click();
+  await expect(page.locator('.diplo-list')).toContainText('Kingdom of Alba');
+
+  expect(errors).toEqual([]);
+});

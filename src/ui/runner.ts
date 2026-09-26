@@ -16,6 +16,7 @@ export function attachRunner(game: Game) {
   let lastUi = 0;
   let mapVersion = game.state.mapVersion;
   let borderVersion = game.state.borderVersion;
+  let diploVersion = game.state.diploVersion;
   let lastMessage = game.state.messages.at(-1)?.id ?? 0;
 
   const sync = (force: boolean) => {
@@ -27,10 +28,11 @@ export function attachRunner(game: Game) {
         borderVersion = state.borderVersion;
         mapVersion = state.mapVersion;
         map.refresh();
-      } else if (state.mapVersion !== mapVersion) {
+      } else if (state.mapVersion !== mapVersion || state.diploVersion !== diploVersion) {
         mapVersion = state.mapVersion;
         map.recolor();
       }
+      diploVersion = state.diploVersion;
     }
     const ui = game.ui.get();
     const patch: Partial<typeof ui> = {};
@@ -91,6 +93,7 @@ export function attachRunner(game: Game) {
   const reset = () => {
     mapVersion = -1;
     borderVersion = -1;
+    diploVersion = -1;
     lastMessage = game.state.messages.at(-1)?.id ?? 0;
     sync(true);
   };

@@ -94,15 +94,29 @@ whole world. The player controls a country rather than a dynasty.
   - [x] offers and accepts peace
 - [x] Save and load: gzipped into IndexedDB, plus file export and import.
 - [x] 1066 flavour: the Norwegian invasion of England and William's claim.
-- [x] Headless runs: `npm run simulate -- --years N` runs the whole world under AI at about
-      3,000 days a second.
+- [x] Headless runs: `npm run simulate -- --years N` runs the whole world under AI (about 1,500
+      days a second with diplomacy).
 
-### M2: Diplomacy
+### M2: Diplomacy (done)
 
-- Opinion, alliances, non-aggression pacts, military access, guarantees and calls to arms.
-- Vassals and tributaries, with loyalty, integration and independence wars.
-- Fabricated claims, and coalitions against aggressive expansion.
-- AI diplomacy.
+- [x] Opinion between every pair of realms, with its reasons: faith, culture, treaties, claims,
+      wars, the ruler's diplomacy, and memories that fade (gifts, betrayals, land taken, fear).
+- [x] Treaties: alliances, non-aggression pacts, military access (armies need leave to enter
+      foreign land), guarantees of independence.
+- [x] Calls to arms for allies, guarantors, overlords and coalition members; refusing breaks the
+      treaty. Separate peace for those who do not lead a side.
+- [x] Vassals with loyalty, integration of loyal vassals, and wars of independence.
+- [x] Tributaries, won at the peace table: they pay 15% of their taxes and may not make alliances.
+- [x] Forged claims (the chancellor's work, about ten months) as the just cause for war; claimed
+      land costs half at the peace table. Border wars without a claim are gone.
+- [x] Aggressive expansion, and coalitions that form against it and go to war together.
+- [x] AI diplomacy: alliances against common threats, pacts with dangerous neighbours,
+      guarantees for small friends, claims before wars, allies counted in the odds, coalition
+      wars, rebellions, integration, and proposals to the player (at most one every four months).
+- [x] UI: diplomacy section in every realm's panel (opinions, treaties, actions that show how
+      the AI will answer), a Diplomacy tab for your own realm, claims in the province panel, the
+      diplomacy map mode, call-to-arms and proposal dialogs.
+- [x] Saves from milestone 1 load (border wars become claim wars).
 
 ### M3: Internal politics and the council
 
@@ -169,6 +183,7 @@ whole world. The player controls a country rather than a dynasty.
   grain would help.
 - **Small realms:** these were dropped where a province is bigger than the whole realm (for
   example the Duchy of Naples).
-- **Balance:** in 20-year AI runs about 30 small realms are conquered and England sometimes falls
-  to the Norman or Norwegian claimant. Alliances and coalitions (M2) should slow the snowballing.
+- **Balance:** in 30-year AI runs there are about 250 wars (nearly all over forged claims), and
+  about 25 small realms are conquered. England sometimes falls to the Norman or Norwegian
+  claimant. AI coalitions and rebellions are rare; factions (M3) should make vassals livelier.
 - **Navies:** armies embark automatically and cannot be intercepted at sea until M6.

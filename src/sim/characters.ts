@@ -268,6 +268,7 @@ export function succeed(state: GameState, world: SimWorld, country: Country) {
   heir.name = regnalName(state, country, heir.name);
   heir.traits = [...heir.traits.filter((t) => t !== '_reigned'), '_reigned'];
   country.ruler = heir.id;
+  country.rulerSince = state.day;
   country.heir = 0;
   for (const seat of COUNCIL_SEATS) if (country.council[seat] === heir.id) country.council[seat] = 0;
   country.courtiers = country.courtiers.filter((id) => id !== heir.id);

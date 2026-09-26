@@ -135,6 +135,17 @@ const UI = [
   'cross-mark',
   'mountains',
   'pine-tree',
+  'shaking-hands',
+  'breaking-chain',
+  'present',
+  'open-gate',
+  'kneeling',
+  'checked-shield',
+  'conversation',
+  'rally-the-troops',
+  'crossed-chains',
+  'angry-eyes',
+  'flag-objective',
 ];
 
 const out: Record<string, string> = {};
