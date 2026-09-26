@@ -4,6 +4,8 @@
  */
 import { readFileSync } from 'node:fs';
 import { faithName } from '../src/sim/beliefs.ts';
+import { ERAS } from '../src/data/eras.ts';
+import { eraOf } from '../src/sim/tech.ts';
 import { toDate } from '../src/sim/calendar.ts';
 import { loyalty, memory } from '../src/sim/diplomacy.ts';
 import { estateInfluence, estateLoyalty } from '../src/sim/politics.ts';
@@ -68,6 +70,12 @@ for (let d = 0; d < years * 365; d++) {
     console.log(
       `${fmt(state.day)}  countries ${alive}  wars ${state.wars.length}  armies ${state.armies.length} (${Math.round(men / 1000)}k men)  battles ${state.battles.length}`,
     );
+    const realms = state.countries.filter((c) => c?.alive && !c.liege && !c.rebel);
+    const eras = ERAS.map((e, i) => `${e.name.toLowerCase()} ${realms.filter((c) => eraOf(c!) === i).length}`)
+      .filter((x) => !x.endsWith(' 0'))
+      .join(', ');
+    const top = Math.max(...realms.map((c) => Math.max(c!.tech.economy, c!.tech.military, c!.tech.society)));
+    console.log(`            eras: ${eras}; highest level ${top}`);
     console.log(
       `            alliances ${pacts('alliance')}  naps ${pacts('nap')}  guarantees ${pacts('guarantee')}  access ${pacts('access')}  tributaries ${tributaries}  coalitions ${state.coalitions.length}  claims ${claims} (+${forging} forging)`,
     );
@@ -120,6 +128,14 @@ const laws = { taxation: [0, 0, 0, 0], conscription: [0, 0, 0, 0], crown: [0, 0,
 for (const c of state.countries)
   if (c?.alive && !c.rebel) for (const k of ['taxation', 'conscription', 'crown'] as const) laws[k][c.laws[k]]++;
 console.log(`laws: ${JSON.stringify(laws)}`);
+const govs = new Map<string, number>();
+for (const c of state.countries) if (c?.alive && !c.rebel) govs.set(c.gov, (govs.get(c.gov) ?? 0) + 1);
+console.log(
+  `governments: ${[...govs]
+    .sort((a, b) => b[1] - a[1])
+    .map(([g, n]) => `${g} ${n}`)
+    .join(', ')}`,
+);
 const tolerance = [0, 0, 0];
 for (const c of state.countries) if (c?.alive && !c.rebel) tolerance[c.laws.tolerance]++;
 console.log(`religious policy (persecution, established, tolerance): ${tolerance.join(', ')}`);

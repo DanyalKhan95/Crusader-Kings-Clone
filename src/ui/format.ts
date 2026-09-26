@@ -64,6 +64,11 @@ export const GOVERNMENT_NAMES: Record<string, string> = {
   nomadic: 'Nomadic Horde',
   republic: 'Merchant Republic',
   theocracy: 'Theocracy',
+  absolute: 'Absolute Monarchy',
+  constitutional: 'Constitutional Monarchy',
+  democracy: 'Democracy',
+  dictatorship: 'Dictatorship',
+  communist: 'Communist State',
 };
 
 export const RANK_NAMES: Record<string, string> = {

@@ -67,7 +67,20 @@ export interface WorldData {
   religions: Record<string, ReligionDef>;
 }
 
-export type Government = 'feudal' | 'imperial' | 'clan' | 'tribal' | 'nomadic' | 'republic' | 'theocracy';
+export type Government =
+  | 'feudal'
+  | 'imperial'
+  | 'clan'
+  | 'tribal'
+  | 'nomadic'
+  | 'republic'
+  | 'theocracy'
+  // Reached through technology and reform (milestone 5).
+  | 'absolute'
+  | 'constitutional'
+  | 'democracy'
+  | 'dictatorship'
+  | 'communist';
 export type Rank = 'county' | 'duchy' | 'kingdom' | 'empire';
 
 export interface CountryData {

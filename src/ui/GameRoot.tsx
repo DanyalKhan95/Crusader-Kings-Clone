@@ -4,6 +4,7 @@ import { closePanel, setMapMode, setSpeed, togglePause, toMenu } from './actions
 import { DeclareWar } from './dialogs/DeclareWar';
 import { Fallen, GameMenu } from './dialogs/GameMenu';
 import { Offer, Peace } from './dialogs/Peace';
+import { TechScreen } from './dialogs/TechScreen';
 import { useGame } from './game';
 import { HoverTooltip } from './hud/HoverTooltip';
 import { Hud } from './hud/Hud';
@@ -65,6 +66,7 @@ export function GameRoot() {
       {phase === 'playing' && modal === 'peace' && <Peace />}
       {phase === 'playing' && modal === 'offer' && <Offer />}
       {phase === 'playing' && modal === 'fallen' && <Fallen />}
+      {phase === 'playing' && modal === 'tech' && <TechScreen />}
     </>
   );
 }

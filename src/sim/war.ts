@@ -893,7 +893,7 @@ export function endWar(
     : `${war.name} is over: ${what}.`;
   log(state, participants, 'peace', text, { important: participants.includes(state.player) });
   if (winLeader && loseLeader && terms.throne) inheritThrone(state, winLeader, loseLeader);
-  endRevolt(state, war, winner === 'attacker', terms);
+  endRevolt(state, world, war, winner === 'attacker', terms);
   for (const c of [...state.countries]) if (c?.alive && !provincesOf(state, c.index).length) destroyCountry(state, c);
   fixCapitals(state, world);
   pruneClaims(state);

@@ -40,6 +40,9 @@ import {
   unacceptCulture,
 } from './faith';
 import { callHolyWar, canCallHolyWar, greatHolyWarOf } from './holywars';
+import { canReform, reform, setFocus } from './tech';
+import type { TechTrack } from '../data/techs';
+import type { Government } from '../shared/dataTypes';
 import { log } from './log';
 import { disband, inBattle, mergeInto, orderMove, raiseArmy, recruit, split } from './military';
 import { armyById, lordOf, sideOf } from './queries';
@@ -371,4 +374,19 @@ export function greatHolyWar(state: GameState, world: SimWorld): Result {
   if (!check.ok) return no(check.reason);
   const war = callHolyWar(state, world, def);
   return war ? ok(`${war.name} is called.`) : no('The faithful do not answer');
+}
+
+// ── Technology and government ─────────────────────────────────────
+
+export function researchFocus(state: GameState, track: TechTrack | null): Result {
+  setFocus(state.countries[state.player], track);
+  return ok();
+}
+
+export function reformGovernment(state: GameState, gov: Government): Result {
+  const c = state.countries[state.player];
+  const check = canReform(state, c, gov);
+  if (!check.ok) return no(check.reason);
+  reform(state, c, gov);
+  return ok();
 }

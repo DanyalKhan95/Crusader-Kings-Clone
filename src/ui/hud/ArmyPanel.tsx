@@ -1,4 +1,4 @@
-import { UNITS, UNIT_ORDER } from '../../data/units';
+import { UNIT_ORDER, unitDef } from '../../data/units';
 import { formatMen } from '../../render/units';
 import { character, skill } from '../../sim/characters';
 import { battleAt } from '../../sim/combat';
@@ -7,6 +7,7 @@ import { inBattle, supplyLimit } from '../../sim/military';
 import { pathDays } from '../../sim/movement';
 import { armySize, armyById, atWar } from '../../sim/queries';
 import { siegeDays } from '../../sim/siege';
+import { militaryEra } from '../../sim/tech';
 import { flyToProvince, run, selectCountry } from '../actions';
 import { CoatOfArms } from '../CoatOfArms';
 import { useGame } from '../game';
@@ -19,6 +20,7 @@ export function ArmyView({ id }: { id: number }) {
   const army = armyById(state, id);
   if (!army) return <p className="sp-body dim">This army is no more.</p>;
   const owner = state.countries[army.owner];
+  const era = militaryEra(owner);
   const mine = army.owner === state.player;
   const hostile = !mine && atWar(state, army.owner, state.player);
   const commander = character(state, army.commander);
@@ -93,9 +95,9 @@ export function ArmyView({ id }: { id: number }) {
         <h3 className="section-title">Troops</h3>
         <ul className="units">
           {UNIT_ORDER.filter((t) => (army.units[t] ?? 0) >= 1).map((t) => (
-            <li key={t} title={UNITS[t].blurb}>
-              <Icon name={UNITS[t].icon} />
-              <span>{UNITS[t].name}</span>
+            <li key={t} title={unitDef(t, era).blurb}>
+              <Icon name={unitDef(t, era).icon} />
+              <span>{unitDef(t, era).name}</span>
               <span className="num">{formatMen(army.units[t] ?? 0)}</span>
             </li>
           ))}

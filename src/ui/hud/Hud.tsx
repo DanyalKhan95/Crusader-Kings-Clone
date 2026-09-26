@@ -4,6 +4,9 @@ import { toDate } from '../../sim/calendar';
 import { character } from '../../sim/characters';
 import { expenses, income, maxManpower, reserveMen } from '../../sim/economy';
 import { legitimacyTarget } from '../../sim/politics';
+import { ERAS } from '../../data/eras';
+import { TECH_TRACKS, TECHS, TRACK_INFO } from '../../data/techs';
+import { eraOf } from '../../sim/tech';
 import { armiesOf, menIn } from '../../sim/queries';
 import { flyToRealm, selectCountry, setSpeed, togglePause } from '../actions';
 import { CoatOfArms } from '../CoatOfArms';
@@ -147,6 +150,7 @@ function NationPlate() {
             </p>
           }
         />
+        <EraButton />
         {c.warExhaustion >= 0.5 && (
           <Resource
             icon="tattered-banner"
@@ -162,6 +166,48 @@ function NationPlate() {
         )}
       </div>
     </header>
+  );
+}
+
+/** The realm's era and the progress of its scholars; opens the technology screen. The interface
+ * dresses in the era's colours and letters. */
+function EraButton() {
+  const game = useGame();
+  const c = game.state.countries[game.state.player];
+  const era = ERAS[c ? eraOf(c) : 0];
+  useEffect(() => {
+    document.documentElement.dataset.era = era.id;
+    return () => {
+      document.documentElement.dataset.era = 'medieval';
+    };
+  }, [era.id]);
+  if (!c) return null;
+  return (
+    <WithTip
+      className="stat stat-button"
+      tip={
+        <div className="breakdown">
+          <div className="breakdown-title caps">{era.name} era</div>
+          <ul>
+            {TECH_TRACKS.map((t) => (
+              <li key={t}>
+                <span>
+                  {TRACK_INFO[t].name}: {TECHS[t][c.tech[t] - 1]?.name ?? 'nothing yet'}
+                </span>
+                <span className="num">{c.tech[t]}</span>
+              </li>
+            ))}
+          </ul>
+          <p className="tip-text">Open the technology screen.</p>
+        </div>
+      }
+    >
+      <button className="stat-hit" onClick={() => game.ui.set({ modal: 'tech' })} aria-label="Technology">
+        <Icon name="graduate-cap" />
+        <span className="num stat-value">{era.name}</span>
+        <span className="stat-label">Era</span>
+      </button>
+    </WithTip>
   );
 }
 

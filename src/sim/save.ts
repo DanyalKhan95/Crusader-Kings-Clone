@@ -1,8 +1,9 @@
 /** Saving and loading: the state is plain JSON. Older saves are brought up to date on load. */
 import { defaultEstates, defaultTasks, initialLaws } from './politics';
+import { initialTech } from './tech';
 import type { CasusBelli, GameState } from './types';
 
-export const SAVE_VERSION = 4;
+export const SAVE_VERSION = 5;
 
 export interface SaveFile {
   format: 'crowns-and-centuries';
@@ -32,7 +33,20 @@ export function deserialize(json: string): GameState {
   if (file.version < 2) migrateToDiplomacy(s);
   if (file.version < 3) migrateToPolitics(s);
   if (file.version < 4) migrateToFaith(s);
+  if (file.version < 5) migrateToTechnology(s);
   return s;
+}
+
+/** Version 4 (milestone 4) had no technology: every realm starts where the realms of 1066 did. */
+function migrateToTechnology(s: GameState) {
+  (s as unknown as { version: number }).version = 5;
+  for (const c of s.countries) {
+    if (!c) continue;
+    c.tech ??= initialTech(c.gov);
+    c.research ??= { economy: 0, military: 0, society: 0 };
+    c.focus ??= null;
+    c.reformed ??= s.day - 20 * 365;
+  }
 }
 
 /** Version 3 (milestone 3) had no religious policy, missions, accepted cultures or great holy wars. */

@@ -8,8 +8,9 @@ import { fortLevel } from './economy';
 import { log } from './log';
 import { armySize, atWar } from './queries';
 import { chance } from './rng';
-import type { Army, GameState } from './types';
-import { UNITS } from '../data/units';
+import { militaryEra, techEffect } from './tech';
+import type { Army, GameState, UnitType } from './types';
+import { unitDef } from '../data/units';
 import { battleAt } from './combat';
 import type { SimWorld } from './world';
 
@@ -20,11 +21,14 @@ export function garrison(state: GameState, id: number): number {
   return fortLevel(state, id) * GARRISON_PER_FORT;
 }
 
-/** Siege power of an army: 1 plus engines. */
-function siegePower(army: Army): number {
+/** Siege power of an army: its engines or guns, as good as its realm can make them. */
+function siegePower(state: GameState, army: Army): number {
+  const owner = state.countries[army.owner];
+  const era = militaryEra(owner);
   let p = 0;
-  for (const [t, men] of Object.entries(army.units)) p += ((men ?? 0) / 100) * UNITS[t as keyof typeof UNITS].siege;
-  return p;
+  for (const [t, men] of Object.entries(army.units) as [UnitType, number][])
+    p += ((men ?? 0) / 100) * unitDef(t, era).siege;
+  return p * (1 + (owner ? techEffect(owner, 'siege') : 0));
 }
 
 /** Days a full siege would take at the current rate, for display. */
@@ -41,7 +45,7 @@ function dailyRate(state: GameState, id: number, armies: Army[]): number {
   if (!fort) return 1 / OPEN_DAYS;
   const g = garrison(state, id);
   if (men < g) return 0;
-  const engines = armies.reduce((s, a) => s + siegePower(a), 0);
+  const engines = armies.reduce((s, a) => s + siegePower(state, a), 0);
   const owner = state.countries[armies[0].owner];
   const spy = owner ? taskSkill(state, owner, 'spymaster', 'sieges') : 0;
   const numbers = Math.min(1.5, men / (g * 4));

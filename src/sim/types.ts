@@ -2,6 +2,7 @@
  * The simulation state. Everything here is plain JSON so a game can be saved and loaded as is;
  * derived lookups (provinces per owner, neighbours) are cached in `queries.ts` and rebuilt on demand.
  */
+import type { TechTrack } from '../data/techs';
 import type { Government, Rank } from '../shared/dataTypes';
 
 export type Skill = 'dip' | 'mar' | 'stw' | 'int' | 'lrn';
@@ -10,11 +11,13 @@ export const SKILLS: Skill[] = ['dip', 'mar', 'stw', 'int', 'lrn'];
 export type CouncilSeat = 'chancellor' | 'marshal' | 'steward' | 'spymaster' | 'chaplain';
 export const COUNCIL_SEATS: CouncilSeat[] = ['chancellor', 'marshal', 'steward', 'spymaster', 'chaplain'];
 
-export type UnitType = 'levy' | 'spearmen' | 'archers' | 'light_cavalry' | 'knights' | 'horse_archers' | 'siege';
+/** Arms of the army. Each keeps its role through the eras while its weapons change (see data/units.ts). */
+export type UnitType =
+  'levy' | 'spearmen' | 'archers' | 'light_cavalry' | 'knights' | 'horse_archers' | 'siege' | 'air';
 /** Men per unit type. */
 export type Units = Partial<Record<UnitType, number>>;
 
-export type BuildingType = 'farms' | 'market' | 'barracks' | 'castle' | 'workshop' | 'port';
+export type BuildingType = 'farms' | 'market' | 'barracks' | 'castle' | 'workshop' | 'port' | 'university';
 
 // ── Politics ──────────────────────────────────────────────────────
 
@@ -59,7 +62,8 @@ export type TaskId =
   | 'assimilate';
 
 /** A demand of rebels, enforced if they win. */
-export type Demand = 'lower_taxes' | 'lower_conscription' | 'lower_crown' | 'privileges';
+/** A demand of rebels, enforced if they win; `nation` rebels want a state of their own. */
+export type Demand = 'lower_taxes' | 'lower_conscription' | 'lower_crown' | 'privileges' | 'nation';
 
 /** A temporary realm raised by a revolt; its land returns to the realm when the revolt ends. */
 export interface RebelInfo {
@@ -165,6 +169,14 @@ export interface Country {
   assimilating: Mission | null;
   /** day of the last blessing from the head of the faith */
   blessed: number;
+  /** levels reached in each technology track */
+  tech: Record<TechTrack, number>;
+  /** points gathered towards the next level of each track */
+  research: Record<TechTrack, number>;
+  /** the track the realm's scholars favour, if any */
+  focus: TechTrack | null;
+  /** day of the last change of government */
+  reformed: number;
   /** memories of other countries, by country index */
   memories: Record<number, Memory[]>;
 
@@ -379,7 +391,7 @@ export interface Message {
 }
 
 export interface GameState {
-  version: 4;
+  version: 5;
   scenario: string;
   seed: number;
   rng: number;

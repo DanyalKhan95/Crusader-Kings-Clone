@@ -3,6 +3,7 @@
  * new heir is found at court.
  */
 import { nameList } from '../data/names';
+import { termYears } from '../data/politics';
 import { EDUCATION_BY_SKILL, OPPOSITES, PERSONALITY, TRAITS } from '../data/traits';
 import { years, yearsBetween } from './calendar';
 import { log } from './log';
@@ -330,7 +331,7 @@ export function succeed(state: GameState, world: SimWorld, country: Country) {
         : law === 'republic'
           ? 70
           : 65;
-  if (law === 'republic') country.termEnds = state.day + years(8);
+  if (law === 'republic') country.termEnds = state.day + years(termYears(country.gov));
   else country.stability = Math.max(-3, country.stability - 1);
   staffCourt(state, world, country, country.index !== state.player);
   log(

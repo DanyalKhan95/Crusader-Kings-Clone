@@ -1,10 +1,11 @@
 import { useMemo } from 'react';
-import { UNITS, UNIT_ORDER } from '../../data/units';
+import { UNIT_ORDER, unitDef } from '../../data/units';
 import { formatMen } from '../../render/units';
 import { character, SEAT_INFO, SEAT_SKILL, skill, SKILL_NAMES, successorOf } from '../../sim/characters';
 import * as cmd from '../../sim/commands';
 import { expenses, income, loanSize, MAX_LOANS, maxManpower, reserveMen } from '../../sim/economy';
 import { availableMaa, recruitCost } from '../../sim/military';
+import { militaryEra } from '../../sim/tech';
 import { armiesOf, armySize, provincesOf } from '../../sim/queries';
 import { COUNCIL_SEATS, type Country, type UnitType } from '../../sim/types';
 import { run, selectArmy, selectCountry } from '../actions';
@@ -240,8 +241,8 @@ function MilitaryTab({ c }: { c: Country }) {
           <ul className="units">
             {UNIT_ORDER.filter((t) => (c.reserve[t] ?? 0) > 0).map((t) => (
               <li key={t}>
-                <Icon name={UNITS[t].icon} />
-                <span>{UNITS[t].name}</span>
+                <Icon name={unitDef(t, militaryEra(c)).icon} />
+                <span>{unitDef(t, militaryEra(c)).name}</span>
                 <span className="num">{formatMen(c.reserve[t] ?? 0)}</span>
               </li>
             ))}
@@ -256,8 +257,8 @@ function MilitaryTab({ c }: { c: Country }) {
 
 function RecruitRow({ c, t }: { c: Country; t: UnitType }) {
   const game = useGame();
-  const u = UNITS[t];
-  const cost = recruitCost(t, 1);
+  const u = unitDef(t, militaryEra(c));
+  const cost = recruitCost(c, t, 1);
   return (
     <li>
       <Icon name={u.icon} />

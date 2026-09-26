@@ -230,10 +230,11 @@ function foundKingdom(
   state: GameState,
   world: SimWorld,
   def: NonNullable<GreatHolyWarDef['kingdom']>,
-  culture: string,
+  founders: Country,
   religion: string,
   capital: number,
 ): Country {
+  const culture = founders.culture;
   const index = state.countries.length;
   const k: Country = {
     index,
@@ -273,6 +274,10 @@ function foundKingdom(
     converting: null,
     assimilating: null,
     blessed: state.day,
+    tech: { ...founders.tech },
+    research: { economy: 0, military: 0, society: 0 },
+    focus: null,
+    reformed: state.day,
     memories: {},
     laws: initialLaws('feudal', def.tag, cultureGroup(culture)),
     lawChanged: state.day,
@@ -300,7 +305,7 @@ export function grantHolyLand(state: GameState, world: SimWorld, war: War): Coun
     const standing = state.countries.find((c) => c?.alive && c.tag === tag && c.religion === def.faith);
     if (standing) heir = standing;
     else {
-      heir = foundKingdom(state, world, def.kingdom, crusaderRealm(state, world, war).culture, def.faith, war.goal);
+      heir = foundKingdom(state, world, def.kingdom, crusaderRealm(state, world, war), def.faith, war.goal);
       founded = true;
     }
   }

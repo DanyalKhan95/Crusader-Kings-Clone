@@ -391,13 +391,30 @@ function chargesSvg(ch: NonNullable<CoA['charge']>, ordinary: CoA['ordinary'], i
   }
 }
 
+/** The field, ordinary and charges of a coat of arms, in the 100×120 shield box. */
+export function armsBody(c: CoA, id: string): string {
+  return (
+    divisionSvg(c) +
+    (c.ordinary ? ordinarySvg(c.ordinary) : '') +
+    (c.charge ? chargesSvg(c.charge, c.ordinary, id) : '')
+  );
+}
+
+/** A charge drawn in a box of the given size centred on (cx, cy). */
+export function chargeAt(kind: ChargeKind, fill: string, cx: number, cy: number, size: number, id: string): string {
+  const g = chargeGlyph(kind, fill, id);
+  const rot = kind === 'trident' ? -135 : 0;
+  return `<g transform="translate(${cx - size / 2} ${cy - size / 2}) rotate(${rot} ${size / 2} ${size / 2}) scale(${size / 512})">${g}</g>`;
+}
+
+export function nextId(prefix: string): string {
+  return `${prefix}${++uid}`;
+}
+
 /** Full SVG markup for a coat of arms on a heater shield. */
 export function coaSvg(c: CoA, size = 64): string {
   const id = `coa${++uid}`;
-  const body =
-    divisionSvg(c) +
-    (c.ordinary ? ordinarySvg(c.ordinary) : '') +
-    (c.charge ? chargesSvg(c.charge, c.ordinary, id) : '');
+  const body = armsBody(c, id);
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 120" width="${size}" height="${size * 1.2}">
 <defs><clipPath id="${id}"><path d="${SHIELD_PATH}"/></clipPath>
 <linearGradient id="${id}g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fff" stop-opacity="0.28"/><stop offset="0.5" stop-color="#fff" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity="0.3"/></linearGradient></defs>

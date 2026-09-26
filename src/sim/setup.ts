@@ -7,6 +7,7 @@ import { income, maxManpower } from './economy';
 import { defaultEstates, defaultTasks, initialLaws } from './politics';
 import { hashString, randInt } from './rng';
 import { setup1066 } from './scripted';
+import { initialTech } from './tech';
 import type { Country, GameState, ProvinceState, Units } from './types';
 import type { SimWorld } from './world';
 
@@ -43,7 +44,7 @@ export function createGameState(world: SimWorld, scenario: ScenarioData, opts: {
   registerBeliefs(world.world, world.regions);
   const seed = opts.seed ?? hashString(scenario.id);
   const state: GameState = {
-    version: 4,
+    version: 5,
     scenario: scenario.id,
     seed,
     rng: seed,
@@ -108,6 +109,10 @@ export function createGameState(world: SimWorld, scenario: ScenarioData, opts: {
       converting: null,
       assimilating: null,
       blessed: parseDate(scenario.start) - years(10),
+      tech: initialTech(c.gov),
+      research: { economy: 0, military: 0, society: 0 },
+      focus: null,
+      reformed: parseDate(scenario.start) - years(20),
       memories: {},
       laws: initialLaws(c.gov, c.tag, cultureGroup(c.culture)),
       lawChanged: 0,

@@ -38,6 +38,12 @@ const SOURCES: { what: string; who: string; license: string; href: string }[] = 
     license: 'SIL Open Font License',
     href: 'https://fonts.google.com/specimen/Alegreya',
   },
+  {
+    what: 'Typefaces of the later eras',
+    who: 'Cinzel (Natanael Gama), EB Garamond (Georg Duffner, Octavio Pardo), IM Fell English (Igino Marini), Playfair Display (Claus Eggers Sørensen), Old Standard TT (Alexey Kryukov), Oswald (Vernon Adams and others), Source Sans 3 (Paul D. Hunt, Adobe), Inter (Rasmus Andersson)',
+    license: 'SIL Open Font License',
+    href: 'https://fontsource.org/',
+  },
 ];
 
 export function Credits() {

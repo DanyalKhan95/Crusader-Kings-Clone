@@ -47,6 +47,8 @@ h3 {
 .caps {
   font-family: var(--font-caps);
   letter-spacing: 0.06em;
+  font-variant-caps: var(--caps-variant, normal);
+  text-transform: var(--caps-transform, none);
 }
 
 .display {

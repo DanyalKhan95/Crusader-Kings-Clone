@@ -1,4 +1,13 @@
-import { ESTATE_INFO, GOVERNMENT_INFO, LEVEL_LAWS, SUCCESSION_INFO, type LevelLaw } from '../../data/politics';
+import {
+  ESTATE_INFO,
+  GOVERNMENT_INFO,
+  IDEOLOGY_NAMES,
+  ideologyOf,
+  LEVEL_LAWS,
+  SUCCESSION_INFO,
+  type LevelLaw,
+} from '../../data/politics';
+import { canReform, reformCost, reformOptions, REFORM_YEARS } from '../../sim/tech';
 import { toDate } from '../../sim/calendar';
 import * as cmd from '../../sim/commands';
 import { loyalty } from '../../sim/diplomacy';
@@ -55,10 +64,9 @@ export function LawsTab({ c }: { c: Country }) {
             <span style={{ width: `${c.legitimacy}%` }} />
           </span>
         </div>
-        <p className="dim small">
-          {GOVERNMENT_INFO[c.gov].name}: {GOVERNMENT_INFO[c.gov].blurb}
-        </p>
       </section>
+
+      <Government c={c} />
 
       {rebels.map((r) => (
         <div key={r.index} className="alert">
@@ -121,6 +129,53 @@ export function LawsTab({ c }: { c: Country }) {
         </section>
       )}
     </>
+  );
+}
+
+/** The form of government, and the reforms that technology has opened. */
+function Government({ c }: { c: Country }) {
+  const game = useGame();
+  const state = game.state;
+  const options = reformOptions(c);
+  const cost = reformCost();
+  const ideology = ideologyOf(c.gov);
+  return (
+    <section className="sp-section">
+      <h3 className="section-title">Government</h3>
+      <p className="small">
+        <strong>{GOVERNMENT_INFO[c.gov].name}.</strong> {GOVERNMENT_INFO[c.gov].blurb}
+        {ideology !== 'traditional' && <> Its ideals: {IDEOLOGY_NAMES[ideology].toLowerCase()}.</>}
+      </p>
+      {options.length > 0 ? (
+        <div className="btn-row">
+          {options.map((g) => {
+            const check = canReform(state, c, g);
+            return (
+              <WithTip
+                key={g}
+                tip={
+                  <p className="tip-text">
+                    {GOVERNMENT_INFO[g].blurb} A reform costs {cost.legitimacy} legitimacy and {cost.stability}{' '}
+                    stability, and the next may not come for {REFORM_YEARS} years.
+                    {!check.ok && <> {check.reason}.</>}
+                  </p>
+                }
+              >
+                <button
+                  className="btn small"
+                  disabled={!check.ok}
+                  onClick={() => run(game, cmd.reformGovernment(state, g))}
+                >
+                  <Icon name="capitol" /> {GOVERNMENT_INFO[g].name}
+                </button>
+              </WithTip>
+            );
+          })}
+        </div>
+      ) : (
+        <p className="dim small">No other form of government is open to you yet: that takes new ideas.</p>
+      )}
+    </section>
   );
 }
 

@@ -81,6 +81,36 @@ export const TAXATION_BURGHERS = [10, 0, -20, -40];
 /** Years between changes of law. */
 export const LAW_COOLDOWN_YEARS = 5;
 
+/** The ideals a government stands for, which set modern realms for or against each other. */
+export type Ideology = 'traditional' | 'liberal' | 'socialist' | 'authoritarian';
+
+export function ideologyOf(gov: Government): Ideology {
+  if (gov === 'democracy' || gov === 'constitutional') return 'liberal';
+  if (gov === 'communist') return 'socialist';
+  if (gov === 'dictatorship') return 'authoritarian';
+  return 'traditional';
+}
+
+export const IDEOLOGY_NAMES: Record<Ideology, string> = {
+  traditional: 'Tradition',
+  liberal: 'Liberalism',
+  socialist: 'Socialism',
+  authoritarian: 'Authoritarianism',
+};
+
+/** How much realms of two ideologies distrust each other. */
+export const IDEOLOGY_CLASH: Record<Ideology, Partial<Record<Ideology, number>>> = {
+  traditional: { socialist: -20 },
+  liberal: { socialist: -20, authoritarian: -15 },
+  socialist: { traditional: -20, liberal: -20, authoritarian: -30 },
+  authoritarian: { liberal: -15, socialist: -30 },
+};
+
+/** Years between elections in a republic or a democracy. */
+export function termYears(gov: Government): number {
+  return gov === 'democracy' ? 4 : 8;
+}
+
 export const ESTATE_INFO: Record<
   EstateId,
   { name: string; tribal?: string; blurb: string; privilege: string; privilegeBlurb: string }
@@ -121,6 +151,11 @@ export const ESTATE_WEIGHT: Record<Government, Record<EstateId, number>> = {
   nomadic: { nobles: 60, clergy: 10, burghers: 5, commons: 25 },
   republic: { nobles: 15, clergy: 15, burghers: 50, commons: 20 },
   theocracy: { nobles: 20, clergy: 50, burghers: 10, commons: 20 },
+  absolute: { nobles: 30, clergy: 20, burghers: 25, commons: 25 },
+  constitutional: { nobles: 25, clergy: 15, burghers: 35, commons: 25 },
+  democracy: { nobles: 10, clergy: 10, burghers: 35, commons: 45 },
+  dictatorship: { nobles: 45, clergy: 10, burghers: 25, commons: 20 },
+  communist: { nobles: 35, clergy: 5, burghers: 5, commons: 55 },
 };
 
 export const GOVERNMENT_INFO: Record<Government, { name: string; tax: number; levy: number; blurb: string }> = {
@@ -155,6 +190,36 @@ export const GOVERNMENT_INFO: Record<Government, { name: string; tax: number; le
     tax: 0,
     levy: 0,
     blurb: 'The church rules in God’s name: legitimacy +10.',
+  },
+  absolute: {
+    name: 'Absolute monarchy',
+    tax: 0.1,
+    levy: 0.1,
+    blurb: 'The king rules alone through his officials and his army: taxes and levies +10%.',
+  },
+  constitutional: {
+    name: 'Constitutional monarchy',
+    tax: 0.15,
+    levy: 0,
+    blurb: 'The crown governs with a parliament of taxpayers, who vote the taxes: +15%.',
+  },
+  democracy: {
+    name: 'Democracy',
+    tax: 0.2,
+    levy: -0.1,
+    blurb: 'Elected governments answer to the people every four years: taxes +20%, levies −10%.',
+  },
+  dictatorship: {
+    name: 'Dictatorship',
+    tax: 0.05,
+    levy: 0.25,
+    blurb: 'One leader and his party command everything: levies +25%, taxes +5%.',
+  },
+  communist: {
+    name: 'Communist state',
+    tax: 0.15,
+    levy: 0.2,
+    blurb: 'The party owns the factories and the fields: taxes +15%, levies +20%.',
   },
 };
 

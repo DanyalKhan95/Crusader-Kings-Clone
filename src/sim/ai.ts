@@ -5,7 +5,8 @@
  * strike enemy armies it can beat, besiege enemy land, or fall back to a fortress.
  */
 import { BUILDING_ORDER, BUILDINGS } from '../data/buildings';
-import { UNITS } from '../data/units';
+import { unitDef } from '../data/units';
+import { TECH_TRACKS } from '../data/techs';
 import { TRAITS } from '../data/traits';
 import { holySites } from './beliefs';
 import { character, staffCourt } from './characters';
@@ -34,7 +35,8 @@ import {
 import { canBuild, fortLevel, income, repayLoan, startBuilding } from './economy';
 import { acceptCulture, adoptFaith, canAcceptCulture, cultureShares, diversity, faithsToAdopt } from './faith';
 import { holyWarGoals, unbelievers, wagesHolyWar } from './holywars';
-import { changeLaw, estateLoyalty, grantPrivilege, lawCooldown } from './politics';
+import { canReform, militaryEra, reform, reformOptions } from './tech';
+import { changeLaw, estateInfluence, estateLoyalty, grantPrivilege, lawCooldown } from './politics';
 import { revoltRisk } from './revolts';
 import { log } from './log';
 import { availableMaa, disband, inBattle, mergeInto, orderMove, raiseArmy, recruit } from './military';
@@ -116,6 +118,7 @@ export function monthlyAI(state: GameState, world: SimWorld, c: Country) {
   }
   politicsAI(state, c);
   faithAI(state, world, c);
+  techAI(state, c);
   diplomacyAI(state, world, c);
   const wars = warsOf(state, c.index);
   if (wars.length) {
@@ -191,6 +194,42 @@ function politicsAI(state: GameState, c: Country) {
   }
 }
 
+/**
+ * Scholars favour the track that lags, or the art of war in wartime. New forms of government are
+ * taken up as history offers them: absolutism for strong crowns, a constitution where the towns
+ * are powerful, democracy where the people are restless; the new tyrannies come only in a crisis.
+ */
+function techAI(state: GameState, c: Country) {
+  const fighting = warsOf(state, c.index).length > 0;
+  c.focus = fighting ? 'military' : [...TECH_TRACKS].sort((a, b) => c.tech[a] - c.tech[b])[0];
+  if (c.liege || !chance(state, 0.02)) return;
+  const options = reformOptions(c);
+  if (!options.length) return;
+  const share = estateInfluence(state, c).share;
+  const crisis = c.stability < 0 && c.legitimacy < 30;
+  const pick = (g: (typeof options)[number]) => options.includes(g) && canReform(state, c, g).ok;
+  const choice = (
+    [
+      ['feudal', c.gov === 'tribal' || c.gov === 'nomadic' || c.gov === 'clan'],
+      [
+        'absolute',
+        (c.gov === 'feudal' || c.gov === 'clan' || c.gov === 'imperial') && c.legitimacy >= 45 && chance(state, 0.25),
+      ],
+      ['constitutional', (c.gov === 'absolute' || c.gov === 'feudal') && share.burghers >= 0.3 && chance(state, 0.12)],
+      // The people must be strong, and the old order worn out, before a crown gives way to the vote.
+      [
+        'democracy',
+        (c.gov === 'constitutional' || c.gov === 'republic') &&
+          share.burghers + share.commons >= 0.62 &&
+          chance(state, 0.15),
+      ],
+      ['communist', crisis && chance(state, 0.2)],
+      ['dictatorship', crisis && chance(state, 0.3)],
+    ] as [(typeof options)[number], boolean][]
+  ).find(([g, want]) => want && pick(g));
+  if (choice) reform(state, c, choice[0]);
+}
+
 /** Great peoples of the realm are accepted; a pagan crown may take up the faith of a strong neighbour. */
 function faithAI(state: GameState, world: SimWorld, c: Country) {
   if (chance(state, 0.05))
@@ -221,9 +260,10 @@ function economy(state: GameState, world: SimWorld, c: Country) {
   for (let i = c.loans.length - 1; i >= 0; i--) if (c.gold > c.loans[i].amount * 1.5) repayLoan(c, i);
   if (c.loans.length) return;
   // Keep some men-at-arms: their upkeep at home up to a quarter of income.
+  const era = militaryEra(c);
   let upkeep = 0;
   for (const [t, men] of Object.entries(c.reserve) as [UnitType, number][])
-    upkeep += (men / 100) * UNITS[t].reserveUpkeep;
+    upkeep += (men / 100) * unitDef(t, era).reserveUpkeep;
   const types = availableMaa(c);
   const regiments = 1 + Math.floor(monthly / 25);
   for (let i = 0; i < regiments && upkeep < monthly * 0.25 && c.gold > 60; i++) {
@@ -231,13 +271,15 @@ function economy(state: GameState, world: SimWorld, c: Country) {
     if (types.includes('siege') && chance(state, 0.2)) pool.push('siege');
     const t = pick(state, pool);
     if (!recruit(c, t, 1)) break;
-    upkeep += UNITS[t].reserveUpkeep * (UNITS[t].regiment / 100);
+    upkeep += unitDef(t, era).reserveUpkeep * (unitDef(t, era).regiment / 100);
   }
   // Build the most useful things it can afford, keeping a reserve; big realms build several at once.
   const reserve = Math.max(30, monthly * 3);
   if (state.day < c.ai.nextBuild) return;
   const own = provincesOf(state, c.index);
   const projects = 1 + Math.floor(own.length / 20);
+  // Learning pays less with every school already built.
+  const schools = own.reduce((n, id) => n + (state.provinces[id].buildings.university ?? 0), 0);
   for (let n = 0; n < projects && c.gold >= reserve + 50; n++) {
     let best: { id: number; type: (typeof BUILDING_ORDER)[number]; value: number } | null = null;
     for (const id of own) {
@@ -247,6 +289,7 @@ function economy(state: GameState, world: SimWorld, c: Country) {
         if (!check.ok || c.gold - check.cost < reserve) continue;
         const e = BUILDINGS[type].effects;
         let value = p.dev * ((e.tax ?? 0) * 1.2 + (e.levy ?? 0) * 0.6 + (e.growth ?? 0) * 0.3);
+        if (e.research) value += (e.research * 10) / Math.sqrt(1 + schools) + p.dev * 0.05;
         if (e.fort) value = id === c.capital || p.dev >= 10 ? 1.5 + p.dev * 0.1 : 0.3;
         value /= check.cost;
         if (!best || value > best.value) best = { id, type, value };

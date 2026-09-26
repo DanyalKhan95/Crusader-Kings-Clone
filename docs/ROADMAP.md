@@ -158,14 +158,29 @@ whole world. The player controls a country rather than a dynasty.
       and crusade dialogs.
 - [x] Saves from milestone 3 load.
 
-### M5: Technology and eras
+### M5: Technology and eras (done)
 
-- About 100 techs across six eras, with research and diffusion between neighbours.
-- Unit lines modernise: knights → pike and shot → line infantry → rifles → armour and air wings.
-- The economy evolves: manors → trade → factories → modern industry.
-- Governments evolve: absolutism, constitutional monarchy, republic, democracy, dictatorship,
-  communism.
-- Era themes go live and coats of arms become flags; nationalism and ideologies appear.
+- [x] 99 technologies in three tracks (economy, military, society) of 33 levels over six eras,
+      each with its historical year.
+- [x] Research from scholars, development, the ruler and council, the estates and universities,
+      with a focus; costs rise ahead of history and fall behind it and where neighbours know a
+      level.
+- [x] Effects on taxes, levies, growth, loans, supply, battle, sieges, morale, upkeep,
+      legitimacy, conversion, assimilation and accepted cultures.
+- [x] Unit lines modernise by military era, from spearmen and knights to mechanised infantry and
+      main battle tanks; air wings from military aircraft.
+- [x] Buildings of six levels (levels 4 to 6 and universities need technology); development
+      grows towards a ceiling set by the land and the age.
+- [x] Absolute and constitutional monarchy, democracy, dictatorship and communism, by reform;
+      democracies elect every four years.
+- [x] Nationalism: separatist risings of peoples who do not belong, and new nations when they
+      win. Ideologies in opinion.
+- [x] Era themes (palettes and typefaces) that follow the player's era; banners of arms in the
+      early modern era, national flags from the industrial era.
+- [x] AI: research focus, universities, reforms as history offers them.
+- [x] UI: the technology screen, the era in the top bar, government reforms in the Laws tab,
+      unit names by era, building levels and development ceilings in the province panel.
+- [x] Saves from milestone 4 load.
 
 ### M6: Navies, exploration and colonisation
 
@@ -217,9 +232,20 @@ whole world. The player controls a country rather than a dynasty.
   - The Christian kingdoms of Iberia tend to be swallowed within a century, often by France.
   - A crusade usually comes within a few years of 1090 and wins; crusades and jihads then trade
     Jerusalem every generation or so.
-  - Large rich realms (the Song, Srivijaya) hoard gold once everything is built. M5 should give
-    them things to spend it on.
-- **Speed:** headless runs manage about 1,000 days a second. Estate and faith figures are cached
-  per day, and routes an army cannot take are ruled out by a cached reachability check before any
-  search. Worth another look in M8.
+  - Large rich realms (the Song, Srivijaya) hoard gold once everything is built. M5 gives them
+    universities and three more building levels; the M8 balance pass should check that they
+    spend it.
+  - Technology: in a 900-year AI run the great realms stay within a level or two of the
+    historical dates, and the average realm is three to eight levels behind. Isolated realms stay
+    medieval or renaissance into the modern era; colonisation in M6 should reach them.
+  - Governments: absolutism spreads through the great monarchies between about 1600 and 1670,
+    constitutions follow from about 1700 and the first democracies around 1770; most great realms
+    are democracies by 1916. Small feudal realms mostly stay as they are.
+  - Development grows more slowly as it nears a ceiling set by the land and the economy track.
+    World development rises by about 40% in the first 200 years. Before M5 it rose fivefold in
+    that time, and levies tenfold.
+- **Speed:** headless runs manage about 1,000 days a second, so a 900-year run takes five and a
+  half minutes. Estate and faith figures are cached per day, and routes an army cannot take are
+  ruled out by a cached reachability check before any search. Worth another look in M8.
+- **Size:** the stylesheet is 1.1 MB, most of it the inlined fonts of the six era themes.
 - **Navies:** armies embark automatically and cannot be intercepted at sea until M6.

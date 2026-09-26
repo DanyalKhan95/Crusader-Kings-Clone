@@ -1,10 +1,9 @@
 import { useEffect, useRef } from 'react';
-import { coaSvg } from '../../heraldry/coa';
 import type { UnitStyle } from '../../render/units';
 import { latToY, lonToX } from '../../shared/projection';
 import { orderArmy, pickRealmAt, selectArmy, selectProvince } from '../actions';
-import { coaOf } from '../CoatOfArms';
-import { religionFamily, useGame, type Game, type UIState } from '../game';
+import { emblemKey, emblemSvg } from '../CoatOfArms';
+import { useGame, type Game, type UIState } from '../game';
 import { attachRunner } from '../runner';
 import { MapController } from './MapController';
 
@@ -39,19 +38,20 @@ function onMapClick(game: Game, id: number) {
   }
 }
 
-/** Arms as images for the army banners, drawn from the same SVG as the panels. */
+/** Emblems as images for the army banners, drawn from the same SVG as the panels. */
 function unitStyle(game: Game, invalidate: () => void): UnitStyle {
-  const cache = new Map<number, HTMLImageElement>();
+  const cache = new Map<string, HTMLImageElement>();
   return {
     arms(index) {
-      let img = cache.get(index);
+      const c = game.state.countries[index];
+      if (!c) return null;
+      const key = `${index}:${emblemKey(c)}`;
+      let img = cache.get(key);
       if (!img) {
-        const c = game.state.countries[index];
-        if (!c) return null;
         img = new Image();
         img.onload = invalidate;
-        img.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(coaSvg(coaOf(c, religionFamily(game, c.religion)), 30))}`;
-        cache.set(index, img);
+        img.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(emblemSvg(c, 30))}`;
+        cache.set(key, img);
       }
       return img.complete && img.naturalWidth ? img : null;
     },

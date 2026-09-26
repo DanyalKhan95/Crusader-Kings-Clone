@@ -1,0 +1,149 @@
+/*
+ * Themes of the later eras. The medieval theme (medieval.css) defines every variable; each era here
+ * changes the materials: Renaissance velvet and gilt, baroque lacquer, industrial leather and brass,
+ * modern chrome and charcoal, contemporary flat. The theme follows the player's era (see Hud.tsx).
+ */
+
+/* Renaissance (1450–1600): crimson velvet, gold leaf, Roman capitals. */
+[data-era='renaissance'] {
+  --font-display: 'Cinzel', 'Trajan Pro', Georgia, serif;
+  --font-body: 'EB Garamond', 'Garamond', 'Iowan Old Style', Georgia, serif;
+  --font-caps: 'Cinzel', Georgia, serif;
+
+  --ground: #14080b;
+  --panel: rgba(38, 12, 20, 0.985);
+  --panel-solid: #2a0e17;
+  --panel-raised: #3a1422;
+  --panel-inset: #1e0a10;
+  --line: #8a6a2e;
+  --line-soft: rgba(220, 180, 100, 0.24);
+  --gold: #d8b25a;
+  --gold-bright: #f3dc95;
+  --gold-dim: #93763d;
+  --text: #f1e6d0;
+  --text-dim: #bfa98c;
+  --text-faint: #8b765f;
+  --seal: #6d1d3a;
+  --seal-bright: #9a2b52;
+  --good: #8bb25a;
+  --bad: #d65a4a;
+  --panel-texture:
+    radial-gradient(120% 80% at 10% 0%, rgba(255, 170, 190, 0.07), transparent 60%),
+    radial-gradient(90% 60% at 100% 100%, rgba(0, 0, 0, 0.4), transparent 70%);
+}
+
+/* Early modern (1600–1780): baroque lacquer, navy and gilt, the printer's small capitals. */
+[data-era='early_modern'] {
+  --font-display: 'IM Fell English SC', 'EB Garamond', Georgia, serif;
+  --font-body: 'EB Garamond', 'Garamond', 'Iowan Old Style', Georgia, serif;
+  --font-caps: 'IM Fell English SC', 'EB Garamond', Georgia, serif;
+
+  --ground: #0b0f16;
+  --panel: rgba(16, 24, 38, 0.985);
+  --panel-solid: #121b2a;
+  --panel-raised: #1c2a40;
+  --panel-inset: #0d1420;
+  --line: #7a6a3c;
+  --line-soft: rgba(210, 190, 130, 0.22);
+  --gold: #cdb26a;
+  --gold-bright: #eadca2;
+  --gold-dim: #8c7a45;
+  --text: #e9e4d6;
+  --text-dim: #a9a595;
+  --text-faint: #767566;
+  --seal: #7a2330;
+  --seal-bright: #a3323e;
+  --good: #86a95a;
+  --bad: #d0584b;
+  --panel-texture:
+    radial-gradient(120% 80% at 10% 0%, rgba(180, 200, 255, 0.06), transparent 60%),
+    radial-gradient(90% 60% at 100% 100%, rgba(0, 0, 0, 0.4), transparent 70%);
+}
+
+/* Industrial (1780–1900): green leather, brass fittings, a Victorian printing house. */
+[data-era='industrial'] {
+  --font-display: 'Playfair Display', 'Didot', Georgia, serif;
+  --font-body: 'Old Standard TT', 'Iowan Old Style', Georgia, serif;
+  --font-caps: 'Playfair Display', Georgia, serif;
+  --caps-variant: small-caps;
+
+  --ground: #0c110d;
+  --panel: rgba(20, 30, 24, 0.985);
+  --panel-solid: #16211a;
+  --panel-raised: #213026;
+  --panel-inset: #101812;
+  --line: #8d6b35;
+  --line-soft: rgba(214, 170, 96, 0.24);
+  --gold: #c89a4a;
+  --gold-bright: #e9c77e;
+  --gold-dim: #8a6a36;
+  --text: #ece3cf;
+  --text-dim: #aca38d;
+  --text-faint: #7a7564;
+  --seal: #7a2a1d;
+  --seal-bright: #a53a28;
+  --good: #8fb36a;
+  --bad: #d0634f;
+  --radius: 2px;
+  --panel-texture:
+    radial-gradient(120% 80% at 10% 0%, rgba(230, 200, 140, 0.06), transparent 60%),
+    radial-gradient(90% 60% at 100% 100%, rgba(0, 0, 0, 0.45), transparent 70%);
+}
+
+/* Modern (1900–1970): charcoal and chrome, deco gold, poster lettering. */
+[data-era='modern'] {
+  --font-display: 'Oswald', 'Arial Narrow', 'Helvetica Neue', sans-serif;
+  --font-body: 'Source Sans 3', 'Helvetica Neue', Arial, sans-serif;
+  --font-caps: 'Oswald', 'Arial Narrow', sans-serif;
+  --caps-transform: uppercase;
+
+  --ground: #0d0f12;
+  --panel: rgba(24, 27, 32, 0.975);
+  --panel-solid: #1a1d22;
+  --panel-raised: #252a31;
+  --panel-inset: #13161a;
+  --line: #4d5663;
+  --line-soft: rgba(170, 190, 215, 0.18);
+  --gold: #d6b35e;
+  --gold-bright: #f0d78f;
+  --gold-dim: #8f7a48;
+  --text: #e7e9ec;
+  --text-dim: #a4abb4;
+  --text-faint: #6e7680;
+  --seal: #8c2f2f;
+  --seal-bright: #b33d3d;
+  --good: #7fb86a;
+  --bad: #de5f55;
+  --radius: 2px;
+  --panel-texture: linear-gradient(180deg, rgba(255, 255, 255, 0.035), transparent 45%);
+}
+
+/* Contemporary (1970–): flat, bright and plain. */
+[data-era='contemporary'] {
+  --font-display: 'Inter', 'Helvetica Neue', Arial, sans-serif;
+  --font-body: 'Inter', 'Helvetica Neue', Arial, sans-serif;
+  --font-caps: 'Inter', 'Helvetica Neue', Arial, sans-serif;
+  --caps-transform: uppercase;
+
+  --ground: #0b0d10;
+  --panel: rgba(18, 20, 24, 0.97);
+  --panel-solid: #16181c;
+  --panel-raised: #1f2228;
+  --panel-inset: #111316;
+  --line: #2f343c;
+  --line-soft: rgba(255, 255, 255, 0.08);
+  --gold: #4cc2c4;
+  --gold-bright: #8fe3e4;
+  --gold-dim: #2f7f80;
+  --text: #eef1f4;
+  --text-dim: #a6adb6;
+  --text-faint: #6f7781;
+  --seal: #c8453f;
+  --seal-bright: #e25d57;
+  --good: #5cc98a;
+  --bad: #ef6461;
+  --focus: #8fe3e4;
+  --radius: 6px;
+  --shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+  --panel-texture: linear-gradient(transparent, transparent);
+}

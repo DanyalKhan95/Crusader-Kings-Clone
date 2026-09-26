@@ -4,7 +4,7 @@ import { TERRAIN_INFO } from '../../game/mapModes';
 import { formatMen } from '../../render/units';
 import * as cmd from '../../sim/commands';
 import { canFabricate, fabricationCost, fabricationDays } from '../../sim/diplomacy';
-import { canBuild, fortLevel, provinceLevy, provinceTax } from '../../sim/economy';
+import { canBuild, devCap, fortLevel, provinceLevy, provinceTax } from '../../sim/economy';
 import { faithColor, faithName, holyTo } from '../../sim/beliefs';
 import {
   assimilationSpeed,
@@ -16,6 +16,7 @@ import {
   provinceFactor,
 } from '../../sim/faith';
 import { supplyLimit } from '../../sim/military';
+import { maxBuildingLevel } from '../../sim/tech';
 import { armiesAt, armySize, atWar, isInRealm, topLiege, touchesRealm } from '../../sim/queries';
 import { garrison } from '../../sim/siege';
 import { ADJ_RIVER, type RegionData } from '../../shared/dataTypes';
@@ -156,9 +157,22 @@ function LandView({ r }: { r: RegionData }) {
         <div>
           <dt>Development</dt>
           <dd className="num">
-            {p?.dev ?? r.dev ?? 0}
+            {owner ? (
+              <WithTip
+                tip={
+                  <p className="tip-text">
+                    It grows towards {devCap(game.world, owner, r.id)}: what the land allows, raised by the economic
+                    technology of its ruler. Farms, workshops and a steward who develops the land make it grow faster.
+                  </p>
+                }
+              >
+                {p.dev} <span className="dim">of {devCap(game.world, owner, r.id)}</span>
+              </WithTip>
+            ) : (
+              (p?.dev ?? r.dev ?? 0)
+            )}
             <span className="devbar" aria-hidden="true">
-              <span style={{ width: `${Math.min(100, ((p?.dev ?? 0) / 30) * 100)}%` }} />
+              <span style={{ width: `${Math.min(100, ((p?.dev ?? 0) / 40) * 100)}%` }} />
             </span>
           </dd>
         </div>
@@ -447,6 +461,7 @@ function Claims({ id }: { id: number }) {
 function Buildings({ id, mine }: { id: number; mine: boolean }) {
   const game = useGame();
   const p = game.state.provinces[id];
+  const owner = game.state.countries[p.owner];
   const con = p.construction;
   return (
     <section className="sp-section">
@@ -470,6 +485,7 @@ function Buildings({ id, mine }: { id: number; mine: boolean }) {
           const def = BUILDINGS[type];
           const level = p.buildings[type] ?? 0;
           const check = mine ? canBuild(game.state, game.world, game.state.player, id, type) : null;
+          const known = owner ? maxBuildingLevel(owner, type) : MAX_LEVEL;
           const hidden = !level && !mine;
           if (hidden) return null;
           return (
@@ -478,8 +494,8 @@ function Buildings({ id, mine }: { id: number; mine: boolean }) {
               <span className="building-text">
                 <span className="building-name">{level ? def.levels[level - 1] : def.name}</span>
                 <span className="pips" aria-label={`Level ${level} of ${MAX_LEVEL}`}>
-                  {[1, 2, 3].map((l) => (
-                    <span key={l} className={l <= level ? 'on' : ''} />
+                  {Array.from({ length: MAX_LEVEL }, (_, i) => i + 1).map((l) => (
+                    <span key={l} className={l <= level ? 'on' : l > known ? 'locked' : ''} />
                   ))}
                 </span>
               </span>

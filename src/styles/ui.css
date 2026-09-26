@@ -1283,6 +1283,13 @@ button.holder:hover {
 .pips span.on {
   background: var(--gold);
 }
+.pips span.locked {
+  background: transparent;
+  box-shadow: inset 0 0 0 1px rgba(255, 230, 170, 0.16);
+}
+.pips span {
+  width: 11px;
+}
 
 /* Lists of armies and wars */
 .army-list,
@@ -2128,6 +2135,186 @@ p.tight {
   margin: 0 0 8px;
 }
 
+/* ── Technology (milestone 5) ────────────────────────────────── */
+
+.coa.flag {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.stat-button {
+  padding: 0;
+}
+.stat-hit {
+  display: grid;
+  grid-template-columns: auto auto;
+  align-items: center;
+  column-gap: 6px;
+  padding: 0 6px;
+  border: 0;
+  background: none;
+  border-radius: var(--radius);
+  cursor: pointer;
+  text-align: left;
+}
+.stat-hit:hover {
+  background: rgba(255, 230, 170, 0.06);
+}
+.stat-hit .icon {
+  color: var(--gold);
+  width: 18px;
+  height: 18px;
+}
+.stat-hit .stat-value {
+  font-size: 15px;
+  font-weight: 700;
+}
+.stat-hit .stat-label {
+  grid-column: 1 / -1;
+}
+.modal.wide:has(.tech-columns) {
+  width: min(1180px, 100%);
+  height: min(860px, 100%);
+  grid-template-rows: auto auto auto auto minmax(0, 1fr);
+}
+.eras {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.eras li {
+  display: grid;
+  gap: 1px;
+  padding: 6px 8px;
+  border: 1px solid var(--line-soft);
+  border-radius: var(--radius);
+  background: var(--panel-inset);
+  color: var(--text-faint);
+}
+.eras li.past {
+  color: var(--text-dim);
+}
+.eras li.current {
+  color: var(--gold-bright);
+  border-color: var(--gold);
+  box-shadow: inset 0 0 0 1px var(--gold-dim);
+}
+.tech-columns {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  min-height: 0;
+}
+.tech-track {
+  display: grid;
+  grid-template-rows: auto auto auto minmax(0, 1fr);
+  gap: 8px;
+  min-height: 0;
+  padding: 10px;
+  border: 1px solid var(--line-soft);
+  border-radius: var(--radius);
+  background: var(--panel-inset);
+}
+.tech-track > .btn {
+  justify-self: start;
+}
+.tech-head {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 10px;
+  align-items: center;
+}
+.tech-head > .icon {
+  width: 26px;
+  height: 26px;
+  color: var(--gold);
+}
+.tech-head > span {
+  display: grid;
+}
+.tech-name {
+  font-size: 22px;
+  line-height: 1.1;
+}
+.tech-rate {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--good);
+}
+.tech-next {
+  display: grid;
+  gap: 3px;
+  padding: 8px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: rgba(255, 230, 170, 0.04);
+}
+.tech-next-name {
+  font-weight: 700;
+  color: var(--gold-bright);
+}
+.tech-bar {
+  display: block;
+  width: 100%;
+  margin: 3px 0 1px;
+}
+.tech-next .has-tip {
+  display: block;
+}
+.tech-list {
+  display: grid;
+  align-content: start;
+  gap: 2px;
+  margin: 0;
+  padding: 0 4px 0 0;
+  list-style: none;
+  overflow-y: auto;
+  min-height: 0;
+}
+.tech-list li {
+  display: grid;
+  gap: 1px;
+  padding: 4px 6px;
+  border-radius: var(--radius);
+  color: var(--text-faint);
+}
+.tech-list li .dim {
+  color: var(--text-faint);
+}
+.tech-list li.known {
+  color: var(--text);
+}
+.tech-list li.known .dim {
+  color: var(--text-dim);
+}
+.tech-list li.next {
+  color: var(--gold-bright);
+  background: rgba(255, 230, 170, 0.06);
+  box-shadow: inset 2px 0 0 var(--gold);
+}
+.tech-era {
+  margin: 8px 0 2px;
+  padding-bottom: 2px;
+  border-bottom: 1px solid var(--line-soft);
+  font-size: 12.5px;
+  color: var(--gold);
+}
+.tech-list li:first-child .tech-era {
+  margin-top: 0;
+}
+.tech-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+.tech-row-name {
+  font-weight: 700;
+}
+
 /* ── Narrow screens ──────────────────────────────────────────── */
 
 @media (max-width: 1100px) {
@@ -2137,6 +2324,19 @@ p.tight {
 }
 
 @media (max-width: 760px) {
+  .tech-columns {
+    grid-template-columns: minmax(0, 1fr);
+    overflow-y: auto;
+  }
+  .tech-track {
+    grid-template-rows: auto auto auto auto;
+  }
+  .tech-list {
+    max-height: 320px;
+  }
+  .eras {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
   .menu-vignette {
     background: linear-gradient(0deg, rgba(12, 9, 6, 0.96) 0%, rgba(12, 9, 6, 0.85) 45%, rgba(12, 9, 6, 0.2) 80%);
   }

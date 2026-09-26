@@ -3,7 +3,7 @@
  * Opinion always comes with its reasons, so the UI can show why a realm likes or hates you, and the
  * AI answers proposals with the same breakdowns the player sees.
  */
-import { CROWN_VASSALS } from '../data/politics';
+import { CROWN_VASSALS, IDEOLOGY_CLASH, ideologyOf } from '../data/politics';
 import { cultureGroup, faithFamily } from './beliefs';
 import { rulerSkill, seatSkill } from './characters';
 import type { Breakdown, Part } from './economy';
@@ -247,6 +247,10 @@ export function opinion(state: GameState, world: SimWorld, of: number, about: nu
   else if (faithFamily(a.religion) === faithFamily(b.religion)) parts.push({ label: 'A sister faith', value: -5 });
   else parts.push({ label: 'Another faith', value: -15 });
   if (headOf(state, a.religion)?.index === about) parts.push({ label: 'Head of our faith', value: 15 });
+  const ia = ideologyOf(a.gov),
+    ib = ideologyOf(b.gov);
+  if (ia === ib && ia !== 'traditional') parts.push({ label: 'Shared ideals', value: 15 });
+  else if (IDEOLOGY_CLASH[ia][ib]) parts.push({ label: 'Rival ideologies', value: IDEOLOGY_CLASH[ia][ib]! });
   if (a.culture === b.culture) parts.push({ label: 'Same culture', value: 10 });
   else if (cultureGroup(a.culture) && cultureGroup(a.culture) === cultureGroup(b.culture))
     parts.push({ label: 'Kindred culture', value: 5 });

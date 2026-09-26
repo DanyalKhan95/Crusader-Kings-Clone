@@ -195,3 +195,44 @@ test('keeps the faith: missions, accepted peoples and the faith map', async ({ p
 
   expect(errors).toEqual([]);
 });
+
+test('learns: the technology screen, a new era and its flag', async ({ page }) => {
+  const errors = watchErrors(page);
+  await page.goto('/?debug');
+  await page.getByRole('button', { name: 'New Campaign' }).click({ timeout: 120_000 });
+  await page.locator('.bookmark', { hasText: 'France' }).click();
+  await page.getByRole('button', { name: 'Play as France' }).click();
+  await expect(page.locator('.nation-name')).toHaveText('Kingdom of France');
+  await expect(page.locator('html')).toHaveAttribute('data-era', 'medieval');
+
+  // Scholars favour the economy.
+  await page.getByRole('button', { name: 'Technology' }).click();
+  await expect(page.getByRole('heading', { name: 'Technology' })).toBeVisible();
+  const economy = page.getByRole('region', { name: 'Economy' });
+  await economy.getByRole('button', { name: 'Make this the focus' }).click();
+  await expect(economy.getByRole('button', { name: 'The realm’s focus' })).toHaveAttribute('aria-pressed', 'true');
+  await expect(economy).toContainText('Guilds');
+  await page.keyboard.press('Escape');
+
+  // The Laws tab shows the government and the reforms it may take.
+  await page.locator('.nation-coa').click();
+  await page.getByRole('tab', { name: 'Laws' }).click();
+  await expect(page.locator('.side-panel')).toContainText('Feudal monarchy');
+
+  // Centuries on, in the industrial era: a new look, and a flag in place of the arms.
+  await page.evaluate(() => {
+    type G = {
+      state: { player: number; countries: ({ tech: Record<string, number> } | null)[] };
+      runner: { sync(): void };
+    };
+    const g = (window as unknown as { game: G }).game;
+    g.state.countries[g.state.player]!.tech = { economy: 20, military: 20, society: 20 };
+    g.runner.sync();
+  });
+  await expect(page.locator('html')).toHaveAttribute('data-era', 'industrial');
+  await expect(page.locator('.nation-coa .coa.flag')).toBeVisible();
+  await page.getByRole('tab', { name: 'Army' }).click();
+  await expect(page.locator('.recruit')).toContainText('Line infantry');
+
+  expect(errors).toEqual([]);
+});

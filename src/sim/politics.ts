@@ -14,6 +14,7 @@ import {
   SEAT_TASKS,
   TAXATION_BURGHERS,
   TAXATION_COMMONS,
+  termYears,
 } from '../data/politics';
 import type { Government } from '../shared/dataTypes';
 import { years } from './calendar';
@@ -22,6 +23,7 @@ import type { Breakdown, Part } from './economy';
 import { diversity, holySiteLegitimacy } from './faith';
 import { log } from './log';
 import { provincesOf } from './queries';
+import { nationalist, techEffect } from './tech';
 import {
   ESTATES,
   type Country,
@@ -67,8 +69,11 @@ export function defaultTasks(): Record<CouncilSeat, TaskId> {
 // ── Laws ──────────────────────────────────────────────────────────
 
 export function successionOptions(gov: Government): Succession[] {
-  if (gov === 'republic') return ['republic'];
+  if (gov === 'republic' || gov === 'democracy') return ['republic'];
   if (gov === 'theocracy') return ['theocratic'];
+  if (gov === 'absolute' || gov === 'constitutional') return ['hereditary'];
+  // The party or the junta chooses the ablest of its own.
+  if (gov === 'dictatorship' || gov === 'communist') return ['elective'];
   return ['hereditary', 'elective'];
 }
 
@@ -129,7 +134,7 @@ export function changeLaw(state: GameState, c: Country, law: LawId, value: Laws[
   c.legitimacy = Math.max(0, c.legitimacy - cost.legitimacy);
   c.stability = Math.max(-3, c.stability - cost.stability);
   c.lawChanged = state.day;
-  if (law === 'succession' && value === 'republic') c.termEnds = state.day + years(8);
+  if (law === 'succession' && value === 'republic') c.termEnds = state.day + years(termYears(c.gov));
   invalidatePolitics(state);
   return true;
 }
@@ -145,6 +150,7 @@ export function legitimacyTarget(state: GameState, c: Country): Breakdown {
   parts.push({ label: 'The clergy', value: Math.round(estateEffect(state, c, 'clergy') * 10) });
   parts.push({ label: 'Court chaplain', value: taskSkill(state, c, 'chaplain', 'legitimacy') });
   parts.push({ label: 'Holy sites held', value: holySiteLegitimacy(state, c) });
+  parts.push({ label: 'Learning and law', value: techEffect(c, 'legitimacy') });
   const ruler = character(state, c.ruler);
   if (ruler && age(state, ruler) < 16) parts.push({ label: 'A child on the throne', value: -15 });
   if (ruler?.traits.includes('pious')) parts.push({ label: 'A pious ruler', value: 5 });
@@ -231,7 +237,11 @@ export function estateLoyalty(state: GameState, c: Country, e: EstateId): Breakd
   if (e === 'commons') {
     const d = diversity(state, c);
     parts.push({ label: 'Religious strife', value: -(d.heathen * 40 + d.sister * 15) * STRIFE[l.tolerance] });
-    parts.push({ label: 'Foreign peoples', value: -d.foreign * 20 });
+    parts.push({
+      label: nationalist(c) ? 'Foreign nations' : 'Foreign peoples',
+      value: -d.foreign * (nationalist(c) ? 45 : 20),
+    });
+    parts.push({ label: 'Reforms', value: techEffect(c, 'commons') });
   }
   if (e === 'clergy') parts.push({ label: 'Religious policy', value: TOLERANCE_CLERGY[l.tolerance] });
   if (c.estates[e].privileged) parts.push({ label: 'Their privileges', value: 25 });
@@ -333,7 +343,7 @@ export function monthlyElections(state: GameState) {
         best = id;
       }
     }
-    c.termEnds = state.day + years(8);
+    c.termEnds = state.day + years(termYears(c.gov));
     if (best === incumbent) {
       c.legitimacy = Math.min(100, c.legitimacy + 10);
       log(state, [c.index], 'event', `${character(state, incumbent)?.name} is re-elected to lead ${c.name}.`, {

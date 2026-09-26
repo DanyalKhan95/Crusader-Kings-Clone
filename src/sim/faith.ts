@@ -11,6 +11,7 @@ import type { Part } from './economy';
 import { log } from './log';
 import { countryByTag, provincesOf, realmNeighbours, topLiege } from './queries';
 import { chance, pick } from './rng';
+import { nationalist, techEffect } from './tech';
 import type { Country, GameState, ProvinceState } from './types';
 import { distanceKm, type SimWorld } from './world';
 
@@ -37,6 +38,11 @@ export function cultureStanding(c: Country, p: ProvinceState): CultureStanding {
 const CULTURE_PENALTY: Record<CultureStanding, number> = { own: 0, accepted: 0, kin: 0.05, foreign: 0.15 };
 
 /** Tax and levy of a province for its ruler, as a multiplier, with the reasons. */
+/** What a province of another people withholds; nationalism makes a foreign people resist harder. */
+function culturePenalty(c: Country, s: CultureStanding): number {
+  return s === 'foreign' && nationalist(c) ? 0.25 : CULTURE_PENALTY[s];
+}
+
 export function provinceFactor(c: Country, p: ProvinceState): { value: number; parts: Part[] } {
   const parts: Part[] = [];
   const f = faithStanding(c, p);
@@ -46,8 +52,12 @@ export function provinceFactor(c: Country, p: ProvinceState): { value: number; p
       value: -FAITH_PENALTY[c.laws.tolerance][f === 'sister' ? 0 : 1],
     });
   const s = cultureStanding(c, p);
-  if (CULTURE_PENALTY[s])
-    parts.push({ label: s === 'kin' ? 'A kindred people' : 'A foreign people', value: -CULTURE_PENALTY[s] });
+  const pen = culturePenalty(c, s);
+  if (pen)
+    parts.push({
+      label: s === 'kin' ? 'A kindred people' : nationalist(c) ? 'A foreign nation' : 'A foreign people',
+      value: -pen,
+    });
   return { value: 1 + parts.reduce((n, x) => n + x.value, 0), parts };
 }
 
@@ -56,7 +66,7 @@ export function provinceMultiplier(c: Country, p: ProvinceState): number {
   let v = 1;
   const f = faithStanding(c, p);
   if (f !== 'same') v -= FAITH_PENALTY[c.laws.tolerance][f === 'sister' ? 0 : 1];
-  return v - CULTURE_PENALTY[cultureStanding(c, p)];
+  return v - culturePenalty(c, cultureStanding(c, p));
 }
 
 export interface Diversity {
@@ -99,7 +109,7 @@ function computeDiversity(state: GameState, c: Country): Diversity {
 const RANK_SLOTS: Record<string, number> = { county: 0, duchy: 1, kingdom: 2, empire: 3 };
 
 export function acceptSlots(c: Country): number {
-  return RANK_SLOTS[c.rank] ?? 1;
+  return (RANK_SLOTS[c.rank] ?? 1) + techEffect(c, 'acceptSlots');
 }
 
 /** Cultures of the realm and the share of its development each holds. */
@@ -146,7 +156,12 @@ export function conversionNeeded(p: ProvinceState): number {
 /** Monthly progress of the court chaplain's mission. */
 export function conversionSpeed(state: GameState, c: Country, p: ProvinceState): number {
   const sister = faithStanding(c, p) === 'sister' ? 1.5 : 1;
-  return (3 + seatSkill(state, c, 'chaplain') * 0.6) * CONVERSION_SPEED[c.laws.tolerance] * sister;
+  return (
+    (3 + seatSkill(state, c, 'chaplain') * 0.6) *
+    CONVERSION_SPEED[c.laws.tolerance] *
+    sister *
+    (1 + techEffect(c, 'conversion'))
+  );
 }
 
 /** The province a mission would go to next: the richest of another faith. */
@@ -183,7 +198,9 @@ export function assimilationNeeded(p: ProvinceState): number {
 }
 
 export function assimilationSpeed(state: GameState, c: Country): number {
-  return 3 + seatSkill(state, c, 'steward') * 0.5 + rulerSkill(state, c, 'dip') * 0.2;
+  return (
+    (3 + seatSkill(state, c, 'steward') * 0.5 + rulerSkill(state, c, 'dip') * 0.2) * (1 + techEffect(c, 'assimilation'))
+  );
 }
 
 export function nextToAssimilate(state: GameState, c: Country): number {
@@ -224,6 +241,9 @@ export function startAssimilation(state: GameState, c: Country, province: number
 export function monthlyFaith(state: GameState, world: SimWorld) {
   for (const c of state.countries) {
     if (!c?.alive || c.rebel) continue;
+    // Work on land that has changed hands is lost.
+    if (c.converting && state.provinces[c.converting.province]?.owner !== c.index) c.converting = null;
+    if (c.assimilating && state.provinces[c.assimilating.province]?.owner !== c.index) c.assimilating = null;
     // Conversion
     if (c.tasks.chaplain === 'convert') {
       if (!c.converting || state.provinces[c.converting.province]?.owner !== c.index) {

@@ -2,7 +2,7 @@
  * Armies: raising and disbanding, recruiting men-at-arms, merging and splitting, marching, supply and
  * attrition.
  */
-import { MAA_TYPES, UNITS } from '../data/units';
+import { MAA_TYPES, unitDef } from '../data/units';
 import { alive, character, makeCharacter, skill } from './characters';
 import { accessSet, mayEnter } from './diplomacy';
 import { buildingEffect } from './economy';
@@ -10,34 +10,40 @@ import { log } from './log';
 import { components, findPath, graph, stepDays } from './movement';
 import { taskSkill } from './politics';
 import { armySize, atWar, menIn } from './queries';
+import { knowsId, militaryEra, techEffect } from './tech';
 import type { Army, Country, GameState, UnitType, Units } from './types';
 import type { SimWorld } from './world';
 
 // ── Men-at-arms ───────────────────────────────────────────────────
 
-/** Which men-at-arms a country can recruit. */
+const KNIGHTLY = new Set(['feudal', 'imperial', 'theocracy', 'absolute', 'constitutional']);
+
+/** Which men-at-arms a country can recruit. Heavy horse is for knightly realms until armour is for all. */
 export function availableMaa(c: Country): UnitType[] {
   const steppe =
     c.gov === 'nomadic' ||
     ['cuman', 'oghuz', 'bulgar', 'karluk', 'uyghur', 'mongol', 'khitan', 'alan'].includes(c.culture);
+  const era = militaryEra(c);
   return MAA_TYPES.filter((t) => {
     if (t === 'horse_archers') return steppe;
-    if (t === 'knights') return c.gov === 'feudal' || c.gov === 'imperial' || c.gov === 'theocracy';
+    if (t === 'knights') return KNIGHTLY.has(c.gov) || era >= 3;
+    if (t === 'air') return knowsId(c, 'aircraft');
     return true;
   });
 }
 
-export function recruitCost(t: UnitType, regiments: number): number {
-  return (UNITS[t].cost * UNITS[t].regiment * regiments) / 100;
+export function recruitCost(c: Country, t: UnitType, regiments: number): number {
+  const d = unitDef(t, militaryEra(c));
+  return (d.cost * d.regiment * regiments) / 100;
 }
 
 /** Recruits regiments of men-at-arms into the reserve at home. */
 export function recruit(c: Country, t: UnitType, regiments = 1): boolean {
   if (!availableMaa(c).includes(t) || regiments < 1) return false;
-  const cost = recruitCost(t, regiments);
+  const cost = recruitCost(c, t, regiments);
   if (c.gold < cost) return false;
   c.gold -= cost;
-  c.reserve[t] = (c.reserve[t] ?? 0) + UNITS[t].regiment * regiments;
+  c.reserve[t] = (c.reserve[t] ?? 0) + unitDef(t, 0).regiment * regiments;
   return true;
 }
 
@@ -263,7 +269,7 @@ export function dailyUpkeep(state: GameState, world: SimWorld) {
     let monthlyLoss = 0;
     if (r.kind !== 'land') monthlyLoss = 0.005;
     else {
-      const limit = supplyLimit(state, world, army.location);
+      const limit = supplyLimit(state, world, army.location) * (1 + (owner ? techEffect(owner, 'supply') : 0));
       if (size > limit) monthlyLoss += Math.min(0.12, 0.03 * (size / limit - 1) * 2);
       const ctrl = state.provinces[army.location]?.controller ?? 0;
       if (ctrl && atWar(state, army.owner, ctrl)) monthlyLoss += 0.01;
@@ -275,7 +281,8 @@ export function dailyUpkeep(state: GameState, world: SimWorld) {
     }
     if (!inBattle(state, army)) {
       const drill = owner ? taskSkill(state, owner, 'marshal', 'drill') : 0;
-      army.morale = Math.min(1, army.morale + 0.03 * (1 + drill * 0.05));
+      const doctrine = owner ? techEffect(owner, 'morale') : 0;
+      army.morale = Math.min(1, army.morale + 0.03 * (1 + drill * 0.05) + doctrine);
     }
   }
   state.armies = state.armies.filter((a) => armySize(a) >= 10);

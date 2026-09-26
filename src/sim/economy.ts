@@ -18,9 +18,10 @@ import {
   GOVERNMENT_INFO,
   TAXATION_TAX,
 } from '../data/politics';
-import { UNITS } from '../data/units';
+import { unitDef } from '../data/units';
 import { rulerSkill } from './characters';
 import { provinceMultiplier } from './faith';
+import { buildingTech, maxBuildingLevel, militaryEra, techEffect } from './tech';
 import { log } from './log';
 import { estateEffect, taskSkill } from './politics';
 import { armiesOf, atWar, menIn, provincesOf, tributariesOf, vassalsOf } from './queries';
@@ -46,7 +47,16 @@ function breakdown(parts: Part[]): Breakdown {
 export const TAX_PER_DEV = 0.25;
 /** Levy men per development point. */
 export const LEVY_PER_DEV = 110;
-export const MAX_DEV = 40;
+export const MAX_DEV = 80;
+
+/**
+ * How far a province can grow: its natural size (the development it had in 1066), raised by its
+ * owner's economic technology, from a sixth more in the middle ages to about two and a half times.
+ */
+export function devCap(world: SimWorld, c: Country, id: number): number {
+  const base = world.region(id).dev ?? 1;
+  return Math.min(MAX_DEV, Math.round(base * (1 + 0.05 * c.tech.economy)) + 1);
+}
 
 export function buildingEffect(p: ProvinceState, key: keyof BuildingEffects): number {
   let v = 0;
@@ -71,6 +81,7 @@ export function taxMultiplier(state: GameState, c: Country): Breakdown {
     { label: 'The burghers', value: estateEffect(state, c, 'burghers') * 0.1 },
     { label: 'Stability', value: c.stability * 0.05 },
     { label: 'War weariness', value: -c.warExhaustion * 0.01 },
+    { label: 'Technology', value: techEffect(c, 'tax') },
   ];
   for (const e of ['nobles', 'clergy', 'burghers'] as const)
     if (c.estates[e].privileged) parts.push({ label: ESTATE_INFO[e].privilege, value: -0.05 });
@@ -87,6 +98,7 @@ export function levyMultiplier(state: GameState, c: Country): Breakdown {
     { label: 'Marshal', value: taskSkill(state, c, 'marshal', 'levies') * 0.015 },
     { label: 'The nobility', value: estateEffect(state, c, 'nobles') * 0.1 },
     { label: 'Stability', value: c.stability * 0.03 },
+    { label: 'Technology', value: techEffect(c, 'levy') },
   ];
   if (c.estates.commons.privileged) parts.push({ label: ESTATE_INFO.commons.privilege, value: -0.1 });
   return breakdown(parts);
@@ -156,16 +168,18 @@ export function income(state: GameState, c: Country): Breakdown {
 }
 
 export function expenses(state: GameState, c: Country): Breakdown {
+  const era = militaryEra(c);
+  const pay = 1 - techEffect(c, 'upkeep');
   let field = 0,
     levies = 0;
   for (const a of armiesOf(state, c.index))
     for (const [t, men] of Object.entries(a.units) as [UnitType, number][]) {
-      if (t === 'levy') levies += (men / 100) * UNITS.levy.upkeep;
-      else field += (men / 100) * UNITS[t].upkeep;
+      if (t === 'levy') levies += (men / 100) * unitDef('levy', era).upkeep;
+      else field += (men / 100) * unitDef(t, era).upkeep * pay;
     }
   let reserve = 0;
   for (const [t, men] of Object.entries(c.reserve) as [UnitType, number][])
-    reserve += (men / 100) * UNITS[t].reserveUpkeep;
+    reserve += (men / 100) * unitDef(t, era).reserveUpkeep * pay;
   const interest = c.loans.reduce((s, l) => s + l.interest, 0);
   return breakdown([
     { label: 'Men-at-arms in the field', value: field },
@@ -208,7 +222,8 @@ export function loanSize(state: GameState, c: Country): number {
 export function takeLoan(state: GameState, c: Country): boolean {
   if (c.loans.length >= MAX_LOANS) return false;
   const amount = loanSize(state, c);
-  c.loans.push({ amount, interest: Math.round(((amount * 0.12) / 12) * 100) / 100 });
+  const rate = 0.12 * Math.max(0.3, 1 - techEffect(c, 'interest'));
+  c.loans.push({ amount, interest: Math.round(((amount * rate) / 12) * 100) / 100 });
   c.gold += amount;
   return true;
 }
@@ -240,6 +255,10 @@ export function canBuild(
   if (p.controller !== country) return { ok: false, reason: 'The province is occupied' };
   const level = (p.buildings[type] ?? 0) + 1;
   if (level > MAX_LEVEL) return { ok: false, reason: 'Fully built' };
+  if (level > maxBuildingLevel(c, type)) {
+    const t = buildingTech(type, level);
+    return { ok: false, reason: t ? `Needs ${t.name}` : 'Not yet known' };
+  }
   const def = BUILDINGS[type];
   if (def.coastal && !r.coastal) return { ok: false, reason: 'Needs a coast' };
   if (def.minDev && p.dev < def.minDev) return { ok: false, reason: `Needs development ${def.minDev}` };
@@ -284,16 +303,21 @@ export function monthlyEconomy(state: GameState, world: SimWorld) {
     else c.manpower = Math.max(max, c.manpower - max * 0.05);
     if (c.gold < 0) handleDebt(state, c);
   }
-  // Development grows slowly, faster with farms and workshops and a stable realm.
+  // Development grows slowly towards what the land and the age allow, faster with farms and workshops
+  // and a stable realm.
   state.provinces.forEach((p, id) => {
-    if (!p?.owner || p.dev >= MAX_DEV) return;
+    if (!p?.owner) return;
     const c = state.countries[p.owner];
+    const cap = devCap(world, c, id);
+    if (p.dev >= cap) return;
     const rate =
       0.0025 *
+      (1 - p.dev / cap) *
       (1 + buildingEffect(p, 'growth')) *
       (c.stability >= 0 ? 1 : 0.5) *
       (1 + taskSkill(state, c, 'steward', 'develop') * 0.05) *
-      (1 + 0.1 * estateEffect(state, c, 'commons'));
+      (1 + 0.1 * estateEffect(state, c, 'commons')) *
+      (1 + techEffect(c, 'growth'));
     if (p.controller === p.owner && chance(state, rate)) {
       p.dev++;
       log(state, [p.owner], 'economy', `${world.region(id).name} has grown to development ${p.dev}.`, { province: id });

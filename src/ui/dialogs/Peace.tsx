@@ -116,11 +116,19 @@ export function Peace() {
             <label className={`choice ${settle ? 'active' : ''}`}>
               <input type="checkbox" checked={settle} onChange={(e) => setSettle(e.target.checked)} />
               <span>
-                <span className="choice-name">{allowed.crush ? 'Crush the revolt' : 'Our demands are met'}</span>
+                <span className="choice-name">
+                  {allowed.crush
+                    ? 'Crush the revolt'
+                    : war.demand === 'nation'
+                      ? 'Independence'
+                      : 'Our demands are met'}
+                </span>
                 <span className="dim small">
                   {allowed.crush
                     ? 'The rebels lay down their arms and their land returns to the crown.'
-                    : 'The crown gives way, and the land returns to it.'}
+                    : war.demand === 'nation'
+                      ? 'The land you hold becomes a nation of its own.'
+                      : 'The crown gives way, and the land returns to it.'}
                 </span>
               </span>
             </label>

@@ -3,7 +3,7 @@
  * one side breaks: unit counters, terrain, river crossings, commanders and morale all count. The
  * loser flees to a safe neighbouring province and suffers in the pursuit.
  */
-import { UNITS, UNIT_ORDER } from '../data/units';
+import { UNITS, UNIT_ORDER, unitDef } from '../data/units';
 import { ADJ_RIVER, ADJ_STRAIT } from '../shared/dataTypes';
 import { character, die, skill } from './characters';
 import { mayEnter } from './diplomacy';
@@ -11,6 +11,7 @@ import { log } from './log';
 import { isPassable, stepDays } from './movement';
 import { armySize, atWar, menIn, sideOf } from './queries';
 import { chance, jitter } from './rng';
+import { militaryEra, techEffect } from './tech';
 import type { Army, Battle, BattleSide, GameState, UnitType, Units } from './types';
 import type { SimWorld } from './world';
 
@@ -127,24 +128,41 @@ function counterShare(t: UnitType, enemy: Units, enemyMen: number): number {
   return n / enemyMen;
 }
 
-function damageOf(own: Units, enemy: Units, martial: number, morale: number, mult: number): number {
+/** Damage a side deals in a day: each army fights with its own realm's weapons and doctrine. */
+function damageOf(
+  state: GameState,
+  armies: Army[],
+  enemy: Units,
+  martial: number,
+  morale: number,
+  mult: number,
+): number {
   const enemyMen = menIn(enemy);
   let d = 0;
-  for (const [t, men] of Object.entries(own) as [UnitType, number][])
-    d += (men / 100) * UNITS[t].damage * (1 - 0.5 * counterShare(t, enemy, enemyMen));
+  for (const a of armies) {
+    const owner = state.countries[a.owner];
+    const era = militaryEra(owner);
+    const doctrine = 1 + (owner ? techEffect(owner, 'combat') : 0);
+    for (const [t, men] of Object.entries(a.units) as [UnitType, number][])
+      d += (men / 100) * unitDef(t, era).damage * doctrine * (1 - 0.5 * counterShare(t, enemy, enemyMen));
+  }
   return d * (1 + 0.04 * martial) * (0.5 + 0.5 * morale) * mult;
 }
 
+function toughness(state: GameState, a: Army, t: UnitType): number {
+  return unitDef(t, militaryEra(state.countries[a.owner])).toughness;
+}
+
 /** Spreads losses over the armies of a side: fragile troops die first. */
-function applyLosses(armies: Army[], losses: number): number {
-  const units = sideUnits(armies);
+function applyLosses(state: GameState, armies: Army[], losses: number): number {
   let weight = 0;
-  for (const [t, men] of Object.entries(units) as [UnitType, number][]) weight += men / UNITS[t].toughness;
+  for (const a of armies)
+    for (const [t, men] of Object.entries(a.units) as [UnitType, number][]) weight += men / toughness(state, a, t);
   if (weight <= 0) return 0;
   let dealt = 0;
   for (const a of armies)
     for (const [t, men] of Object.entries(a.units) as [UnitType, number][]) {
-      const loss = Math.min(men, (losses * (men / UNITS[t].toughness)) / weight);
+      const loss = Math.min(men, (losses * (men / toughness(state, a, t))) / weight);
       a.units[t] = men - loss;
       dealt += loss;
     }
@@ -168,10 +186,17 @@ export function dailyBattles(state: GameState, world: SimWorld) {
     const terrain = world.region(battle.province).terrain ?? 'plains';
     const attMult =
       (TERRAIN_DEFENCE[terrain] ?? 1) * (battle.crossing && state.day - battle.day < 3 ? CROSSING_PENALTY : 1);
-    const dmgA = damageOf(uA, uD, bestMartial(state, att), sideMorale(att), attMult * (1 + 0.15 * jitter(state)));
-    const dmgD = damageOf(uD, uA, bestMartial(state, def), sideMorale(def), 1 + 0.15 * jitter(state));
-    const lossD = applyLosses(def, dmgA * 0.4);
-    const lossA = applyLosses(att, dmgD * 0.4);
+    const dmgA = damageOf(
+      state,
+      att,
+      uD,
+      bestMartial(state, att),
+      sideMorale(att),
+      attMult * (1 + 0.15 * jitter(state)),
+    );
+    const dmgD = damageOf(state, def, uA, bestMartial(state, def), sideMorale(def), 1 + 0.15 * jitter(state));
+    const lossD = applyLosses(state, def, dmgA * 0.4);
+    const lossA = applyLosses(state, att, dmgD * 0.4);
     battle.attacker.losses += lossA;
     battle.defender.losses += lossD;
     for (const a of att) a.morale = Math.max(0, a.morale - (lossA / menA) * 2.5 - 0.03);
@@ -221,15 +246,15 @@ function endBattle(state: GameState, world: SimWorld, battle: Battle, winner: 'a
   const winners = armiesOfSide(state, W);
   const losers = armiesOfSide(state, L);
   // Pursuit
-  const wu = sideUnits(winners),
-    lu = sideUnits(losers);
   let pursuit = 0,
     screen = 0;
-  for (const [t, men] of Object.entries(wu) as [UnitType, number][]) pursuit += (men / 100) * UNITS[t].pursuit;
-  for (const [t, men] of Object.entries(lu) as [UnitType, number][]) screen += (men / 100) * UNITS[t].screen;
-  const remaining = menIn(lu);
+  for (const a of winners)
+    for (const [t, men] of Object.entries(a.units) as [UnitType, number][]) pursuit += (men / 100) * UNITS[t].pursuit;
+  for (const a of losers)
+    for (const [t, men] of Object.entries(a.units) as [UnitType, number][]) screen += (men / 100) * UNITS[t].screen;
+  const remaining = menIn(sideUnits(losers));
   const chased = Math.min(remaining * 0.4, Math.max(0, pursuit * 6 - screen * 4) + remaining * 0.05);
-  L.losses += applyLosses(losers, chased);
+  L.losses += applyLosses(state, losers, chased);
   // Retreat
   for (const a of losers) {
     a.morale = 0;

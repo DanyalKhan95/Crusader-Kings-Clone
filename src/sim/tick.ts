@@ -18,6 +18,7 @@ import {
 import { dailyConstruction, monthlyEconomy } from './economy';
 import { monthlyFaith, monthlyHeresies } from './faith';
 import { monthlyGreatHolyWars } from './holywars';
+import { monthlyResearch } from './tech';
 import { dailyMarch, dailyUpkeep, expelArmies } from './military';
 import { estateEffect, monthlyElections, monthlyEstateMoods, monthlyLegitimacy, taskSkill } from './politics';
 import { monthlyFactions, monthlyRevolts, orphanRebels } from './revolts';
@@ -59,6 +60,7 @@ export function advanceDay(state: GameState, world: SimWorld) {
     monthlyFaith(state, world);
     monthlyHeresies(state, world);
     monthlyGreatHolyWars(state, world);
+    monthlyResearch(state, world);
     expelArmies(state, world);
     if (date.m === 1)
       for (const c of state.countries) if (c?.alive) staffCourt(state, world, c, c.index !== state.player);

@@ -4,6 +4,7 @@
  * illegitimate ruler fight for a pretender instead, in a throne war. Disloyal vassals band into a
  * faction, and once strong enough they send an ultimatum: their freedom, or war.
  */
+import { cultureName } from './beliefs';
 import { makeCharacter, staffCourt } from './characters';
 import { loyalty, release, remember } from './diplomacy';
 import { maxManpower, provinceLevy } from './economy';
@@ -18,8 +19,10 @@ import {
   invalidatePolitics,
 } from './politics';
 import { atWar, hasTruce, provincesOf, realmMembers, strengthOf, vassalsOf } from './queries';
+import { cultureStanding } from './faith';
 import { chance, random, randInt } from './rng';
 import { destroyCountry } from './realm';
+import { knowsId, nationalist } from './tech';
 import {
   ESTATES,
   type Country,
@@ -39,6 +42,7 @@ export const DEMAND_INFO: Record<Demand | 'throne', string> = {
   lower_conscription: 'an end to heavy conscription',
   lower_crown: 'less power for the crown',
   privileges: 'privileges',
+  nation: 'a nation of their own',
   throne: 'the throne for their pretender',
 };
 
@@ -73,6 +77,7 @@ export function demandOf(c: Country, e: EstateId): Demand | 'throne' | null {
 
 /** The crown gives way: the demand becomes law. */
 export function concede(state: GameState, c: Country, e: EstateId, demand: Demand) {
+  if (demand === 'nation') return;
   if (demand === 'lower_taxes') c.laws.taxation = Math.max(0, c.laws.taxation - 1);
   else if (demand === 'lower_conscription') c.laws.conscription = Math.max(0, c.laws.conscription - 1);
   else if (demand === 'lower_crown') c.laws.crown = Math.max(0, c.laws.crown - 1);
@@ -199,6 +204,10 @@ export function createRebelRealm(
     converting: null,
     assimilating: null,
     blessed: state.day,
+    tech: { ...c.tech },
+    research: { economy: 0, military: 0, society: 0 },
+    focus: null,
+    reformed: state.day,
     memories: {},
     laws: { ...c.laws },
     lawChanged: state.day,
@@ -300,24 +309,142 @@ export function monthlyRevolts(state: GameState, world: SimWorld) {
   for (const c of state.countries) if (c?.alive && c.rebel) rising.add(c.rebel.realm);
   for (const c of state.countries) {
     if (!c?.alive || c.rebel || rising.has(c.index)) continue;
+    let rose = false;
     for (const e of ESTATES) {
       const risk = revoltRisk(state, c, e);
       if (risk > 0 && chance(state, risk)) {
         startRevolt(state, world, c, e);
+        rose = true;
         break;
       }
+    }
+    if (!rose) {
+      const nation = nationalRisk(state, c);
+      if (nation && chance(state, nation.risk)) startNationalRevolt(state, world, c, nation.culture, nation.provinces);
     }
   }
 }
 
-/** The revolt is over: the rebel land returns to the realm, and the demand is granted if they won. */
-export function endRevolt(state: GameState, war: War, rebelsWon: boolean, terms: PeaceTerms) {
+// ── Nations ───────────────────────────────────────────────────────
+
+/**
+ * In the age of nationalism a people that is neither the realm's own nor accepted by it wants a
+ * state of its own: the more of them, and the angrier the commons, the likelier they rise.
+ */
+export function nationalRisk(
+  state: GameState,
+  c: Country,
+): { culture: string; provinces: number[]; share: number; risk: number } | null {
+  if (!nationalist(c)) return null;
+  const groups = new Map<string, number[]>();
+  const dev = new Map<string, number>();
+  let total = 0;
+  for (const id of provincesOf(state, c.index)) {
+    const p = state.provinces[id];
+    total += p.dev;
+    if (!p.culture || id === c.capital || p.controller !== c.index || cultureStanding(c, p) !== 'foreign') continue;
+    groups.set(p.culture, [...(groups.get(p.culture) ?? []), id]);
+    dev.set(p.culture, (dev.get(p.culture) ?? 0) + p.dev);
+  }
+  let best: { culture: string; provinces: number[]; share: number; risk: number } | null = null;
+  const commons = estateLoyalty(state, c, 'commons').total;
+  for (const [culture, provinces] of groups) {
+    const share = (dev.get(culture) ?? 0) / Math.max(1, total);
+    if (provinces.length < 3 || share < 0.08) continue;
+    const risk = Math.min(0.02, 0.002 * (share / 0.15) * (1 + Math.max(0, -commons) / 25));
+    if (!best || risk > best.risk) best = { culture, provinces, share, risk };
+  }
+  return best;
+}
+
+/** A people rises for its own state. */
+export function startNationalRevolt(
+  state: GameState,
+  world: SimWorld,
+  c: Country,
+  culture: string,
+  provinces: number[],
+): War {
+  const rebel = createRebelRealm(state, world, c, provinces, 'commons', 'nation');
+  rebel.name = `${cultureName(culture)} National Movement`;
+  rebel.short = `${cultureName(culture)} nationalists`;
+  rebel.adj = cultureName(culture);
+  rebel.culture = culture;
+  let levy = 0;
+  for (const id of provinces) levy += provinceLevy(state.provinces[id]);
+  const round = (n: number) => Math.round(n / 50) * 50;
+  newArmy(state, rebel, provinces[0], { levy: round(levy * 1.8), spearmen: round(levy * 0.25) }, rebel.ruler).name =
+    `${cultureName(culture)} Volunteers`;
+  const war: War = {
+    id: state.nextId++,
+    name: `${cultureName(culture)} War of Independence`,
+    cb: 'revolt',
+    goal: 0,
+    attacker: rebel.index,
+    defender: c.index,
+    attackers: [rebel.index],
+    defenders: realmMembers(state, c.index),
+    start: state.day,
+    battleScore: 0,
+    ticking: 0,
+    demand: 'nation',
+  };
+  state.wars.push(war);
+  log(state, 'all', 'war', `The ${cultureName(culture)} people of ${c.name} rise for a nation of their own.`, {
+    important: c.index === state.player,
+    province: provinces[0],
+  });
+  return war;
+}
+
+/** Rebels who won their nation: the rebel realm becomes a state in earnest. */
+function becomeNation(state: GameState, world: SimWorld, rebel: Country) {
+  const name = cultureName(rebel.culture);
+  const own = provincesOf(state, rebel.index).length;
+  rebel.rebel = undefined;
+  rebel.name = `${name} Republic`;
+  rebel.short = `${name} Republic`;
+  rebel.adj = name;
+  rebel.rank = own >= 6 ? 'kingdom' : 'duchy';
+  rebel.gov = knowsId(rebel, 'popular_sovereignty')
+    ? 'democracy'
+    : knowsId(rebel, 'constitutionalism')
+      ? 'constitutional'
+      : 'feudal';
+  rebel.laws.succession = rebel.gov === 'democracy' ? 'republic' : 'hereditary';
+  if (rebel.laws.succession === 'republic') rebel.termEnds = state.day + 4 * 365;
+  const hex = world.world.cultures[rebel.culture]?.color;
+  if (hex) {
+    rebel.colorHex = hex;
+    rebel.color = [parseInt(hex.slice(1, 3), 16), parseInt(hex.slice(3, 5), 16), parseInt(hex.slice(5, 7), 16)];
+  }
+  rebel.legitimacy = 60;
+  rebel.ai = { nextWarCheck: state.day + 365 * 2, nextBuild: state.day, nextDiplo: state.day + 60 };
+  state.mapVersion++;
+  state.borderVersion++;
+  state.diploVersion++;
+  log(state, 'all', 'peace', `The ${name} have won their independence: the ${rebel.name} is born.`, {
+    province: rebel.capital,
+    important: true,
+  });
+}
+
+/**
+ * The revolt is over: the rebel land returns to the realm, and the demand is granted if they won; a
+ * people that has won its war of independence keeps its land as a new nation.
+ */
+export function endRevolt(state: GameState, world: SimWorld, war: War, rebelsWon: boolean, terms: PeaceTerms) {
   const rebel = state.countries[war.attacker];
   if (!rebel?.rebel || rebel.rebel.realm !== war.defender) return;
   const realm = state.countries[rebel.rebel.realm];
   const info = rebel.rebel;
   info.ended = state.day;
   if (!rebel.alive) return; // the pretender took the throne
+  if (rebelsWon && terms.demands && info.demand === 'nation') {
+    becomeNation(state, world, rebel);
+    realm.legitimacy = Math.max(0, realm.legitimacy - 15);
+    return;
+  }
   for (const p of state.provinces) {
     if (!p) continue;
     if (p.owner === rebel.index) {

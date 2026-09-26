@@ -305,10 +305,11 @@ describe('pagans, saves and the long run', () => {
     for (const c of file.state.countries) {
       if (!c) continue;
       delete c.laws.tolerance;
-      for (const k of ['accepted', 'converting', 'assimilating', 'blessed']) delete c[k];
+      for (const k of ['accepted', 'converting', 'assimilating', 'blessed', 'tech', 'research', 'focus', 'reformed'])
+        delete c[k];
     }
     const loaded = deserialize(JSON.stringify(file));
-    expect(loaded.version).toBe(4);
+    expect(loaded.version).toBe(5);
     expect(loaded.holyWars).toEqual({});
     const fra = tag(loaded, 'FRA');
     expect(fra.laws.tolerance).toBe(1);
