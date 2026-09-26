@@ -27,6 +27,8 @@ export interface Laws {
   crown: number;
   conscription: number;
   taxation: number;
+  /** religious policy: 0 persecution, 1 an established church, 2 tolerance */
+  tolerance: number;
 }
 export type LawId = keyof Laws;
 
@@ -52,7 +54,9 @@ export type TaskId =
   | 'sieges'
   | 'watch'
   | 'stability'
-  | 'legitimacy';
+  | 'legitimacy'
+  | 'convert'
+  | 'assimilate';
 
 /** A demand of rebels, enforced if they win. */
 export type Demand = 'lower_taxes' | 'lower_conscription' | 'lower_crown' | 'privileges';
@@ -87,6 +91,13 @@ export type MemoryKind =
 export interface Memory {
   kind: MemoryKind;
   value: number;
+}
+
+/** Work on one province: conversion or assimilation. */
+export interface Mission {
+  province: number;
+  progress: number;
+  needed: number;
 }
 
 export interface Loan {
@@ -146,6 +157,14 @@ export interface Country {
   fabricating: { province: number; start: number; done: number } | null;
   /** a vassal being integrated into the realm */
   integrating: { vassal: number; progress: number; needed: number } | null;
+  /** cultures treated as the realm's own */
+  accepted: string[];
+  /** the court chaplain's mission to a province of another faith */
+  converting: Mission | null;
+  /** the steward's schools in a province of another people */
+  assimilating: Mission | null;
+  /** day of the last blessing from the head of the faith */
+  blessed: number;
   /** memories of other countries, by country index */
   memories: Record<number, Memory[]>;
 
@@ -159,7 +178,7 @@ export interface Country {
   /** set for a realm raised by a revolt */
   rebel?: RebelInfo;
 
-  ai: { nextWarCheck: number; nextBuild: number; nextDiplo: number };
+  ai: { nextWarCheck: number; nextBuild: number; nextDiplo: number; nextHolyWar?: number };
 }
 
 export interface Construction {
@@ -232,7 +251,7 @@ export interface Battle {
   defender: BattleSide;
 }
 
-export type CasusBelli = 'claim' | 'throne' | 'conquest' | 'independence' | 'coalition' | 'revolt';
+export type CasusBelli = 'claim' | 'throne' | 'conquest' | 'independence' | 'coalition' | 'revolt' | 'holy' | 'crusade';
 
 /**
  * Treaties between independent realms. Alliances and non-aggression pacts are mutual; with `access`
@@ -259,8 +278,10 @@ export interface War {
   id: number;
   name: string;
   cb: CasusBelli;
-  /** province id for claim wars, country index for throne wars, 0 otherwise */
+  /** a province for claim and holy wars and crusades, a country index for throne wars, 0 otherwise */
   goal: number;
+  /** great holy wars: the faith that called it */
+  faith?: string;
   attacker: number;
   defender: number;
   attackers: number[];
@@ -294,6 +315,8 @@ export interface PeaceTerms {
   demands?: boolean;
   /** revolts: the rebels lay down their arms */
   crush?: boolean;
+  /** great holy wars: the land around the holy city is won for the faith */
+  holyLand?: boolean;
   white?: boolean;
 }
 
@@ -356,7 +379,7 @@ export interface Message {
 }
 
 export interface GameState {
-  version: 3;
+  version: 4;
   scenario: string;
   seed: number;
   rng: number;
@@ -372,6 +395,8 @@ export interface GameState {
   pacts: Pact[];
   coalitions: Coalition[];
   factions: Faction[];
+  /** great holy wars by faith: how many were called, and when the last one began */
+  holyWars: Record<string, { count: number; last: number }>;
   /** proposals waiting for the player's answer */
   offers: Offer[];
   /** no AI treaty proposal reaches the player before this day */

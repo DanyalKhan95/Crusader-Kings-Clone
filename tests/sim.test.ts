@@ -165,7 +165,7 @@ describe('sieges and peace', () => {
     expect(state.provinces[goal!].controller).toBe(hun.index);
     expect(warScore(state, war).total).toBeGreaterThan(10);
     const terms = { provinces: [goal!], gold: 0 };
-    expect(peaceAcceptance(state, war, hun.index, terms).accept).toBe(true);
+    expect(peaceAcceptance(state, world, war, hun.index, terms).accept).toBe(true);
     expect(cmd.offerPeace(state, world, war.id, terms).ok).toBe(true);
     expect(state.provinces[goal!].owner).toBe(hun.index);
     expect(state.wars).toHaveLength(state.wars.filter((w) => w.id !== war.id).length);

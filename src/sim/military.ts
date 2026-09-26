@@ -7,7 +7,7 @@ import { alive, character, makeCharacter, skill } from './characters';
 import { accessSet, mayEnter } from './diplomacy';
 import { buildingEffect } from './economy';
 import { log } from './log';
-import { findPath, stepDays } from './movement';
+import { components, findPath, graph, stepDays } from './movement';
 import { taskSkill } from './politics';
 import { armySize, atWar, menIn } from './queries';
 import type { Army, Country, GameState, UnitType, Units } from './types';
@@ -159,8 +159,41 @@ export function inBattle(state: GameState, army: Army): boolean {
 
 // ── Orders ────────────────────────────────────────────────────────
 
+const reachCache = new WeakMap<GameState, { border: number; byKey: Map<string, Int32Array> }>();
+
+/**
+ * Which regions an army of `owner` could march between. It depends only on who owns the land and
+ * whose land the army may enter, so realms with the same rights of passage share the answer.
+ */
+function reachable(state: GameState, world: SimWorld, owner: number): Int32Array {
+  let cache = reachCache.get(state);
+  if (!cache || cache.border !== state.borderVersion || cache.byKey.size > 64)
+    reachCache.set(state, (cache = { border: state.borderVersion, byKey: new Map() }));
+  const allowed = accessSet(state, owner);
+  const key = [...allowed].sort((x, y) => x - y).join(',');
+  let label = cache.byKey.get(key);
+  if (!label) {
+    label = components(world, (id) => {
+      const o = state.provinces[id]?.owner ?? 0;
+      return !o || allowed.has(o);
+    });
+    cache.byKey.set(key, label);
+  }
+  return label;
+}
+
+/** Could an army of `owner` get from one region to another at all? Cheap, so hopeless orders fail fast. */
+export function canReach(state: GameState, world: SimWorld, owner: number, from: number, to: number): boolean {
+  const label = reachable(state, world, owner);
+  if (label[to] < 0) return false;
+  if (label[from] >= 0) return label[from] === label[to];
+  // Standing where it may not go (land that just closed to it): it may still step out.
+  return (graph(world).edges[from] ?? []).some((e) => label[e.to] === label[to]);
+}
+
 /** The route an army of `owner` may take: only through land it has the right to enter. */
 export function routeFor(state: GameState, world: SimWorld, owner: number, from: number, to: number): number[] | null {
+  if (from !== to && !canReach(state, world, owner, from, to)) return null;
   const allowed = accessSet(state, owner);
   return findPath(world, from, to, {
     penalty: (id) => {

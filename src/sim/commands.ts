@@ -23,6 +23,23 @@ import {
   startIntegration,
 } from './diplomacy';
 import { canBuild, income, repayLoan, startBuilding, takeLoan } from './economy';
+import { cultureName, faithName } from './beliefs';
+import {
+  acceptCulture,
+  adoptFaith,
+  askBlessing,
+  blessingCost,
+  canAcceptCulture,
+  canAdoptFaith,
+  canAskBlessing,
+  canAssimilate,
+  canConvert,
+  headOf,
+  startAssimilation,
+  startConversion,
+  unacceptCulture,
+} from './faith';
+import { callHolyWar, canCallHolyWar, greatHolyWarOf } from './holywars';
 import { log } from './log';
 import { disband, inBattle, mergeInto, orderMove, raiseArmy, recruit, split } from './military';
 import { armyById, lordOf, sideOf } from './queries';
@@ -135,7 +152,7 @@ export function appointCouncillor(state: GameState, seat: CouncilSeat, character
 }
 
 export function declare(state: GameState, world: SimWorld, target: number, cb: CasusBelli, goal: number): Result {
-  const check = canDeclare(state, state.player, target, cb, goal);
+  const check = canDeclare(state, world, state.player, target, cb, goal);
   if (!check.ok) return no(check.reason);
   declareWar(state, world, state.player, target, cb, goal);
   return ok();
@@ -146,7 +163,7 @@ export function offerPeace(state: GameState, world: SimWorld, warId: number, ter
   const war = state.wars.find((w) => w.id === warId);
   if (!war) return no('No such war');
   if (war.attacker !== state.player && war.defender !== state.player) return no('Only the war leader can make peace');
-  const answer = peaceAcceptance(state, war, state.player, terms);
+  const answer = peaceAcceptance(state, world, war, state.player, terms);
   if (!answer.accept) return no(answer.reason);
   endWar(state, world, war, terms.white ? null : winnerSide(war, state.player), terms);
   return ok();
@@ -294,4 +311,64 @@ export function privilege(state: GameState, estate: EstateId, grant: boolean): R
   const c = state.countries[state.player];
   const done = grant ? grantPrivilege(state, c, estate) : revokePrivilege(state, c, estate);
   return done ? ok() : no(grant ? 'They already have it' : 'They have none to lose');
+}
+
+// ── Faith and peoples ─────────────────────────────────────────────
+
+/** The court chaplain takes up a mission to one province. */
+export function convert(state: GameState, world: SimWorld, province: number): Result {
+  const c = state.countries[state.player];
+  const check = canConvert(state, c, province);
+  if (!check.ok) return no(check.reason);
+  startConversion(state, c, province);
+  return ok(`Missionaries set out for ${world.region(province).name}.`);
+}
+
+/** The steward founds schools in one province. */
+export function assimilate(state: GameState, world: SimWorld, province: number): Result {
+  const c = state.countries[state.player];
+  const check = canAssimilate(state, c, province);
+  if (!check.ok) return no(check.reason);
+  startAssimilation(state, c, province);
+  return ok(`Schools open in ${world.region(province).name}.`);
+}
+
+export function accept(state: GameState, culture: string): Result {
+  const c = state.countries[state.player];
+  const check = canAcceptCulture(state, c, culture);
+  if (!check.ok) return no(check.reason);
+  acceptCulture(state, c, culture);
+  return ok(`The ${cultureName(culture)} are now counted among the realm's own peoples.`);
+}
+
+export function unaccept(state: GameState, culture: string): Result {
+  return unacceptCulture(state.countries[state.player], culture) ? ok() : no('That culture is not accepted');
+}
+
+export function blessing(state: GameState): Result {
+  const c = state.countries[state.player];
+  const cost = blessingCost(income(state, c).total);
+  const check = canAskBlessing(state, c, cost);
+  if (!check.ok) return no(check.reason);
+  const head = headOf(state, c.religion)!;
+  askBlessing(state, c, cost);
+  return ok(`${head.name} blesses your reign in return for ${cost} gold.`);
+}
+
+export function adopt(state: GameState, world: SimWorld, faith: string): Result {
+  const c = state.countries[state.player];
+  const check = canAdoptFaith(state, world, c, faith);
+  if (!check.ok) return no(check.reason);
+  adoptFaith(state, world, c, faith);
+  return ok(`Your realm now follows ${faithName(faith)}.`);
+}
+
+/** The head of a faith, or its protector, calls the faithful to a great holy war. */
+export function greatHolyWar(state: GameState, world: SimWorld): Result {
+  const def = greatHolyWarOf(state.countries[state.player]?.religion);
+  if (!def) return no('Your faith does not call great holy wars');
+  const check = canCallHolyWar(state, def, state.player);
+  if (!check.ok) return no(check.reason);
+  const war = callHolyWar(state, world, def);
+  return war ? ok(`${war.name} is called.`) : no('The faithful do not answer');
 }

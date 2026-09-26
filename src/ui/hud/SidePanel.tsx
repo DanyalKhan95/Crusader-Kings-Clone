@@ -5,6 +5,16 @@ import { formatMen } from '../../render/units';
 import * as cmd from '../../sim/commands';
 import { canFabricate, fabricationCost, fabricationDays } from '../../sim/diplomacy';
 import { canBuild, fortLevel, provinceLevy, provinceTax } from '../../sim/economy';
+import { faithColor, faithName, holyTo } from '../../sim/beliefs';
+import {
+  assimilationSpeed,
+  canAssimilate,
+  canConvert,
+  conversionSpeed,
+  cultureStanding,
+  faithStanding,
+  provinceFactor,
+} from '../../sim/faith';
 import { supplyLimit } from '../../sim/military';
 import { armiesAt, armySize, atWar, isInRealm, topLiege, touchesRealm } from '../../sim/queries';
 import { garrison } from '../../sim/siege';
@@ -20,6 +30,7 @@ import { useStore } from '../store';
 import { ArmyView } from './ArmyPanel';
 import { WithTip } from './Tip';
 import { CountryView } from './CountryPanel';
+import { faithIcon } from './FaithPanel';
 import { WarView } from './WarPanel';
 
 export function SidePanel() {
@@ -80,7 +91,7 @@ function LandView({ r }: { r: RegionData }) {
   const controller = p && p.controller !== p.owner ? state.countries[p.controller] : null;
   const terrain = TERRAIN_INFO[r.terrain ?? 'plains'];
   const culture = p?.culture ? game.world.world.cultures[p.culture] : null;
-  const religion = p?.religion ? game.world.world.religions[p.religion] : null;
+  const factor = owner && p ? provinceFactor(owner, p) : null;
   const rivers = r.adj.filter(([, , f]) => f & ADJ_RIVER).length;
   const fort = fortLevel(state, r.id);
   const mine = owner?.index === state.player;
@@ -160,18 +171,27 @@ function LandView({ r }: { r: RegionData }) {
         <div>
           <dt>Faith</dt>
           <dd>
-            {religion && <Swatch color={religion.color} />} {p?.religion ? religionName(game, p.religion) : 'None'}
+            {p?.religion && <Swatch color={faithColor(p.religion)} />}{' '}
+            {p?.religion ? religionName(game, p.religion) : 'None'}
           </dd>
         </div>
-        {owner && (
+        {owner && factor && (
           <>
             <div>
               <dt>Taxes</dt>
-              <dd className="num">{provinceTax(p).toFixed(1)} a month</dd>
+              <dd className="num">
+                <FactorTip base={provinceTax(p)} factor={factor}>
+                  {(provinceTax(p) * factor.value).toFixed(1)} a month
+                </FactorTip>
+              </dd>
             </div>
             <div>
               <dt>Levies</dt>
-              <dd className="num">{formatMen(provinceLevy(p))} men</dd>
+              <dd className="num">
+                <FactorTip base={provinceLevy(p)} factor={factor} men>
+                  {formatMen(provinceLevy(p) * factor.value)} men
+                </FactorTip>
+              </dd>
             </div>
             <div>
               <dt>Fortifications</dt>
@@ -193,10 +213,163 @@ function LandView({ r }: { r: RegionData }) {
         </div>
       </dl>
 
+      <FaithSection id={r.id} />
       {owner && <Buildings id={r.id} mine={mine} />}
       <ArmiesHere id={r.id} />
       <Neighbours r={r} />
     </div>
+  );
+}
+
+/** A province's yield, and what its faith and people take from it. */
+function FactorTip({
+  base,
+  factor,
+  men,
+  children,
+}: {
+  base: number;
+  factor: ReturnType<typeof provinceFactor>;
+  men?: boolean;
+  children: ReactNode;
+}) {
+  if (!factor.parts.length) return <>{children}</>;
+  const fmt = (v: number) => (men ? formatMen(v) : v.toFixed(1));
+  return (
+    <WithTip
+      tip={
+        <div className="breakdown">
+          <ul>
+            <li>
+              <span>Development and buildings</span>
+              <span className="num">{fmt(base)}</span>
+            </li>
+            {factor.parts.map((x) => (
+              <li key={x.label}>
+                <span>{x.label}</span>
+                <span className="num bad">{Math.round(x.value * 100)}%</span>
+              </li>
+            ))}
+          </ul>
+          <p className="tip-text dim">Before the realm's own laws and councillors.</p>
+        </div>
+      }
+    >
+      {children}
+    </WithTip>
+  );
+}
+
+const FAITH_STANDING = { same: 'Your faith', sister: 'A sister faith', heathen: 'Unbelievers' };
+const CULTURE_STANDING = {
+  own: 'Your people',
+  accepted: 'An accepted people',
+  kin: 'A kindred people',
+  foreign: 'A foreign people',
+};
+
+/** Holy places, and the realm's missions and schools: turning a province to the ruler's faith and ways. */
+function FaithSection({ id }: { id: number }) {
+  const game = useGame();
+  const state = game.state;
+  const p = state.provinces[id];
+  const me = state.countries[state.player];
+  const holy = holyTo(id);
+  const mine = !!me && p?.owner === me.index;
+  if (!p || (!holy.length && !mine)) return null;
+  const fs = mine ? faithStanding(me, p) : 'same';
+  const cs = mine ? cultureStanding(me, p) : 'own';
+  if (!holy.length && fs === 'same' && cs === 'own') return null;
+  const converting = me?.converting?.province === id ? me.converting : null;
+  const schooling = me?.assimilating?.province === id ? me.assimilating : null;
+  const convertCheck = mine && fs !== 'same' && !converting ? canConvert(state, me, id) : null;
+  const schoolCheck = mine && cs !== 'own' && cs !== 'accepted' && !schooling ? canAssimilate(state, me, id) : null;
+  const months = (job: { progress: number; needed: number }, speed: number) =>
+    Math.max(1, Math.ceil((job.needed - job.progress) / Math.max(0.1, speed)));
+  return (
+    <section className="sp-section faith">
+      <h3 className="section-title">Faith and people</h3>
+      {holy.length > 0 && (
+        <p className="holy-site">
+          <Icon name="prayer" /> A holy place of {holy.map((f) => faithName(f)).join(', ')}.
+        </p>
+      )}
+      {mine && (fs !== 'same' || cs !== 'own') && (
+        <p className="dim small">
+          {fs !== 'same' && `${FAITH_STANDING[fs]} to your crown. `}
+          {cs !== 'own' && `${CULTURE_STANDING[cs]}.`} Other faiths and peoples pay and serve less, and stir up the
+          commons.
+        </p>
+      )}
+      {converting && (
+        <div className="construction">
+          <Icon name={faithIcon(me.religion)} />
+          <span>
+            {me.tasks.chaplain === 'convert' ? 'Missionaries at work' : 'The mission waits for the court chaplain'}
+            <span className="bar">
+              <span style={{ width: `${Math.min(100, (converting.progress / converting.needed) * 100)}%` }} />
+            </span>
+          </span>
+          <span className="num dim">
+            {me.tasks.chaplain === 'convert' ? `${months(converting, conversionSpeed(state, me, p))} months` : 'paused'}
+          </span>
+        </div>
+      )}
+      {schooling && (
+        <div className="construction">
+          <Icon name="scroll-quill" />
+          <span>
+            {me.tasks.steward === 'assimilate' ? 'Schools at work' : 'The schools wait for the steward'}
+            <span className="bar">
+              <span style={{ width: `${Math.min(100, (schooling.progress / schooling.needed) * 100)}%` }} />
+            </span>
+          </span>
+          <span className="num dim">
+            {me.tasks.steward === 'assimilate' ? `${months(schooling, assimilationSpeed(state, me))} months` : 'paused'}
+          </span>
+        </div>
+      )}
+      <div className="btn-row">
+        {convertCheck && (
+          <WithTip
+            tip={
+              <p className="tip-text">
+                {convertCheck.ok
+                  ? `Your court chaplain turns to this province alone, and to nothing else, until it shares your faith: about ${months({ progress: 0, needed: 60 + p.dev * 12 }, conversionSpeed(state, me, p))} months.`
+                  : `${convertCheck.reason}.`}
+              </p>
+            }
+          >
+            <button
+              className="btn small"
+              disabled={!convertCheck.ok}
+              onClick={() => run(game, cmd.convert(state, game.world, id))}
+            >
+              <Icon name={faithIcon(me.religion)} /> Send missionaries
+            </button>
+          </WithTip>
+        )}
+        {schoolCheck && (
+          <WithTip
+            tip={
+              <p className="tip-text">
+                {schoolCheck.ok
+                  ? `Your steward founds schools here until its people take up your ways: about ${months({ progress: 0, needed: 90 + p.dev * 15 }, assimilationSpeed(state, me))} months. Taxes are not collected with the same zeal meanwhile.`
+                  : `${schoolCheck.reason}.`}
+              </p>
+            }
+          >
+            <button
+              className="btn small"
+              disabled={!schoolCheck.ok}
+              onClick={() => run(game, cmd.assimilate(state, game.world, id))}
+            >
+              <Icon name="scroll-quill" /> Found schools
+            </button>
+          </WithTip>
+        )}
+      </div>
+    </section>
   );
 }
 

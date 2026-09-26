@@ -1,7 +1,7 @@
 /**
  * One day of the world. Daily: marching, battles, sieges, supply, construction, forged claims.
- * Monthly (on the 1st): the economy, wars, mortality, stability and diplomacy. The AI thinks once a
- * month per country, spread over the days so the work is even.
+ * Monthly (on the 1st): the economy, wars, mortality, stability, diplomacy, politics and faith. The AI
+ * thinks once a month per country, spread over the days so the work is even.
  */
 import { monthlyAI, planArmies } from './ai';
 import { monthlyMortality, staffCourt } from './characters';
@@ -16,6 +16,8 @@ import {
   pruneClaims,
 } from './diplomacy';
 import { dailyConstruction, monthlyEconomy } from './economy';
+import { monthlyFaith, monthlyHeresies } from './faith';
+import { monthlyGreatHolyWars } from './holywars';
 import { dailyMarch, dailyUpkeep, expelArmies } from './military';
 import { estateEffect, monthlyElections, monthlyEstateMoods, monthlyLegitimacy, taskSkill } from './politics';
 import { monthlyFactions, monthlyRevolts, orphanRebels } from './revolts';
@@ -54,6 +56,9 @@ export function advanceDay(state: GameState, world: SimWorld) {
     orphanRebels(state);
     monthlyRevolts(state, world);
     monthlyFactions(state, world);
+    monthlyFaith(state, world);
+    monthlyHeresies(state, world);
+    monthlyGreatHolyWars(state, world);
     expelArmies(state, world);
     if (date.m === 1)
       for (const c of state.countries) if (c?.alive) staffCourt(state, world, c, c.index !== state.player);

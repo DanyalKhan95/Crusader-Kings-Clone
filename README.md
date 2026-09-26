@@ -12,31 +12,39 @@ every push).
 
 ## Status
 
-**Milestone 3: internal politics.** Rule at home as well as abroad. Every other realm is run by the
-AI.
+**Milestone 4: religion and culture.** Faith and people now matter within the realm and between
+realms. Every other realm is run by the AI.
 
-- **Laws:** succession (hereditary, elective, republic or theocratic), crown authority,
-  conscription and taxation. Each has its price in legitimacy and in the estates' goodwill, and
-  after a change the realm needs five years to settle.
-- **Legitimacy:** the ruler's right to rule, with its reasons shown. A child on the throne, a
-  usurper or a lost war weaken it; below 35 the nobles may rise for a pretender.
-- **Estates:** nobility, clergy, burghers and commons, each with power and loyalty. Loyal estates
-  help (levies, legitimacy, taxes, manpower); privileges buy their loyalty at a cost.
-- **Revolts:** an estate pushed too far rises. Part of the realm breaks away as a rebel realm on
-  the map, and a war decides whether its demand becomes law.
-- **Factions:** disloyal vassals band together and send an ultimatum: freedom, or war.
-- **Successions:** the Empire, the Celts and the steppe elect their rulers, Venice elects a doge
-  every eight years, the clergy choose in theocracies.
-- **The council:** each seat has a task: negotiate or send embassies, muster levies or drill the
-  troops, collect taxes or develop the land, and more.
-- **Governments** shape taxes and levies: imperial bureaucracy, tribal war bands, merchant
-  republics and others.
-- **Portraits:** every ruler, heir and councillor has a procedural portrait that ages with them.
+- **Other faiths and peoples:** provinces of a sister faith, of unbelievers, or of a kindred or
+  foreign people pay and serve less, and stir up the commons. Accept a great people of the realm
+  as your own (one culture for a duchy, up to three for an empire).
+- **Missions and schools:** the court chaplain sends missionaries and the steward founds schools,
+  one province at a time; peoples also drift towards their rulers' ways.
+- **Religious policy:** a new law, from persecution (fast conversion, a happy clergy, angry
+  unbelievers) to tolerance (the reverse).
+- **Heads of faith:** the Pope, the Ecumenical Patriarch and the Caliphs. The faithful think well
+  of them, and a donation buys a blessing on your reign.
+- **Holy places:** Jerusalem, Rome, Mecca, Varanasi and others. Holding those of your faith adds
+  legitimacy; unbelievers who hold them are resented.
+- **Holy wars:** Christian and Muslim realms may fight unbelievers for a province on their border
+  or a holy place, at half the usual price in war score.
+- **Crusades and jihads:** once in a generation the head of the faith calls every realm of the
+  faith to free Jerusalem, and the other faith rallies to its defence. A crusade that wins founds
+  the Kingdom of Jerusalem, settled by the crusaders who got there.
+- **Heresies and schisms:** Bogomils, Cathars, Waldensians, Lollards, Hussites, Druze and Nizaris
+  rise in their homelands in their time, and a crown whose people have turned may break with the
+  old church. Pagan crowns may take up the faith of a strong neighbour.
+- **Screens:** a Faith tab for your realm, faith and culture in the province panel with the
+  missions, and the faith map (`Y`) with its legend.
 
-![The court of Harold II in September 1066: portraits of the king, his heir and his council, each with a task](docs/images/court-1066.webp)
+![Byzantium in 1066 on the faith map: the Orthodox empire, its Miaphysite east, and the holy places it holds and has lost](docs/images/faith-1066.webp)
 
 Earlier milestones:
 
+- **Internal politics (M3):** laws of succession, crown authority, conscription and taxation;
+  legitimacy; estates with power, loyalty and privileges; revolts and pretenders; factions of
+  vassals; elective, republican and theocratic successions; council tasks; governments;
+  procedural portraits.
 - **Diplomacy (M2):** opinion with its reasons; alliances, non-aggression pacts, military access
   and guarantees; calls to arms; forged claims; aggressive expansion and coalitions; vassal
   loyalty, integration and tributaries; the diplomacy map (`U`).
@@ -47,10 +55,10 @@ Earlier milestones:
   terrain; 188 realms with rulers, lieges and coats of arms; map modes for realms, countries,
   terrain, development, culture and faith.
 
-![England on 18 September 1066, and Scotland allied with it on the diplomacy map](docs/images/diplomacy-1066.webp)
+![The court of Harold II in September 1066: portraits of the king, his heir and his council, each with a task](docs/images/court-1066.webp)
 
-Next up is **Milestone 4: religion and culture**, with conversion, cultural integration, holy wars
-and heresies. The full plan is in [docs/ROADMAP.md](docs/ROADMAP.md).
+Next up is **Milestone 5: technology and eras**, carrying the world from knights and manors to
+rifles and factories. The full plan is in [docs/ROADMAP.md](docs/ROADMAP.md).
 
 ## Controls
 
@@ -117,7 +125,7 @@ Hand-curated tables live in `tools/mapgen/curated`:
 | Path             | What                                                                             |
 | ---------------- | -------------------------------------------------------------------------------- |
 | `src/render/`    | WebGL2 map: terrain, fills, borders, rivers, labels, picking, camera             |
-| `src/sim/`       | The simulation: economy, characters, armies, war, diplomacy, politics, AI, saves |
+| `src/sim/`       | The simulation: economy, characters, armies, war, diplomacy, politics, faith, AI |
 | `src/game/`      | Loading the world, and map modes                                                 |
 | `src/heraldry/`  | Coats of arms: blazon model, curated arms, generator, SVG                        |
 | `src/ui/`        | React screens, HUD and era themes                                                |

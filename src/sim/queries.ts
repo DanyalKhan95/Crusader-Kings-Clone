@@ -120,8 +120,18 @@ export function realmNeighbours(state: GameState, world: SimWorld, index: number
   return c.sets.get(topLiege(state, index)) ?? new Set();
 }
 
+const tagIndex = new WeakMap<GameState, { count: number; map: Map<string, number> }>();
+
+/** The first country with a tag (tags of dead realms may be taken up again by new ones). */
 export function countryByTag(state: GameState, tag: string): Country | undefined {
-  return state.countries.find((c) => c?.tag === tag);
+  let ix = tagIndex.get(state);
+  if (!ix || ix.count !== state.countries.length) {
+    ix = { count: state.countries.length, map: new Map() };
+    for (const c of state.countries) if (c && !ix.map.has(c.tag)) ix.map.set(c.tag, c.index);
+    tagIndex.set(state, ix);
+  }
+  const i = ix.map.get(tag);
+  return i ? state.countries[i] : undefined;
 }
 
 // ── Wars ──────────────────────────────────────────────────────────

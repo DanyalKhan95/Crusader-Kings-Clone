@@ -4,6 +4,7 @@
  */
 import type { RegionData, ScenarioData, WorldData } from '../shared/dataTypes';
 import type { MeshBundle } from '../render/meshBuilder';
+import { registerBeliefs } from '../sim/beliefs';
 
 export interface StaticWorld {
   base: string;
@@ -57,6 +58,7 @@ export async function loadWorld(
     fetchJSON<RegionData[]>(`${base}/provinces.json`),
     fetchJSON<ScenarioData>(`${base}/scenario-1066.json`),
   ]);
+  registerBeliefs(world, regions);
   onProgress({ stage: 'Surveying the realms', fraction: 0.15 });
   const bytes = await fetchBytes(`${base}/map.json`, (f) =>
     onProgress({ stage: 'Surveying the realms', fraction: 0.15 + f * 0.35 }),

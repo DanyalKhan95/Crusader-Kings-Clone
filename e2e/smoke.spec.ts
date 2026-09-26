@@ -143,3 +143,55 @@ test('rules at home: laws, estates and the council', async ({ page }) => {
 
   expect(errors).toEqual([]);
 });
+
+test('keeps the faith: missions, accepted peoples and the faith map', async ({ page }) => {
+  const errors = watchErrors(page);
+  await page.goto('/?debug');
+  await page.getByRole('button', { name: 'New Campaign' }).click({ timeout: 120_000 });
+  await page.locator('.bookmark', { hasText: 'Byzantium' }).click();
+  await page.getByRole('button', { name: 'Play as Byzantium' }).click();
+  await expect(page.locator('.nation-name')).toHaveText('Byzantine Empire');
+
+  // The emperor's church, its holy places and the peoples of the empire.
+  await page.getByRole('tab', { name: 'Faith' }).click();
+  await expect(page.locator('.faith-name')).toContainText('Orthodox');
+  await expect(page.locator('.side-panel')).toContainText('Holy places');
+  await expect(page.locator('.side-panel')).toContainText('Jerusalem');
+  const armenians = page.locator('.shares li', { hasText: 'Armenian' });
+  await armenians.getByRole('button', { name: 'Accept' }).click();
+  await expect(armenians).toContainText('accepted');
+
+  // Religious policy is a law like any other.
+  await page.getByRole('tab', { name: 'Laws' }).click();
+  await expect(page.getByRole('radiogroup', { name: 'Religious policy' })).toBeVisible();
+
+  // Missionaries to the richest province of another faith.
+  await page.evaluate(() => {
+    type G = {
+      ui: { set: (p: object) => void };
+      state: {
+        player: number;
+        countries: ({ religion: string } | null)[];
+        provinces: ({ owner: number; religion: string | null; dev: number } | null)[];
+      };
+    };
+    const g = (window as unknown as { game: G }).game;
+    const faith = g.state.countries[g.state.player]!.religion;
+    let best = 0,
+      dev = -1;
+    g.state.provinces.forEach((p, id) => {
+      if (p && p.owner === g.state.player && p.religion && p.religion !== faith && p.dev > dev) {
+        dev = p.dev;
+        best = id;
+      }
+    });
+    g.ui.set({ panel: 'province', selectedProvince: best });
+  });
+  await page.getByRole('button', { name: 'Send missionaries' }).click();
+  await expect(page.locator('.side-panel')).toContainText('Missionaries at work');
+
+  await page.keyboard.press('y');
+  await expect(page.getByLabel('Faith legend')).toContainText('Orthodox');
+
+  expect(errors).toEqual([]);
+});

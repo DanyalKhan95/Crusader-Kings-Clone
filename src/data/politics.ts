@@ -21,7 +21,7 @@ export const SUCCESSION_INFO: Record<Succession, { name: string; blurb: string }
   },
 };
 
-export type LevelLaw = 'crown' | 'conscription' | 'taxation';
+export type LevelLaw = 'crown' | 'conscription' | 'taxation' | 'tolerance';
 
 export const LEVEL_LAWS: Record<LevelLaw, { name: string; blurb: string; levels: string[]; effects: string[] }> = {
   crown: {
@@ -55,6 +55,16 @@ export const LEVEL_LAWS: Record<LevelLaw, { name: string; blurb: string; levels:
       'Taxes as custom allows.',
       'Taxes ×1.2. Commons and burghers grumble.',
       'Taxes ×1.4. Commons and burghers are close to revolt.',
+    ],
+  },
+  tolerance: {
+    name: 'Religious policy',
+    blurb: 'How the crown treats those of other faiths.',
+    levels: ['Persecution', 'Established church', 'Tolerance'],
+    effects: [
+      'Other faiths are hunted: conversion is half again as fast, and the clergy approve (+10), but unbelievers pay and serve less and the commons suffer more strife.',
+      'The state church is favoured and other faiths are suffered.',
+      'All may worship in peace: other faiths pay and serve more and strife is halved, but conversion is slow and the clergy disapprove (−15).',
     ],
   },
 };
@@ -160,14 +170,24 @@ export const TASK_INFO: Record<TaskId, { seat: CouncilSeat; name: string; blurb:
   watch: { seat: 'spymaster', name: 'Watch the realm', blurb: 'Estates and vassals are more loyal.' },
   stability: { seat: 'chaplain', name: 'Preach obedience', blurb: 'Stability recovers faster.' },
   legitimacy: { seat: 'chaplain', name: 'Anoint the crown', blurb: 'Legitimacy grows towards a higher mark.' },
+  convert: {
+    seat: 'chaplain',
+    name: 'Send missionaries',
+    blurb: 'Provinces of other faiths turn to ours, one by one.',
+  },
+  assimilate: {
+    seat: 'steward',
+    name: 'Found schools',
+    blurb: 'Provinces of other peoples take up our tongue and ways, one by one.',
+  },
 };
 
 export const SEAT_TASKS: Record<CouncilSeat, TaskId[]> = {
   chancellor: ['negotiate', 'embassies', 'claims'],
   marshal: ['levies', 'drill'],
-  steward: ['taxes', 'develop'],
+  steward: ['taxes', 'develop', 'assimilate'],
   spymaster: ['sieges', 'watch'],
-  chaplain: ['stability', 'legitimacy'],
+  chaplain: ['stability', 'legitimacy', 'convert'],
 };
 
 export const DEFAULT_TASKS: Record<CouncilSeat, TaskId> = {

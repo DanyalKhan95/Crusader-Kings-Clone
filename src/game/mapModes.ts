@@ -1,4 +1,5 @@
 /** Map modes: how each region is coloured, and which data the renderer gets per region. */
+import { faithColor } from '../sim/beliefs';
 import type { Terrain } from '../shared/dataTypes';
 import { FLAG_IMPASSABLE, FLAG_LAKE, FLAG_WATER, type MapRenderer } from '../render/mapRenderer';
 import { coalitionAgainst, hasPact } from '../sim/diplomacy';
@@ -114,7 +115,6 @@ function devColor(dev: number): [number, number, number] {
 /** Writes fill colours and per-region info for the current state and map mode. */
 export function applyMapMode(r: MapRenderer, world: StaticWorld, state: GameState, mode: MapMode, player: number) {
   const cultures = world.world.cultures;
-  const religions = world.world.religions;
   const relations = new Map<number, Relation>();
   const claimed = new Set(state.countries[player]?.claims ?? []);
   for (const reg of world.regions) {
@@ -165,7 +165,7 @@ export function applyMapMode(r: MapRenderer, world: StaticWorld, state: GameStat
         if (p?.culture) c = hexToRgb(cultures[p.culture]?.color ?? '#888888');
         break;
       case 'religion':
-        if (p?.religion) c = hexToRgb(religions[p.religion]?.color ?? '#888888');
+        if (p?.religion) c = hexToRgb(faithColor(p.religion));
         break;
       case 'diplomacy': {
         if (!owner) {

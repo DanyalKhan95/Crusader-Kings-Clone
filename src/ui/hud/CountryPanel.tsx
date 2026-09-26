@@ -15,6 +15,7 @@ import { Icon } from '../Icon';
 import { SEAT_TASKS, TASK_INFO } from '../../data/politics';
 import { toDate } from '../../sim/calendar';
 import { CharacterCard, Portrait } from '../people';
+import { FaithTab } from './FaithPanel';
 import { LawsTab } from './PoliticsPanel';
 import { DiplomacyTab, ForeignDiplomacy } from './DiplomacyPanel';
 import { CountryFacts, CountryHeader } from '../realm';
@@ -28,6 +29,7 @@ const TABS: { id: CountryTab; label: string }[] = [
   { id: 'military', label: 'Army' },
   { id: 'court', label: 'Court' },
   { id: 'laws', label: 'Laws' },
+  { id: 'faith', label: 'Faith' },
   { id: 'diplomacy', label: 'Diplomacy' },
 ];
 
@@ -66,6 +68,7 @@ export function CountryView({ index }: { index: number }) {
           {tab === 'military' && <MilitaryTab c={c} />}
           {tab === 'court' && <CourtTab c={c} />}
           {tab === 'laws' && <LawsTab c={c} />}
+          {tab === 'faith' && <FaithTab c={c} />}
           {tab === 'diplomacy' && <DiplomacyTab c={c} />}
         </>
       ) : (

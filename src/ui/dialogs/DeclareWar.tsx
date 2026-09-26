@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import { formatMen } from '../../render/units';
 import * as cmd from '../../sim/commands';
+import { holyTo } from '../../sim/beliefs';
 import { coalitionAgainst } from '../../sim/diplomacy';
+import { holyWarGoals } from '../../sim/holywars';
 import { lordOf, realmStrength, topLiege } from '../../sim/queries';
 import type { CasusBelli } from '../../sim/types';
 import { canDeclare, CB_INFO, CALL_REASON, claimTargets, previewCalls, type CallPreview } from '../../sim/war';
@@ -28,20 +30,27 @@ export function DeclareWar() {
   const independence = lordOf(state, player) === target;
   const defender = independence ? target : topLiege(state, target);
   const d = state.countries[defender];
-  const claims = claimTargets(state, player, defender).sort((a, b) => state.provinces[b].dev - state.provinces[a].dev);
+  const byDev = (a: number, b: number) => state.provinces[b].dev - state.provinces[a].dev;
+  const claims = claimTargets(state, player, defender).sort(byDev);
+  const holySite = (id: number) => holyTo(id).includes(me.religion);
+  const holy = independence
+    ? []
+    : holyWarGoals(state, game.world, player, defender).sort((a, b) => +holySite(b) - +holySite(a) || byDev(a, b));
   const options: CasusBelli[] = [];
   if (independence) options.push('independence');
   else {
     if (me.throneClaims.includes(defender)) options.push('throne');
     if (claims.length) options.push('claim');
+    if (holy.length) options.push('holy');
     if (coalitionAgainst(state, defender)?.members.includes(player)) options.push('coalition');
     options.push('conquest');
   }
   const [cb, setCb] = useState<CasusBelli>(options[0]);
   const [goal, setGoal] = useState<number>(claims[0] ?? 0);
+  const [holyGoal, setHolyGoal] = useState<number>(holy[0] ?? 0);
   if (!d || !me) return null;
-  const goalFor = cb === 'claim' ? goal : cb === 'throne' ? defender : 0;
-  const check = canDeclare(state, player, target, cb, goalFor);
+  const goalFor = cb === 'claim' ? goal : cb === 'holy' ? holyGoal : cb === 'throne' ? defender : 0;
+  const check = canDeclare(state, game.world, player, target, cb, goalFor);
   const calls = previewCalls(state, game.world, player, target, cb);
   const joining = (side: 'attacker' | 'defender') =>
     calls
@@ -128,6 +137,19 @@ export function DeclareWar() {
             {claims.map((id) => (
               <option key={id} value={id}>
                 {game.world.region(id).name} (development {state.provinces[id].dev})
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
+      {cb === 'holy' && (
+        <label className="field">
+          <span className="caps">Province to free</span>
+          <select value={holyGoal} onChange={(e) => setHolyGoal(Number(e.target.value))}>
+            {holy.map((id) => (
+              <option key={id} value={id}>
+                {game.world.region(id).name}
+                {holySite(id) ? ', a holy site' : ''} (development {state.provinces[id].dev})
               </option>
             ))}
           </select>

@@ -1,16 +1,17 @@
 /** Pieces shared by every view of a country: heading with arms, key facts, names of things. */
+import { cultureName as nameOfCulture, faithColor, faithName } from '../sim/beliefs';
 import { age, character } from '../sim/characters';
 import type { Country } from '../sim/types';
 import { CoatOfArms } from './CoatOfArms';
 import { GOVERNMENT_NAMES, RANK_NAMES, formatNumber } from './format';
 import { countryStats, useGame, type CountryStats, type Game } from './game';
 
-export function cultureName(game: Game, id: string | null | undefined): string {
-  return (id && game.world.world.cultures[id]?.name) || 'Unknown';
+export function cultureName(_game: Game, id: string | null | undefined): string {
+  return nameOfCulture(id);
 }
 
-export function religionName(game: Game, id: string | null | undefined): string {
-  return (id && game.world.world.religions[id]?.name) || 'Unknown';
+export function religionName(_game: Game, id: string | null | undefined): string {
+  return faithName(id);
 }
 
 export function Swatch({ color }: { color: string }) {
@@ -63,7 +64,6 @@ export function CountryFacts({ country, stats }: { country: Country; stats?: Cou
   const game = useGame();
   const s = stats ?? countryStats(game, country.index);
   const culture = game.world.world.cultures[country.culture];
-  const religion = game.world.world.religions[country.religion];
   const capital = country.capital ? game.world.region(country.capital) : null;
   const withVassals = s.realmProvinces > s.provinces;
   return (
@@ -92,7 +92,7 @@ export function CountryFacts({ country, stats }: { country: Country; stats?: Cou
       <div>
         <dt>Faith</dt>
         <dd>
-          {religion && <Swatch color={religion.color} />} {religionName(game, country.religion)}
+          <Swatch color={faithColor(country.religion)} /> {religionName(game, country.religion)}
         </dd>
       </div>
       <div>

@@ -2,7 +2,7 @@
 import { defaultEstates, defaultTasks, initialLaws } from './politics';
 import type { CasusBelli, GameState } from './types';
 
-export const SAVE_VERSION = 3;
+export const SAVE_VERSION = 4;
 
 export interface SaveFile {
   format: 'crowns-and-centuries';
@@ -31,7 +31,22 @@ export function deserialize(json: string): GameState {
   s.offers ??= [];
   if (file.version < 2) migrateToDiplomacy(s);
   if (file.version < 3) migrateToPolitics(s);
+  if (file.version < 4) migrateToFaith(s);
   return s;
+}
+
+/** Version 3 (milestone 3) had no religious policy, missions, accepted cultures or great holy wars. */
+function migrateToFaith(s: GameState) {
+  (s as unknown as { version: number }).version = 4;
+  s.holyWars ??= {};
+  for (const c of s.countries) {
+    if (!c) continue;
+    c.laws.tolerance ??= 1;
+    c.accepted ??= [];
+    c.converting ??= null;
+    c.assimilating ??= null;
+    c.blessed ??= s.day - 3650;
+  }
 }
 
 /** Version 2 (milestone 2) had no laws, estates or council tasks. */

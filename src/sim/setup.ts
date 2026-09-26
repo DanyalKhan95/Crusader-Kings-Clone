@@ -1,5 +1,6 @@
 /** Builds the starting state of a scenario: realms, rulers and courts, treasuries and armies. */
 import type { CountryData, ScenarioData } from '../shared/dataTypes';
+import { cultureGroup, registerBeliefs } from './beliefs';
 import { makeCharacter, staffCourt } from './characters';
 import { parseDate, years } from './calendar';
 import { income, maxManpower } from './economy';
@@ -39,9 +40,10 @@ function strip(u: Units): Units {
 }
 
 export function createGameState(world: SimWorld, scenario: ScenarioData, opts: { seed?: number } = {}): GameState {
+  registerBeliefs(world.world, world.regions);
   const seed = opts.seed ?? hashString(scenario.id);
   const state: GameState = {
-    version: 3,
+    version: 4,
     scenario: scenario.id,
     seed,
     rng: seed,
@@ -56,6 +58,7 @@ export function createGameState(world: SimWorld, scenario: ScenarioData, opts: {
     pacts: [],
     coalitions: [],
     factions: [],
+    holyWars: {},
     offers: [],
     proposalCooldown: 0,
     messages: [],
@@ -101,8 +104,12 @@ export function createGameState(world: SimWorld, scenario: ScenarioData, opts: {
       claims: [],
       fabricating: null,
       integrating: null,
+      accepted: [],
+      converting: null,
+      assimilating: null,
+      blessed: parseDate(scenario.start) - years(10),
       memories: {},
-      laws: initialLaws(c.gov, c.tag, world.world.cultures[c.culture]?.group),
+      laws: initialLaws(c.gov, c.tag, cultureGroup(c.culture)),
       lawChanged: 0,
       legitimacy: 60,
       estates: defaultEstates(),

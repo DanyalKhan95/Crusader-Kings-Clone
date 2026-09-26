@@ -3,6 +3,7 @@
  *   npm run simulate -- --years 50 [--seed 7]
  */
 import { readFileSync } from 'node:fs';
+import { faithName } from '../src/sim/beliefs.ts';
 import { toDate } from '../src/sim/calendar.ts';
 import { loyalty, memory } from '../src/sim/diplomacy.ts';
 import { estateInfluence, estateLoyalty } from '../src/sim/politics.ts';
@@ -39,6 +40,9 @@ let wars = 0,
 const byCause = new Map<string, number>();
 let revolts = 0;
 const initialOwners = state.provinces.map((p) => p?.owner ?? 0);
+const initialFaiths = state.provinces.map((p) => p?.religion ?? null);
+const initialCultures = state.provinces.map((p) => p?.culture ?? null);
+const crusades: string[] = [];
 for (let d = 0; d < years * 365; d++) {
   advanceDay(state, world);
   const ids = new Set(state.wars.map((w) => w.id));
@@ -47,6 +51,10 @@ for (let d = 0; d < years * 365; d++) {
       wars++;
       byCause.set(w.cb, (byCause.get(w.cb) ?? 0) + 1);
       if (state.countries[w.attacker]?.rebel) revolts++;
+      if (w.cb === 'crusade')
+        crusades.push(
+          `${fmt(state.day)} ${w.name}: ${state.countries[w.attacker].tag} vs ${state.countries[w.defender].tag}, ${w.attackers.length} realms took the cross`,
+        );
     }
   for (const id of lastWars) if (!ids.has(id)) peaces++;
   lastWars = ids;
@@ -112,6 +120,36 @@ const laws = { taxation: [0, 0, 0, 0], conscription: [0, 0, 0, 0], crown: [0, 0,
 for (const c of state.countries)
   if (c?.alive && !c.rebel) for (const k of ['taxation', 'conscription', 'crown'] as const) laws[k][c.laws[k]]++;
 console.log(`laws: ${JSON.stringify(laws)}`);
+const tolerance = [0, 0, 0];
+for (const c of state.countries) if (c?.alive && !c.rebel) tolerance[c.laws.tolerance]++;
+console.log(`religious policy (persecution, established, tolerance): ${tolerance.join(', ')}`);
+const converted = state.provinces.filter((p, id) => p && p.religion !== initialFaiths[id]).length;
+const assimilated = state.provinces.filter((p, id) => p && p.culture !== initialCultures[id]).length;
+const accepted = state.countries.reduce((n, c) => n + (c?.alive ? c.accepted.length : 0), 0);
+console.log(`provinces that changed faith: ${converted}, people: ${assimilated}; accepted cultures: ${accepted}`);
+const faiths = new Map<string, number>();
+for (const p of state.provinces) if (p?.religion) faiths.set(p.religion, (faiths.get(p.religion) ?? 0) + 1);
+console.log(
+  `faiths: ${[...faiths]
+    .sort((a, b) => b[1] - a[1])
+    .map(([f, n]) => `${faithName(f)} ${n}`)
+    .join(', ')}`,
+);
+const crowns = new Map<string, number>();
+for (const c of state.countries) if (c?.alive && !c.rebel) crowns.set(c.religion, (crowns.get(c.religion) ?? 0) + 1);
+console.log(
+  `crowns by faith: ${[...crowns]
+    .sort((a, b) => b[1] - a[1])
+    .map(([f, n]) => `${faithName(f)} ${n}`)
+    .join(', ')}`,
+);
+console.log(`great holy wars: ${crusades.length ? '' : 'none'}`);
+for (const line of crusades) console.log(`  ${line}`);
+const jer = state.countries.find((c) => c?.tag === 'JER' && c.alive);
+const holy = state.provinces.findIndex((_, id) => world.region(id)?.name === 'Jerusalem');
+console.log(
+  `Jerusalem is held by ${state.countries[state.provinces[holy]?.owner]?.name ?? 'no one'}${jer ? `; the Kingdom of Jerusalem has ${provincesOf(state, jer.index).length} provinces` : ''}`,
+);
 const subjects = state.countries
   .filter((c) => c?.alive && lordOf(state, c.index))
   .map((c) => ({ c, l: loyalty(state, world, c.index).total }))

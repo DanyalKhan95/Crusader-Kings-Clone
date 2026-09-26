@@ -1,5 +1,6 @@
 import type { IconName } from '../../assets/icons';
 import { CLAIM_COLOR, MAP_MODES, RELATION_INFO, TERRAIN_INFO, type MapMode, type Relation } from '../../game/mapModes';
+import { faithColor, faithName } from '../../sim/beliefs';
 import { setMapMode } from '../actions';
 import { useGame } from '../game';
 import { Icon } from '../Icon';
@@ -92,6 +93,7 @@ function Legend({ mode }: { mode: MapMode }) {
       </div>
     );
   }
+  if (mode === 'religion') return <FaithLegend />;
   if (mode === 'development') {
     return (
       <div className="panel legend" aria-label="Development legend">
@@ -105,4 +107,25 @@ function Legend({ mode }: { mode: MapMode }) {
     );
   }
   return null;
+}
+
+/** The faiths with the most provinces, heresies among them when they have spread. */
+function FaithLegend() {
+  const game = useGame();
+  useStore(game.ui, (s) => s.tick);
+  const counts = new Map<string, number>();
+  for (const p of game.state.provinces) if (p?.religion) counts.set(p.religion, (counts.get(p.religion) ?? 0) + 1);
+  const top = [...counts].sort((a, b) => b[1] - a[1]).slice(0, 14);
+  return (
+    <div className="panel legend" aria-label="Faith legend">
+      <ul className="legend-list">
+        {top.map(([id]) => (
+          <li key={id}>
+            <span className="swatch" style={{ background: faithColor(id) }} aria-hidden="true" />
+            {faithName(id)}
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
 }

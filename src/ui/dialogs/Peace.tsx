@@ -1,9 +1,10 @@
 import { useMemo, useState } from 'react';
 import * as cmd from '../../sim/commands';
 import { PACT_INFO } from '../../sim/diplomacy';
+import { greatHolyWarOf, holyLandOf } from '../../sim/holywars';
 import { provincesOf, realmStrength } from '../../sim/queries';
 import type { PeaceTerms } from '../../sim/types';
-import { allowedTerms, peaceAcceptance, peaceCost, scoreFor, winnerSide } from '../../sim/war';
+import { allowedTerms, offerCost, peaceAcceptance, scoreFor, winnerSide } from '../../sim/war';
 import { formatMen } from '../../render/units';
 import { CoatOfArms } from '../CoatOfArms';
 import { run } from '../actions';
@@ -38,6 +39,7 @@ export function Peace() {
   const [tributary, setTributary] = useState(false);
   const [freedom, setFreedom] = useState(false);
   const [settle, setSettle] = useState(false);
+  const [holyLand, setHolyLand] = useState(false);
   const [white, setWhite] = useState(false);
   if (!war) return null;
   const enemyLeader = state.countries[side === 'attacker' ? war.defender : war.attacker];
@@ -54,9 +56,10 @@ export function Peace() {
         independence: allowed.independence && freedom,
         demands: allowed.demands && settle,
         crush: allowed.crush && settle,
+        holyLand: allowed.holyLand && holyLand,
       };
-  const cost = white ? 0 : peaceCost(state, war, side, terms);
-  const answer = peaceAcceptance(state, war, player, terms);
+  const cost = white ? 0 : offerCost(state, game.world, war, side, terms);
+  const answer = peaceAcceptance(state, game.world, war, player, terms);
   const empty =
     !white &&
     !picked.length &&
@@ -65,7 +68,8 @@ export function Peace() {
     !terms.tributary &&
     !terms.independence &&
     !terms.demands &&
-    !terms.crush;
+    !terms.crush &&
+    !terms.holyLand;
   const maxGold = Math.max(0, Math.floor(enemyLeader.gold));
   const toggle = (id: number) => setPicked((p) => (p.includes(id) ? p.filter((x) => x !== id) : [...p, id]));
   const send = () => {
@@ -121,6 +125,7 @@ export function Peace() {
               </span>
             </label>
           )}
+          {allowed.holyLand && <HolyLandChoice checked={holyLand} onChange={setHolyLand} />}
           {allowed.tributary && (
             <label className={`choice ${tributary ? 'active' : ''}`}>
               <input type="checkbox" checked={tributary} onChange={(e) => setTributary(e.target.checked)} />
@@ -135,28 +140,30 @@ export function Peace() {
           )}
           {allowed.spoils && (
             <>
-              <fieldset className="choices">
-                <legend className="caps">Provinces to take</legend>
-                {candidates.length ? (
-                  <ul className="peace-provinces">
-                    {candidates.map((id) => (
-                      <li key={id}>
-                        <label className={`choice compact ${picked.includes(id) ? 'active' : ''}`}>
-                          <input type="checkbox" checked={picked.includes(id)} onChange={() => toggle(id)} />
-                          <span className="choice-name">{game.world.region(id).name}</span>
-                          <span className="dim small num">
-                            dev {state.provinces[id].dev}
-                            {id === war.goal ? ' · war goal' : ''}
-                            {claimed.has(id) ? ' · claimed' : ''}
-                          </span>
-                        </label>
-                      </li>
-                    ))}
-                  </ul>
-                ) : (
-                  <p className="dim small">You hold none of their land. Occupy provinces to demand them.</p>
-                )}
-              </fieldset>
+              {allowed.land && (
+                <fieldset className="choices">
+                  <legend className="caps">Provinces to take</legend>
+                  {candidates.length ? (
+                    <ul className="peace-provinces">
+                      {candidates.map((id) => (
+                        <li key={id}>
+                          <label className={`choice compact ${picked.includes(id) ? 'active' : ''}`}>
+                            <input type="checkbox" checked={picked.includes(id)} onChange={() => toggle(id)} />
+                            <span className="choice-name">{game.world.region(id).name}</span>
+                            <span className="dim small num">
+                              dev {state.provinces[id].dev}
+                              {id === war.goal ? ' · war goal' : ''}
+                              {claimed.has(id) ? ' · claimed' : ''}
+                            </span>
+                          </label>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="dim small">You hold none of their land. Occupy provinces to demand them.</p>
+                  )}
+                </fieldset>
+              )}
               <label className="field">
                 <span className="caps">
                   Gold: <span className="num">{gold}</span> of {maxGold}
@@ -190,6 +197,29 @@ export function Peace() {
         </button>
       </div>
     </Modal>
+  );
+}
+
+/** The goal of a great holy war: the land around the holy city, for a new kingdom or for the leader. */
+function HolyLandChoice({ checked, onChange }: { checked: boolean; onChange: (v: boolean) => void }) {
+  const game = useGame();
+  const war = game.state.wars.find((w) => w.id === game.ui.get().selectedWar);
+  if (!war) return null;
+  const def = greatHolyWarOf(war.faith);
+  const land = holyLandOf(game.state, game.world, war).map((id) => game.world.region(id).name);
+  return (
+    <label className={`choice ${checked ? 'active' : ''}`}>
+      <input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} />
+      <span>
+        <span className="choice-name">Free the Holy Land</span>
+        <span className="dim small">
+          {land.join(', ')}{' '}
+          {def?.kingdom
+            ? `become the ${def.kingdom.name}, a new realm of the faith.`
+            : 'pass to the leader of the war.'}
+        </span>
+      </span>
+    </label>
   );
 }
 
@@ -242,6 +272,33 @@ export function Offer() {
   }
   if (offer.kind === 'ultimatum') return <Ultimatum />;
   const war = state.wars.find((w) => w.id === offer.war);
+  if (offer.kind === 'call' && war?.cb === 'crusade') {
+    const enemy = state.countries[war.defender];
+    return (
+      <Modal title={war.name} kicker="The call of the faith" onClose={() => answer(false)}>
+        <div className="offer-from">
+          <CoatOfArms country={from} size={46} />
+          <p>
+            {from.name} calls every realm of the faith to take the cross and free {game.world.region(war.goal).name}{' '}
+            from {enemy.name}, who can raise {formatMen(realmStrength(state, enemy.index))} men. {war.attackers.length}{' '}
+            realms have answered so far.
+          </p>
+        </div>
+        <p className="dim small">
+          If the faithful win, the land around the holy city is theirs, and every realm that fought gains 10 legitimacy.
+          No treaty binds you: staying at home costs nothing.
+        </p>
+        <div className="modal-actions">
+          <button className="btn" onClick={() => answer(false)}>
+            Stay at home
+          </button>
+          <button className="btn primary danger" onClick={() => answer(true)}>
+            <Icon name="crossed-swords" /> Take the cross
+          </button>
+        </div>
+      </Modal>
+    );
+  }
   if (offer.kind === 'call') {
     const enemy = war ? state.countries[war.attackers.includes(offer.from) ? war.defender : war.attacker] : null;
     return (
@@ -272,6 +329,7 @@ export function Offer() {
   if (t.throne) items.push(`Their ruler takes your crown, and ${from.name} joins your realm under them.`);
   if (t.independence) items.push(`${from.name} goes free.`);
   if (t.tributary) items.push(`You pay tribute to ${from.name}, and give up your alliances.`);
+  if (t.holyLand && war) items.push(`You give up the land around ${game.world.region(war.goal).name}.`);
   for (const id of t.provinces) items.push(`You cede ${game.world.region(id).name}.`);
   if (t.gold) items.push(`You pay ${Math.round(t.gold)} gold.`);
   return (

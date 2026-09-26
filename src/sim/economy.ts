@@ -20,6 +20,7 @@ import {
 } from '../data/politics';
 import { UNITS } from '../data/units';
 import { rulerSkill } from './characters';
+import { provinceMultiplier } from './faith';
 import { log } from './log';
 import { estateEffect, taskSkill } from './politics';
 import { armiesOf, atWar, menIn, provincesOf, tributariesOf, vassalsOf } from './queries';
@@ -112,17 +113,27 @@ export function fortLevel(state: GameState, id: number): number {
 /** Share of a tributary's taxes paid to its overlord (a vassal's share depends on crown authority). */
 export const TRIBUTARY_TRIBUTE = 0.15;
 
-function ownTaxes(state: GameState, c: Country): number {
-  let t = 0;
+/** Taxes of the realm's own provinces: what they pay, and what other faiths and peoples withhold. */
+function taxesOf(state: GameState, c: Country): { taxes: number; withheld: number } {
+  let full = 0,
+    paid = 0;
   for (const id of provincesOf(state, c.index)) {
     const p = state.provinces[id];
-    if (p.controller === c.index) t += provinceTax(p);
+    if (p.controller !== c.index) continue;
+    const t = provinceTax(p);
+    full += t;
+    paid += t * provinceMultiplier(c, p);
   }
-  return t * Math.max(0.3, taxMultiplier(state, c).total);
+  const mult = Math.max(0.3, taxMultiplier(state, c).total);
+  return { taxes: paid * mult, withheld: (full - paid) * mult };
+}
+
+function ownTaxes(state: GameState, c: Country): number {
+  return taxesOf(state, c).taxes;
 }
 
 export function income(state: GameState, c: Country): Breakdown {
-  const taxes = ownTaxes(state, c);
+  const { taxes, withheld } = taxesOf(state, c);
   let fromVassals = 0,
     fromTributaries = 0;
   for (const v of vassalsOf(state, c.index))
@@ -132,7 +143,8 @@ export function income(state: GameState, c: Country): Breakdown {
   const paysLiege = c.liege && !atWar(state, c.index, c.liege);
   const paysOverlord = c.overlord && !atWar(state, c.index, c.overlord);
   return breakdown([
-    { label: `Taxes from ${provincesOf(state, c.index).length} provinces`, value: taxes },
+    { label: `Taxes from ${provincesOf(state, c.index).length} provinces`, value: taxes + withheld },
+    { label: 'Withheld by other faiths and peoples', value: -withheld },
     { label: 'Tribute from vassals', value: fromVassals },
     { label: 'Tribute from tributaries', value: fromTributaries },
     {
@@ -168,14 +180,19 @@ export function monthlyBalance(state: GameState, c: Country): number {
 }
 
 export function maxManpower(state: GameState, c: Country): Breakdown {
-  let base = 0;
+  let full = 0,
+    base = 0;
   for (const id of provincesOf(state, c.index)) {
     const p = state.provinces[id];
-    if (p.controller === c.index) base += provinceLevy(p);
+    if (p.controller !== c.index) continue;
+    const l = provinceLevy(p);
+    full += l;
+    base += l * provinceMultiplier(c, p);
   }
   const mult = levyMultiplier(state, c);
   return breakdown([
-    { label: 'Levies of your provinces', value: base },
+    { label: 'Levies of your provinces', value: full },
+    { label: 'Other faiths and peoples serve less', value: base - full },
     ...mult.parts.filter((p) => p.label !== 'Base').map((p) => ({ label: p.label, value: base * p.value })),
   ]);
 }

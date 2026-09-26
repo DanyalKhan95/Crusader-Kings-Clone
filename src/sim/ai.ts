@@ -7,6 +7,7 @@
 import { BUILDING_ORDER, BUILDINGS } from '../data/buildings';
 import { UNITS } from '../data/units';
 import { TRAITS } from '../data/traits';
+import { holySites } from './beliefs';
 import { character, staffCourt } from './characters';
 import {
   alliesOf,
@@ -31,6 +32,8 @@ import {
   threatsTo,
 } from './diplomacy';
 import { canBuild, fortLevel, income, repayLoan, startBuilding } from './economy';
+import { acceptCulture, adoptFaith, canAcceptCulture, cultureShares, diversity, faithsToAdopt } from './faith';
+import { holyWarGoals, unbelievers, wagesHolyWar } from './holywars';
 import { changeLaw, estateLoyalty, grantPrivilege, lawCooldown } from './politics';
 import { revoltRisk } from './revolts';
 import { log } from './log';
@@ -112,6 +115,7 @@ export function monthlyAI(state: GameState, world: SimWorld, c: Country) {
     return;
   }
   politicsAI(state, c);
+  faithAI(state, world, c);
   diplomacyAI(state, world, c);
   const wars = warsOf(state, c.index);
   if (wars.length) {
@@ -135,8 +139,19 @@ function politicsAI(state: GameState, c: Country) {
   // Council tasks suited to the moment.
   c.tasks.chancellor = c.fabricating ? 'claims' : fighting ? 'negotiate' : 'embassies';
   c.tasks.marshal = fighting ? 'drill' : 'levies';
-  c.tasks.steward = c.gold > Math.max(200, c.lastBalance * 12) ? 'develop' : 'taxes';
-  c.tasks.chaplain = c.legitimacy < 50 ? 'legitimacy' : 'stability';
+  const d = diversity(state, c);
+  const rich = c.gold > Math.max(200, c.lastBalance * 12);
+  c.tasks.steward = !fighting && d.foreign >= 0.2 && c.lastBalance > 0 ? 'assimilate' : rich ? 'develop' : 'taxes';
+  c.tasks.chaplain =
+    c.legitimacy < 40
+      ? 'legitimacy'
+      : c.stability < 1
+        ? 'stability'
+        : d.sister + d.heathen > 0.02
+          ? 'convert'
+          : c.legitimacy < 60
+            ? 'legitimacy'
+            : 'stability';
   const unrest = ESTATES.some((e) => revoltRisk(state, c, e) > 0) || state.factions.some((f) => f.realm === c.index);
   c.tasks.spymaster = !fighting && unrest ? 'watch' : 'sieges';
   // A privilege to calm an estate on the brink.
@@ -164,6 +179,40 @@ function politicsAI(state: GameState, c: Country) {
     changeLaw(state, c, 'crown', l.crown - 1);
   else if (vassals.length && nobles > 20 && l.crown < 2 && c.legitimacy >= 60)
     changeLaw(state, c, 'crown', l.crown + 1);
+  else {
+    // Tolerance where unbelievers are many; persecution only under a zealous ruler with few of them.
+    const others = d.heathen + d.sister * 0.5;
+    const pious = character(state, c.ruler)?.traits.includes('pious');
+    if (l.tolerance < 2 && others > 0.35) changeLaw(state, c, 'tolerance', l.tolerance + 1);
+    else if (l.tolerance === 2 && others < 0.15) changeLaw(state, c, 'tolerance', 1);
+    else if (l.tolerance === 1 && pious && others > 0.02 && others < 0.15 && commons > 0)
+      changeLaw(state, c, 'tolerance', 0);
+    else if (l.tolerance === 0 && (others >= 0.25 || commons < -20)) changeLaw(state, c, 'tolerance', 1);
+  }
+}
+
+/** Great peoples of the realm are accepted; a pagan crown may take up the faith of a strong neighbour. */
+function faithAI(state: GameState, world: SimWorld, c: Country) {
+  if (chance(state, 0.05))
+    for (const { culture, share } of cultureShares(state, c))
+      if (share >= 0.2 && c.legitimacy >= 50 && canAcceptCulture(state, c, culture).ok) {
+        acceptCulture(state, c, culture);
+        break;
+      }
+  if (!chance(state, 0.0015)) return;
+  const options = faithsToAdopt(state, world, c);
+  if (!options.length) return;
+  // The faith of the mightiest neighbour, if it is mightier than we are.
+  let best = '',
+    might = strengthOf(state, c.index);
+  for (const n of realmNeighbours(state, world, c.index)) {
+    const o = state.countries[n];
+    if (o && options.includes(o.religion) && strengthOf(state, n) > might) {
+      might = strengthOf(state, n);
+      best = o.religion;
+    }
+  }
+  if (best && c.legitimacy >= 20) adoptFaith(state, world, c, best);
 }
 
 function economy(state: GameState, world: SimWorld, c: Country) {
@@ -258,7 +307,7 @@ function considerWar(state: GameState, world: SimWorld, c: Country) {
       .sort((a, b) => strengthOf(state, b) - strengthOf(state, a))[0];
     if (leader !== c.index || co.members.length < 2) continue;
     const bal = coalitionBalance(state, co.target);
-    if (bal.coalition >= bal.target * 1.1 && canDeclare(state, c.index, co.target, 'coalition', 0).ok) {
+    if (bal.coalition >= bal.target * 1.1 && canDeclare(state, world, c.index, co.target, 'coalition', 0).ok) {
       declareWar(state, world, c.index, co.target, 'coalition', 0);
       return;
     }
@@ -268,7 +317,7 @@ function considerWar(state: GameState, world: SimWorld, c: Country) {
   if (chance(state, Math.max(0.03, appetite) / 3))
     for (const t of c.throneClaims) {
       const target = state.countries[t];
-      if (target?.alive && odds(state, c.index, t) > 0.9 && canDeclare(state, c.index, t, 'throne', t).ok) {
+      if (target?.alive && odds(state, c.index, t) > 0.9 && canDeclare(state, world, c.index, t, 'throne', t).ok) {
         declareWar(state, world, c.index, t, 'throne', t);
         return;
       }
@@ -281,7 +330,7 @@ function considerWar(state: GameState, world: SimWorld, c: Country) {
     const t = topLiege(state, o);
     if (state.wars.some((w) => w.attackers.includes(t) || w.defenders.includes(t)) && chance(state, 0.5)) continue;
     const ratio = odds(state, c.index, t);
-    if (ratio < 1.4 || !canDeclare(state, c.index, t, 'claim', id).ok) continue;
+    if (ratio < 1.4 || !canDeclare(state, world, c.index, t, 'claim', id).ok) continue;
     const value = state.provinces[id].dev * Math.min(3, ratio) + random(state);
     if (!best || value > best.value) best = { target: t, goal: id, value };
   }
@@ -289,15 +338,47 @@ function considerWar(state: GameState, world: SimWorld, c: Country) {
     declareWar(state, world, c.index, best.target, 'claim', best.goal);
     return;
   }
+  // A holy war on unbelievers next door, more readily under a pious ruler.
+  const traits = character(state, c.ruler)?.traits ?? [];
+  const zeal = traits.includes('pious') ? 0.1 : traits.includes('cynical') ? -0.04 : 0;
+  if (
+    wagesHolyWar(c) &&
+    state.day >= (c.ai.nextHolyWar ?? 0) &&
+    chance(state, Math.max(0.02, 0.06 + zeal + aggression(state, c) * 0.1))
+  ) {
+    let holy: { target: number; goal: number; value: number } | null = null;
+    for (const t of realmNeighbours(state, world, c.index)) {
+      if (offLimits(state, c.index, t) || !unbelievers(state, c.index, t)) continue;
+      const ratio = odds(state, c.index, t);
+      if (ratio < 2) continue;
+      const goals = holyWarGoals(state, world, c.index, t);
+      if (!goals.length || !canDeclare(state, world, c.index, t, 'holy', goals[0]).ok) continue;
+      for (const id of goals) {
+        const site = holySiteOf(c, id) ? 10 : 0;
+        const value = state.provinces[id].dev * Math.min(3, ratio) + site + random(state);
+        if (!holy || value > holy.value) holy = { target: t, goal: id, value };
+      }
+    }
+    if (holy) {
+      declareWar(state, world, c.index, holy.target, 'holy', holy.goal);
+      // The faithful have had their holy war for a while.
+      c.ai.nextHolyWar = state.day + 365 * 8;
+      return;
+    }
+  }
   // A warlike ruler may attack a much weaker neighbour without any cause.
   if (aggression(state, c) < 0.3 || c.stability < 1 || !chance(state, 0.1)) return;
   let prey: { target: number; ratio: number } | null = null;
   for (const t of realmNeighbours(state, world, c.index)) {
-    if (offLimits(state, c.index, t) || !canDeclare(state, c.index, t, 'conquest', 0).ok) continue;
+    if (offLimits(state, c.index, t) || !canDeclare(state, world, c.index, t, 'conquest', 0).ok) continue;
     const ratio = odds(state, c.index, t);
     if (ratio >= 2.5 && (!prey || ratio > prey.ratio)) prey = { target: t, ratio };
   }
   if (prey) declareWar(state, world, c.index, prey.target, 'conquest', 0);
+}
+
+function holySiteOf(c: Country, province: number): boolean {
+  return holySites(c.religion).includes(province);
 }
 
 /** A disloyal subject that feels strong enough rises. */
@@ -435,10 +516,10 @@ function considerPeace(state: GameState, world: SimWorld, c: Country, war: War) 
   const side = winnerSide(war, c.index);
   const enemy = side === 'attacker' ? war.defender : war.attacker;
   const score = scoreFor(state, war, c.index);
-  const terms = bestTerms(state, war, c.index, score);
+  const terms = bestTerms(state, world, war, c.index, score);
   if (terms) {
     if (enemy === state.player) proposeToPlayer(state, war, c.index, terms);
-    else if (peaceAcceptance(state, war, c.index, terms).accept) {
+    else if (peaceAcceptance(state, world, war, c.index, terms).accept) {
       endWar(state, world, war, side, terms);
       return;
     }
@@ -449,12 +530,12 @@ function considerPeace(state: GameState, world: SimWorld, c: Country, war: War) 
     const white: PeaceTerms = { provinces: [], gold: 0, white: true };
     if (enemy === state.player) {
       if (chance(state, 0.3)) proposeToPlayer(state, war, c.index, white);
-    } else if (peaceAcceptance(state, war, c.index, white).accept) endWar(state, world, war, null, white);
+    } else if (peaceAcceptance(state, world, war, c.index, white).accept) endWar(state, world, war, null, white);
   }
 }
 
 /** The most this side can ask for with its war score, or null if nothing worth asking. */
-function bestTerms(state: GameState, war: War, from: number, score: number): PeaceTerms | null {
+function bestTerms(state: GameState, world: SimWorld, war: War, from: number, score: number): PeaceTerms | null {
   if (score < 15) return null;
   const side = winnerSide(war, from);
   const allowed = allowedTerms(state, war, side);
@@ -463,25 +544,35 @@ function bestTerms(state: GameState, war: War, from: number, score: number): Pea
   const terms: PeaceTerms = { provinces: [], gold: 0 };
   if (allowed.throne) {
     terms.throne = true;
-    return peaceCost(state, war, side, terms) <= score ? terms : null;
+    return peaceCost(state, world, war, side, terms) <= score ? terms : null;
   }
   if (allowed.independence) {
     terms.independence = true;
-    return peaceCost(state, war, side, terms) <= score ? terms : null;
+    return peaceCost(state, world, war, side, terms) <= score ? terms : null;
   }
   if (allowed.demands) {
     terms.demands = true;
-    return peaceCost(state, war, side, terms) <= score ? terms : null;
+    return peaceCost(state, world, war, side, terms) <= score ? terms : null;
   }
   if (allowed.crush) {
     terms.crush = true;
-    return peaceCost(state, war, side, terms) <= score ? terms : null;
+    return peaceCost(state, world, war, side, terms) <= score ? terms : null;
+  }
+  if (allowed.holyLand) {
+    // The Holy Land first, then what gold the rest of the score will buy.
+    terms.holyLand = true;
+    if (peaceCost(state, world, war, side, terms) > score) return null;
+    const loser = state.countries[war.defender];
+    const left = score - peaceCost(state, world, war, side, terms);
+    if (left > 5 && loser.gold > 20)
+      terms.gold = Math.floor(Math.min(loser.gold, (left / 25) * income(state, loser).total * 12));
+    return terms;
   }
   if (!allowed.spoils) return null;
   // The war goal, then claims we hold, then other occupied land by value.
   const winner = state.countries[from];
   const candidates: number[] = [];
-  if (war.cb === 'claim' && side === 'attacker') candidates.push(war.goal);
+  if ((war.cb === 'claim' || war.cb === 'holy') && side === 'attacker') candidates.push(war.goal);
   const occupied: number[] = [];
   for (const m of them)
     for (const id of provincesOf(state, m))
@@ -493,17 +584,17 @@ function bestTerms(state: GameState, war: War, from: number, score: number): Pea
   candidates.push(...occupied);
   for (const id of candidates) {
     const trial = { ...terms, provinces: [...terms.provinces, id] };
-    if (peaceCost(state, war, side, trial) <= score) terms.provinces = trial.provinces;
+    if (peaceCost(state, world, war, side, trial) <= score) terms.provinces = trial.provinces;
   }
   const loser = state.countries[side === 'attacker' ? war.defender : war.attacker];
   // Nothing to take, but the enemy is beaten: make it pay tribute.
   if (
     !terms.provinces.length &&
     allowed.tributary &&
-    peaceCost(state, war, side, { ...terms, tributary: true }) <= score
+    peaceCost(state, world, war, side, { ...terms, tributary: true }) <= score
   )
     terms.tributary = true;
-  const left = score - peaceCost(state, war, side, terms);
+  const left = score - peaceCost(state, world, war, side, terms);
   if (left > 5 && loser.gold > 20)
     terms.gold = Math.floor(Math.min(loser.gold, (left / 25) * income(state, loser).total * 12));
   if (!terms.provinces.length && !terms.tributary && terms.gold < 20) return null;
@@ -595,13 +686,18 @@ function planArmy(state: GameState, world: SimWorld, army: Army, enemies: Set<nu
   if (p && p.controller && enemies.has(p.controller) && !army.path.length) return; // keep sieging here
   if (army.objective && army.path.length && enemies.has(state.provinces[army.objective]?.controller ?? 0)) return;
   const targets: { id: number; score: number }[] = [];
+  // Crusaders go to the Holy Land, however far.
+  const holy = state.wars
+    .filter((w) => w.cb === 'crusade' && w.attackers.includes(army.owner))
+    .map((w) => world.region(w.goal));
   for (const e of enemies)
     for (const id of provincesOf(state, e)) {
       const q = state.provinces[id];
       if (!enemies.has(q.controller)) continue;
       const r = world.region(id);
       const km = distanceKm(here, r);
-      if (km > 2500) continue;
+      const crusade = holy.some((g) => distanceKm(g, r) <= 500);
+      if (km > 2500 && !crusade) continue;
       const defended = hostile.some((h) => h.location === id && armySize(h) > size * 0.8);
       if (defended) continue;
       const fort = fortLevel(state, id);
@@ -610,7 +706,8 @@ function planArmy(state: GameState, world: SimWorld, army: Army, enemies: Set<nu
       )
         ? 25
         : 0;
-      targets.push({ id, score: q.dev * 2 + goalBonus - km / 25 - fort * 4 });
+      const far = crusade ? km / 100 - 30 : km / 25;
+      targets.push({ id, score: q.dev * 2 + goalBonus - far - fort * 4 });
     }
   targets.sort((a, b) => b.score - a.score);
   // The best few, in case some cannot be reached.

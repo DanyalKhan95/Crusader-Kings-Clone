@@ -21,6 +21,8 @@ export function WarView({ id }: { id: number }) {
   const shown = mySide === 'defender' ? -score.total : score.total;
   const goalText: Record<string, string> = {
     claim: `the province of ${game.world.region(war.goal)?.name}`,
+    holy: `the province of ${game.world.region(war.goal)?.name}`,
+    crusade: `to free ${game.world.region(war.goal)?.name} and the land around it`,
     throne: `the crown of ${state.countries[war.goal]?.short}`,
     independence: `the freedom of ${state.countries[war.attacker]?.short}`,
     coalition: `to humble ${state.countries[war.defender]?.short}`,

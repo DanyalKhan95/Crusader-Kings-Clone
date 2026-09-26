@@ -52,6 +52,8 @@ export const CURATED: Record<string, CoA> = {
   FRA: C('plain', 'azure', 'azure', { charge: { kind: 'fleur-de-lys', t: 'or', count: 3 } }),
   HRE: C('plain', 'or', 'or', { charge: { kind: 'eagle-emblem', t: 'sable', count: 1 } }),
   BYZ: C('plain', 'purpure', 'purpure', { charge: { kind: 'double_eagle', t: 'or', count: 1 } }),
+  // Gold on silver, the famous exception to the rule of tincture.
+  JER: C('plain', 'argent', 'argent', { ordinary: { type: 'cross', t: 'or' } }),
   SEL: C('plain', 'azure', 'azure', { charge: { kind: 'double_eagle', t: 'or', count: 1 } }),
   SCO: C('plain', 'or', 'or', {
     ordinary: { type: 'bordure', t: 'gules' },

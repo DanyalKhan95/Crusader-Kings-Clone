@@ -2,6 +2,7 @@
 import { createContext, useContext } from 'react';
 import type { MapMode } from '../game/mapModes';
 import type { StaticWorld } from '../game/world';
+import { faithFamily } from '../sim/beliefs';
 import { topLiege } from '../sim/queries';
 import type { Country, GameState } from '../sim/types';
 import type { MeshBundle } from '../render/meshBuilder';
@@ -12,7 +13,7 @@ import { createStore, type Store } from './store';
 
 export type Phase = 'menu' | 'choose' | 'playing';
 export type Panel = 'none' | 'province' | 'country' | 'army' | 'war';
-export type CountryTab = 'realm' | 'treasury' | 'military' | 'court' | 'laws' | 'diplomacy';
+export type CountryTab = 'realm' | 'treasury' | 'military' | 'court' | 'laws' | 'faith' | 'diplomacy';
 export type Modal = 'none' | 'credits' | 'menu' | 'declare' | 'peace' | 'offer' | 'fallen';
 
 export interface UIState {
@@ -129,6 +130,7 @@ export function countryStats(game: Game, index: number): CountryStats {
   return out;
 }
 
-export function religionFamily(game: Game, religion: string): string {
-  return game.world.world.religions[religion]?.family ?? 'christian';
+/** The family of a faith, for heraldry: heresies take their parent's charges. */
+export function religionFamily(_game: Game, religion: string): string {
+  return faithFamily(religion) || 'christian';
 }

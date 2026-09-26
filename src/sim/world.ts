@@ -1,5 +1,6 @@
 /** The static world the simulation runs on: regions, cultures, faiths and derived lookups. */
 import type { RegionData, WorldData } from '../shared/dataTypes';
+import { registerBeliefs } from './beliefs';
 
 export interface SimWorld {
   world: WorldData;
@@ -9,6 +10,7 @@ export interface SimWorld {
 }
 
 export function makeSimWorld(world: WorldData, regions: RegionData[]): SimWorld {
+  registerBeliefs(world, regions);
   const byId: RegionData[] = [];
   for (const r of regions) byId[r.id] = r;
   return { world, regions, region: (id) => byId[id] };

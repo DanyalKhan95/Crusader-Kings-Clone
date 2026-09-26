@@ -4,8 +4,10 @@
  * AI answers proposals with the same breakdowns the player sees.
  */
 import { CROWN_VASSALS } from '../data/politics';
+import { cultureGroup, faithFamily } from './beliefs';
 import { rulerSkill, seatSkill } from './characters';
 import type { Breakdown, Part } from './economy';
+import { headOf, sitesHeldByUnbelievers } from './faith';
 import { log } from './log';
 import { taskSkill } from './politics';
 import {
@@ -241,14 +243,12 @@ export function opinion(state: GameState, world: SimWorld, of: number, about: nu
     b = state.countries[about];
   const parts: Part[] = [];
   if (!a || !b || of === about) return { total: 0, parts };
-  const faiths = world.world.religions;
   if (a.religion === b.religion) parts.push({ label: 'Same faith', value: 15 });
-  else if (faiths[a.religion]?.family === faiths[b.religion]?.family)
-    parts.push({ label: 'A sister faith', value: -5 });
+  else if (faithFamily(a.religion) === faithFamily(b.religion)) parts.push({ label: 'A sister faith', value: -5 });
   else parts.push({ label: 'Another faith', value: -15 });
-  const cultures = world.world.cultures;
+  if (headOf(state, a.religion)?.index === about) parts.push({ label: 'Head of our faith', value: 15 });
   if (a.culture === b.culture) parts.push({ label: 'Same culture', value: 10 });
-  else if (cultures[a.culture]?.group && cultures[a.culture]?.group === cultures[b.culture]?.group)
+  else if (cultureGroup(a.culture) && cultureGroup(a.culture) === cultureGroup(b.culture))
     parts.push({ label: 'Kindred culture', value: 5 });
 
   if (hasPact(state, 'alliance', of, about)) parts.push({ label: 'Allies', value: 40 });
@@ -258,6 +258,8 @@ export function opinion(state: GameState, world: SimWorld, of: number, about: nu
 
   const topA = topLiege(state, of),
     topB = topLiege(state, about);
+  if (about === topB && sitesHeldByUnbelievers(state, a.religion, topB).length)
+    parts.push({ label: 'Holds our holy places', value: -10 });
   if (atWar(state, of, about)) parts.push({ label: 'At war', value: -100 });
   else if (topA !== topB && hasTruce(state, topA, topB)) parts.push({ label: 'Recent war', value: -20 });
 
@@ -310,8 +312,7 @@ export function loyalty(state: GameState, world: SimWorld, subject: number): Bre
   const traits = state.characters[s.ruler]?.traits ?? [];
   if (traits.includes('ambitious')) parts.push({ label: 'An ambitious ruler', value: -15 });
   else if (traits.includes('content')) parts.push({ label: 'A content ruler', value: 10 });
-  const groups = world.world.cultures;
-  if (groups[s.culture]?.group !== groups[l.culture]?.group) parts.push({ label: 'Foreign masters', value: -10 });
+  if (cultureGroup(s.culture) !== cultureGroup(l.culture)) parts.push({ label: 'Foreign masters', value: -10 });
   const lordMight = strengthOf(state, lord) - (s.liege ? strengthOf(state, subject) : 0);
   const own = Math.max(1, strengthOf(state, subject));
   parts.push({
@@ -511,6 +512,8 @@ export const AE_FACTOR: Record<CasusBelli, number> = {
   independence: 0,
   coalition: 0.5,
   revolt: 0,
+  holy: 0.5,
+  crusade: 0,
 };
 export const COALITION_AE = -40;
 const LEAVE_AE = -25;

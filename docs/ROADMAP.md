@@ -134,12 +134,29 @@ whole world. The player controls a country rather than a dynasty.
 - [x] Procedural portraits for rulers, heirs, councillors and commanders.
 - [x] Saves from milestone 2 load.
 
-### M4: Religion and culture
+### M4: Religion and culture (done)
 
-- Refined faith and culture data.
-- Conversion and cultural integration.
-- Holy wars (crusades and jihads).
-- Religious heads, heresies and schisms.
+- [x] Refined data: Venice holds Venice, Sweden is Catholic, Georgians and Armenians have their
+      homelands; seven heresies with their cradles, colours and dates.
+- [x] Provinces of a sister faith, of unbelievers, or of a kindred or foreign people pay and serve
+      less and anger the commons; accepted cultures (by rank) count as the realm's own.
+- [x] Conversion by the court chaplain's missionaries and assimilation by the steward's schools,
+      one province at a time, and a slow drift towards the rulers' ways.
+- [x] Religious policy as a law: persecution, an established church or tolerance.
+- [x] Heads of faith (the Pope, the Ecumenical Patriarch, the Caliphs), with opinion and paid
+      blessings.
+- [x] Holy places for each faith, adding legitimacy to those who hold them.
+- [x] Holy wars on unbelievers for a border province or a holy place.
+- [x] Great holy wars: the crusade and the jihad for Jerusalem, called once in a generation by the
+      head of the faith, with every realm of both faiths called to arms; victory founds the Kingdom
+      of Jerusalem or gives the Holy Land to the leader of the jihad.
+- [x] Heresies that rise, spread and fade, schisms when a crown follows its people, and pagan
+      crowns taking up the faith of a strong neighbour.
+- [x] AI: missions and schools, religious policy, accepted cultures, holy wars at a measured
+      pace, crusaders marching to the Holy Land, holy war peace terms.
+- [x] UI: a Faith tab, faith and culture in the province panel, the faith map legend, holy war
+      and crusade dialogs.
+- [x] Saves from milestone 3 load.
 
 ### M5: Technology and eras
 
@@ -191,10 +208,18 @@ whole world. The player controls a country rather than a dynasty.
   grain would help.
 - **Small realms:** these were dropped where a province is bigger than the whole realm (for
   example the Duchy of Naples).
-- **Balance:** in 30-year AI runs there are about 250 wars (nearly all over forged claims), and
-  about 25 small realms are conquered. England sometimes falls to the Norman or Norwegian
-  claimant. AI rulers mostly keep their estates content, so revolts in an AI world are rare;
-  they follow harsh laws, long wars and weak rulers.
-- **Speed:** headless runs manage about 1,100 days a second with politics; estate figures are
-  cached per day. Worth another look in M8.
+- **Balance:**
+  - In 30-year AI runs there are about 250 wars (three quarters over forged claims, a tenth holy
+    wars), and about 25 small realms are conquered. England sometimes falls to the Norman or
+    Norwegian claimant.
+  - AI rulers mostly keep their estates content, so revolts in an AI world are rare; they follow
+    harsh laws, long wars and weak rulers.
+  - The Christian kingdoms of Iberia tend to be swallowed within a century, often by France.
+  - A crusade usually comes within a few years of 1090 and wins; crusades and jihads then trade
+    Jerusalem every generation or so.
+  - Large rich realms (the Song, Srivijaya) hoard gold once everything is built. M5 should give
+    them things to spend it on.
+- **Speed:** headless runs manage about 1,000 days a second. Estate and faith figures are cached
+  per day, and routes an army cannot take are ruled out by a cached reachability check before any
+  search. Worth another look in M8.
 - **Navies:** armies embark automatically and cannot be intercepted at sea until M6.

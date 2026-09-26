@@ -91,11 +91,13 @@ class Heap {
     v.push(value);
     while (i > 0) {
       const parent = (i - 1) >> 1;
-      if (p[parent] <= p[i]) break;
-      [p[parent], p[i]] = [p[i], p[parent]];
-      [v[parent], v[i]] = [v[i], v[parent]];
+      if (p[parent] <= priority) break;
+      p[i] = p[parent];
+      v[i] = v[parent];
       i = parent;
     }
+    p[i] = priority;
+    v[i] = value;
   }
   pop(): number {
     const p = this.p,
@@ -103,24 +105,46 @@ class Heap {
     const top = v[0];
     const lp = p.pop()!,
       lv = v.pop()!;
-    if (v.length) {
-      p[0] = lp;
-      v[0] = lv;
+    const n = v.length;
+    if (n) {
       let i = 0;
       for (;;) {
         const l = i * 2 + 1,
           r = l + 1;
-        let m = i;
-        if (l < v.length && p[l] < p[m]) m = l;
-        if (r < v.length && p[r] < p[m]) m = r;
-        if (m === i) break;
-        [p[m], p[i]] = [p[i], p[m]];
-        [v[m], v[i]] = [v[i], v[m]];
+        let m = -1,
+          mp = lp;
+        if (l < n && p[l] < mp) {
+          m = l;
+          mp = p[l];
+        }
+        if (r < n && p[r] < mp) m = r;
+        if (m < 0) break;
+        p[i] = p[m];
+        v[i] = v[m];
         i = m;
       }
+      p[i] = lp;
+      v[i] = lv;
     }
     return top;
   }
+}
+
+/** Scratch arrays for searches, reused from one search to the next (searches never nest). */
+let scratch: { dist: Float64Array; prev: Int32Array; seen: Uint32Array; closed: Uint32Array; stamp: number } | null =
+  null;
+
+function buffers(n: number) {
+  if (!scratch || scratch.dist.length < n || scratch.stamp > 0xfffffff0)
+    scratch = {
+      dist: new Float64Array(n),
+      prev: new Int32Array(n),
+      seen: new Uint32Array(n),
+      closed: new Uint32Array(n),
+      stamp: 0,
+    };
+  scratch.stamp++;
+  return scratch;
 }
 
 export interface PathOptions {
@@ -143,36 +167,68 @@ export function findPath(world: SimWorld, from: number, to: number, opts: PathOp
   const { edges } = graph(world);
   const sea = opts.sea ?? true;
   const maxDays = opts.maxDays ?? Infinity;
-  const dist = new Map<number, number>([[from, 0]]);
-  const prev = new Map<number, number>();
+  const { dist, prev, seen, closed, stamp } = buffers(edges.length);
+  seen[from] = stamp;
+  dist[from] = 0;
   const heap = new Heap();
   const h = (id: number) => distanceKm(world.region(id), target) / SAIL_SPEED;
   heap.push(h(from), from);
-  const closed = new Set<number>();
+  let found = false;
   while (heap.size) {
     const id = heap.pop();
-    if (id === to) break;
-    if (closed.has(id)) continue;
-    closed.add(id);
-    const d = dist.get(id)!;
+    if (id === to) {
+      found = true;
+      break;
+    }
+    if (closed[id] === stamp) continue;
+    closed[id] = stamp;
+    const d = dist[id];
     for (const e of edges[id]) {
-      const r = world.region(e.to);
-      if (!sea && r.kind !== 'land') continue;
+      if (!sea && world.region(e.to).kind !== 'land') continue;
       const extra = opts.penalty ? opts.penalty(e.to) : 0;
       if (extra === Infinity) continue;
       const nd = d + e.days + extra;
       if (nd > maxDays) continue;
-      if (nd < (dist.get(e.to) ?? Infinity)) {
-        dist.set(e.to, nd);
-        prev.set(e.to, id);
+      if (seen[e.to] !== stamp || nd < dist[e.to]) {
+        seen[e.to] = stamp;
+        dist[e.to] = nd;
+        prev[e.to] = id;
         heap.push(nd + h(e.to), e.to);
       }
     }
   }
-  if (!prev.has(to)) return null;
+  if (!found) return null;
   const path: number[] = [];
-  for (let c = to; c !== from; c = prev.get(c)!) path.push(c);
+  for (let c = to; c !== from; c = prev[c]) path.push(c);
   return path.reverse();
+}
+
+/**
+ * Labels the regions an army could march between, given which it may enter: two enterable regions
+ * with the same label are joined by a route. Regions it may not enter are labelled -1.
+ */
+export function components(world: SimWorld, enterable: (region: number) => boolean): Int32Array {
+  const { edges } = graph(world);
+  const label = new Int32Array(edges.length).fill(-1);
+  const ok = new Uint8Array(edges.length);
+  for (let id = 0; id < edges.length; id++) if (edges[id] && isPassable(world.region(id)) && enterable(id)) ok[id] = 1;
+  const stack: number[] = [];
+  let next = 0;
+  for (let id = 0; id < edges.length; id++) {
+    if (!ok[id] || label[id] >= 0) continue;
+    label[id] = next;
+    stack.push(id);
+    while (stack.length) {
+      const u = stack.pop()!;
+      for (const e of edges[u])
+        if (ok[e.to] && label[e.to] < 0) {
+          label[e.to] = next;
+          stack.push(e.to);
+        }
+    }
+    next++;
+  }
+  return label;
 }
 
 /** Total days along a path starting at `from`. */

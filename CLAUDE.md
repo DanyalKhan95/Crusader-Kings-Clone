@@ -54,9 +54,20 @@ when a milestone lands.
   - A revolt is a temporary country with `rebel` set; its land returns to the realm when its war
     ends (`endRevolt`). Other realms cannot treat or fight with rebels. Dead rebel slots are
     reused, so a country index may change hands after a year.
+  - Faiths, heresies, culture groups and holy sites are looked up through `beliefs.ts`, never
+    `world.world.religions` (heresies are not in the map data). `registerBeliefs` runs in
+    `makeSimWorld`, `loadWorld` and `createGameState`; code that builds a world another way must
+    call it too.
+  - `faith.ts` holds province standing (faith and culture), missions and schools, accepted
+    cultures, heresies, heads of faith and holy sites; `holywars.ts` holds holy wars, crusades and
+    jihads and the founding of the Kingdom of Jerusalem. Great holy wars are data
+    (`GREAT_HOLY_WARS` in `src/data/faiths.ts`).
   - Hot lookups are cached per day or per version counter (`strengthOf`, `accessSet`,
-    `realmMembers`, the treaty index): bump `mapVersion`, `borderVersion` or `diploVersion`
-    whenever owners, lieges or treaties change.
+    `realmMembers`, the treaty index, `diversity`, army reachability): bump `mapVersion`,
+    `borderVersion` or `diploVersion` whenever owners, lieges or treaties change.
+  - `routeFor` first asks `canReach` (connected regions an army may enter, cached by border
+    version and rights of passage), so hopeless orders cost nothing. Keep new path searches behind
+    it.
 - **`src/ui/runner.ts`:** runs the simulation from `MapController.onFrame` within a time budget,
   and bumps the store's `tick` at most every 120 ms. Panels with live numbers subscribe to `tick`.
 - **`?debug`** in the address exposes the running game as `window.game` (the e2e tests use it to

@@ -211,9 +211,9 @@ describe('claims', () => {
     expect(opinion(s, world, pol.index, hun.index).parts.map((p) => p.label)).toContain('Claims on our land');
     expect(cmd.declare(s, world, pol.index, 'claim', goal).ok).toBe(true);
     const war = s.wars.find((w) => w.attacker === hun.index)!;
-    const claimed = peaceCost(s, war, 'attacker', { provinces: [goal], gold: 0 });
+    const claimed = peaceCost(s, world, war, 'attacker', { provinces: [goal], gold: 0 });
     hun.claims = [];
-    expect(peaceCost(s, war, 'attacker', { provinces: [goal], gold: 0 })).toBeGreaterThan(claimed * 1.5);
+    expect(peaceCost(s, world, war, 'attacker', { provinces: [goal], gold: 0 })).toBeGreaterThan(claimed * 1.5);
   });
 });
 
@@ -287,6 +287,7 @@ describe('saves', () => {
     delete st.coalitions;
     delete st.diploVersion;
     delete st.factions;
+    delete st.holyWars;
     delete st.proposalCooldown;
     for (const c of st.countries) {
       if (!c) continue;
@@ -302,6 +303,7 @@ describe('saves', () => {
       delete c.estates;
       delete c.tasks;
       delete c.termEnds;
+      for (const k of ['accepted', 'converting', 'assimilating', 'blessed']) delete c[k];
     }
     const hun = st.countries.find((c: { tag: string } | null) => c?.tag === 'HUN');
     const pol = st.countries.find((c: { tag: string } | null) => c?.tag === 'POL');
@@ -317,7 +319,7 @@ describe('saves', () => {
       defenders: [pol.index],
     });
     const loaded = deserialize(JSON.stringify(file));
-    expect(loaded.version).toBe(3);
+    expect(loaded.version).toBe(4);
     expect(loaded.pacts).toEqual([]);
     expect(loaded.countries[hun.index].laws.taxation).toBe(1);
     const war = loaded.wars.find((w) => w.id === 9999)!;

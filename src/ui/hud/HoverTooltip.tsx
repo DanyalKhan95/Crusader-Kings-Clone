@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useRef } from 'react';
 import { relationTo, RELATION_INFO, TERRAIN_INFO } from '../../game/mapModes';
+import { faithName, holyTo } from '../../sim/beliefs';
 import { opinionOf } from '../../sim/diplomacy';
 import { topLiege } from '../../sim/queries';
 import { CoatOfArms } from '../CoatOfArms';
@@ -74,6 +75,19 @@ export function HoverTooltip() {
           {r.kind === 'land' && (
             <div className="tt-line dim">
               {TERRAIN_INFO[r.terrain ?? 'plains'].name} · development {p?.dev ?? r.dev ?? 0}
+            </div>
+          )}
+          {r.kind === 'land' && (mode === 'religion' || mode === 'culture') && p?.religion && (
+            <div className="tt-line">
+              {faithName(p.religion)} · {cultureName(game, p.culture)}
+            </div>
+          )}
+          {r.kind === 'land' && mode === 'religion' && holyTo(r.id).length > 0 && (
+            <div className="tt-line">
+              Holy to{' '}
+              {holyTo(r.id)
+                .map((f) => faithName(f))
+                .join(', ')}
             </div>
           )}
           {phase === 'choose' && owner && <div className="tt-hint caps">Click to view this realm</div>}

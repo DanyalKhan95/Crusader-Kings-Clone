@@ -80,7 +80,7 @@ export function LawsTab({ c }: { c: Country }) {
             : 'One law may change now; after that the realm needs five years to settle.'}
         </p>
         <SuccessionLaw c={c} />
-        {(['crown', 'conscription', 'taxation'] as LevelLaw[]).map((law) => (
+        {(['crown', 'conscription', 'taxation', 'tolerance'] as LevelLaw[]).map((law) => (
           <LevelLawRow key={law} c={c} law={law} />
         ))}
       </section>

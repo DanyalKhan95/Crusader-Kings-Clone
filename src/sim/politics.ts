@@ -2,6 +2,7 @@
  * Internal politics: laws, legitimacy, the estates, council tasks and elections. Every figure comes
  * as a breakdown, for the UI and for the AI alike. Revolts and vassal factions live in `revolts.ts`.
  */
+import { STRIFE, TOLERANCE_CLERGY } from '../data/faiths';
 import {
   CONSCRIPTION_COMMONS,
   CROWN_NOBLES,
@@ -9,6 +10,7 @@ import {
   ESTATE_INFO,
   ESTATE_WEIGHT,
   LAW_COOLDOWN_YEARS,
+  LEVEL_LAWS,
   SEAT_TASKS,
   TAXATION_BURGHERS,
   TAXATION_COMMONS,
@@ -17,6 +19,7 @@ import type { Government } from '../shared/dataTypes';
 import { years } from './calendar';
 import { age, alive, candidateScore, character, electionCandidates, seatSkill } from './characters';
 import type { Breakdown, Part } from './economy';
+import { diversity, holySiteLegitimacy } from './faith';
 import { log } from './log';
 import { provincesOf } from './queries';
 import {
@@ -79,7 +82,7 @@ export function initialLaws(gov: Government, tag: string, cultureGroup: string |
     succession = 'elective';
   const crown = gov === 'imperial' ? 2 : gov === 'feudal' || gov === 'clan' || gov === 'theocracy' ? 1 : 0;
   const conscription = gov === 'tribal' || gov === 'nomadic' ? 2 : 1;
-  return { succession, crown, conscription, taxation: 1 };
+  return { succession, crown, conscription, taxation: 1, tolerance: 1 };
 }
 
 export function defaultEstates(): Record<EstateId, EstateState> {
@@ -93,9 +96,11 @@ export function lawCooldown(state: GameState, c: Country): number {
   return Math.max(0, c.lawChanged + years(LAW_COOLDOWN_YEARS) - state.day);
 }
 
+/** A harsher law shakes the realm: higher crown authority, conscription or taxes, or persecution. */
 export function lawCost(c: Country, law: LawId, value: Laws[LawId]): { legitimacy: number; stability: number } {
   if (law === 'succession') return { legitimacy: 15, stability: 1 };
-  return { legitimacy: 5, stability: (value as number) > c.laws[law] ? 1 : 0 };
+  const harsher = law === 'tolerance' ? (value as number) < c.laws[law] : (value as number) > c.laws[law];
+  return { legitimacy: 5, stability: harsher ? 1 : 0 };
 }
 
 export function canChangeLaw(state: GameState, c: Country, law: LawId, value: Laws[LawId]): Check {
@@ -105,7 +110,7 @@ export function canChangeLaw(state: GameState, c: Country, law: LawId, value: La
     if (!successionOptions(c.gov).includes(value as Succession)) return no('Not possible for this government');
   } else {
     const v = value as number;
-    if (!Number.isInteger(v) || v < 0 || v > 3) return no('No such law');
+    if (!Number.isInteger(v) || v < 0 || v >= LEVEL_LAWS[law].levels.length) return no('No such law');
     if (Math.abs(v - c.laws[law]) > 1) return no('Laws change one step at a time');
   }
   if (value === c.laws[law]) return no('That is already the law');
@@ -139,6 +144,7 @@ export function legitimacyTarget(state: GameState, c: Country): Breakdown {
   if (c.gov === 'theocracy') parts.push({ label: 'Rule in God’s name', value: 10 });
   parts.push({ label: 'The clergy', value: Math.round(estateEffect(state, c, 'clergy') * 10) });
   parts.push({ label: 'Court chaplain', value: taskSkill(state, c, 'chaplain', 'legitimacy') });
+  parts.push({ label: 'Holy sites held', value: holySiteLegitimacy(state, c) });
   const ruler = character(state, c.ruler);
   if (ruler && age(state, ruler) < 16) parts.push({ label: 'A child on the throne', value: -15 });
   if (ruler?.traits.includes('pious')) parts.push({ label: 'A pious ruler', value: 5 });
@@ -222,6 +228,12 @@ export function estateLoyalty(state: GameState, c: Country, e: EstateId): Breakd
     parts.push({ label: 'Conscription', value: CONSCRIPTION_COMMONS[l.conscription] });
   }
   if (e === 'burghers') parts.push({ label: 'Taxation', value: TAXATION_BURGHERS[l.taxation] });
+  if (e === 'commons') {
+    const d = diversity(state, c);
+    parts.push({ label: 'Religious strife', value: -(d.heathen * 40 + d.sister * 15) * STRIFE[l.tolerance] });
+    parts.push({ label: 'Foreign peoples', value: -d.foreign * 20 });
+  }
+  if (e === 'clergy') parts.push({ label: 'Religious policy', value: TOLERANCE_CLERGY[l.tolerance] });
   if (c.estates[e].privileged) parts.push({ label: 'Their privileges', value: 25 });
   if (e === 'nobles' || e === 'clergy')
     parts.push({ label: 'Legitimacy of the crown', value: Math.round((c.legitimacy - 50) * 0.3) });

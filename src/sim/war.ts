@@ -21,6 +21,7 @@ import {
   removePact,
 } from './diplomacy';
 import { income, type Breakdown, type Part } from './economy';
+import { grantHolyLand, holyLandOf, holyVictory, holyWarGoals, unbelievers, wagesHolyWar } from './holywars';
 import { log } from './log';
 import { taskSkill } from './politics';
 import {
@@ -71,6 +72,16 @@ export const CB_INFO: Record<CasusBelli, { name: string; blurb: string }> = {
     name: 'Revolt',
     blurb: 'An estate has risen against the crown. If the rebels win, their demand becomes law.',
   },
+  holy: {
+    name: 'Holy war',
+    blurb:
+      'Fight the unbelievers for a province on your border or a holy place of your faith. The war goal costs half as much at the peace table, and victory strengthens the crown.',
+  },
+  crusade: {
+    name: 'Great holy war',
+    blurb:
+      'The head of the faith has called the faithful to free a holy city. If they win, the land around it is won for the faith.',
+  },
 };
 
 export type Check = { ok: true } | { ok: false; reason: string };
@@ -82,11 +93,19 @@ function breakdown(parts: Part[]): Breakdown {
   return { total: kept.reduce((s, p) => s + p.value, 0), parts: kept };
 }
 
-export function canDeclare(state: GameState, attacker: number, target: number, cb: CasusBelli, goal: number): Check {
+export function canDeclare(
+  state: GameState,
+  world: SimWorld,
+  attacker: number,
+  target: number,
+  cb: CasusBelli,
+  goal: number,
+): Check {
   const a = state.countries[attacker];
   const t = state.countries[target];
   if (!a?.alive || !t?.alive) return no('No such country');
   if (cb === 'revolt') return no('Revolts are not declared');
+  if (cb === 'crusade') return no('Only the head of a faith can call a great holy war');
   if (a.rebel) return no('Rebels fight only their own war');
   if (state.countries[topLiege(state, target)]?.rebel) return no('They are rebels in another realm’s war');
   if (cb === 'independence') {
@@ -117,6 +136,12 @@ export function canDeclare(state: GameState, attacker: number, target: number, c
   }
   if (cb === 'coalition' && !coalitionAgainst(state, defender)?.members.includes(attacker))
     return no('You are not in a coalition against them');
+  if (cb === 'holy') {
+    if (!wagesHolyWar(a)) return no('Your faith does not wage holy wars');
+    if (!unbelievers(state, attacker, defender)) return no('They are not unbelievers');
+    if (!holyWarGoals(state, world, attacker, defender).includes(goal))
+      return no('Pick a province on your border, or a holy site of your faith');
+  }
   return ok;
 }
 
@@ -141,6 +166,8 @@ export function warName(world: SimWorld, cb: CasusBelli, attacker: Country, defe
       return `${attacker.adj} Claim on ${defender.short}`;
     case 'claim':
       return `${attacker.adj}–${defender.adj} War over ${world.region(goal).name}`;
+    case 'holy':
+      return `${attacker.adj} Holy War for ${world.region(goal).name}`;
     case 'independence':
       return `${attacker.adj} War of Independence`;
     case 'coalition':
@@ -160,7 +187,7 @@ export function declareWar(
   cb: CasusBelli,
   goal = 0,
 ): War | null {
-  if (!canDeclare(state, attacker, target, cb, goal).ok) return null;
+  if (!canDeclare(state, world, attacker, target, cb, goal).ok) return null;
   const defender = cb === 'independence' ? lordOf(state, attacker) : topLiege(state, target);
   const a = state.countries[attacker],
     d = state.countries[defender];
@@ -171,7 +198,7 @@ export function declareWar(
     id: state.nextId++,
     name: warName(world, cb, a, d, goal),
     cb,
-    goal: cb === 'throne' ? defender : cb === 'claim' ? goal : 0,
+    goal: cb === 'throne' ? defender : cb === 'claim' || cb === 'holy' ? goal : 0,
     attacker,
     defender,
     attackers,
@@ -185,7 +212,7 @@ export function declareWar(
   if (cb === 'conquest') a.stability = Math.max(-3, a.stability - 1);
   log(state, [...war.attackers, ...war.defenders], 'war', `${a.name} has declared war on ${d.name}: ${war.name}.`, {
     important: war.defenders.includes(state.player),
-    province: cb === 'claim' ? goal : d.capital,
+    province: cb === 'claim' || cb === 'holy' ? goal : d.capital,
   });
   if (cb === 'independence') return war;
   if (cb === 'coalition')
@@ -200,13 +227,14 @@ export function declareWar(
 
 // ── Calls to arms ─────────────────────────────────────────────────
 
-export type CallReason = 'alliance' | 'guarantee' | 'overlord' | 'coalition';
+export type CallReason = 'alliance' | 'guarantee' | 'overlord' | 'coalition' | 'crusade';
 
 export const CALL_REASON: Record<CallReason, string> = {
   alliance: 'Alliance',
   guarantee: 'Their guarantee',
   overlord: 'Duty to a tributary',
   coalition: 'Coalition',
+  crusade: 'The call of the faith',
 };
 
 /** Why a friend cannot take a side at all (no blame attaches), or null. */
@@ -239,6 +267,7 @@ export function callWillingness(
   const leader = side === 'attacker' ? war.attacker : war.defender;
   const enemy = side === 'attacker' ? war.defender : war.attacker;
   const c = state.countries[ally];
+  if (reason === 'crusade') return crusadeWillingness(state, world, war, c, side);
   const parts: Part[] = [{ label: CALL_REASON[reason], value: reason === 'alliance' ? 40 : 30 }];
   if (side === 'attacker' && reason === 'alliance') parts.push({ label: 'A war of aggression', value: -15 });
   parts.push({
@@ -263,6 +292,36 @@ export function callWillingness(
       value: -Math.round(Math.min(30, distanceKm(world.region(capA), world.region(capE)) / 100)),
     });
   if (c.loans.length >= 2) parts.push({ label: 'Debts', value: -20 });
+  return breakdown(parts);
+}
+
+/** Will a realm take the cross, or rally to the defence of the faith? Piety, distance and its troubles decide. */
+function crusadeWillingness(
+  state: GameState,
+  world: SimWorld,
+  war: War,
+  c: Country,
+  side: 'attacker' | 'defender',
+): Breakdown {
+  const leader = side === 'attacker' ? war.attacker : war.defender;
+  const parts: Part[] = [{ label: CALL_REASON.crusade, value: 20 }];
+  const traits = state.characters[c.ruler]?.traits ?? [];
+  if (traits.includes('pious')) parts.push({ label: 'A pious ruler', value: 20 });
+  if (traits.includes('cynical')) parts.push({ label: 'A cynical ruler', value: -25 });
+  parts.push({
+    label: `Opinion of ${state.countries[leader].short}`,
+    value: Math.round(opinionOf(state, world, c.index, leader) * 0.3),
+  });
+  if (c.warExhaustion >= 1) parts.push({ label: 'War weariness', value: -Math.round(c.warExhaustion * 3) });
+  const busy = warsOf(state, c.index).length;
+  if (busy) parts.push({ label: 'Already at war', value: -30 * busy });
+  if (c.stability < 0) parts.push({ label: 'Unrest at home', value: -15 });
+  if (c.loans.length >= 2) parts.push({ label: 'Debts', value: -20 });
+  if (c.capital && war.goal)
+    parts.push({
+      label: 'Distance',
+      value: -Math.round(Math.min(25, distanceKm(world.region(c.capital), world.region(war.goal)) / 200)),
+    });
   return breakdown(parts);
 }
 
@@ -348,7 +407,15 @@ export function callToArms(
       to: ally,
       expires: state.day + 30,
     });
-    log(state, [ally], 'diplomacy', `${leader.name} calls you to arms in ${war.name}.`, { important: true });
+    log(
+      state,
+      [ally],
+      'diplomacy',
+      reason === 'crusade'
+        ? `${war.name} is called: take the cross and free ${world.region(war.goal).name}!`
+        : `${leader.name} calls you to arms in ${war.name}.`,
+      { important: true },
+    );
     return;
   }
   if (callWillingness(state, world, war, ally, side, reason).total >= 0) joinWar(state, war, ally, side);
@@ -365,6 +432,11 @@ export function refuseCall(
 ) {
   const leader = side === 'attacker' ? war.attacker : war.defender;
   const enemy = side === 'attacker' ? war.defender : war.attacker;
+  if (reason === 'crusade') {
+    // No treaty binds anyone to take the cross; only the player hears of it.
+    log(state, [ally], 'diplomacy', `${state.countries[ally].name} stays out of ${war.name}.`);
+    return;
+  }
   if (reason === 'alliance') removePact(state, 'alliance', ally, leader);
   else if (reason === 'guarantee') removePact(state, 'guarantee', ally, leader);
   else if (reason === 'overlord') release(state, leader);
@@ -480,7 +552,10 @@ export function warScore(state: GameState, war: War): Breakdown {
     { label: 'Battles', value: war.battleScore },
     { label: war.ticking >= 0 ? 'War goal held' : 'Defenders holding out', value: war.ticking },
   ];
-  if (war.cb === 'claim' && war.attackers.includes(state.provinces[war.goal]?.controller ?? 0))
+  if (
+    (war.cb === 'claim' || war.cb === 'holy' || war.cb === 'crusade') &&
+    war.attackers.includes(state.provinces[war.goal]?.controller ?? 0)
+  )
     parts.push({ label: 'War goal occupied', value: 15 });
   if (war.cb === 'throne') {
     const cap = state.countries[war.defender]?.capital ?? 0;
@@ -506,6 +581,8 @@ export function scoreFor(state: GameState, war: War, country: number): number {
 function goalHeld(state: GameState, war: War): boolean {
   switch (war.cb) {
     case 'claim':
+    case 'holy':
+    case 'crusade':
       return war.attackers.includes(state.provinces[war.goal]?.controller ?? 0);
     case 'throne': {
       const cap = state.countries[war.defender]?.capital ?? 0;
@@ -576,25 +653,41 @@ export function callReason(state: GameState, war: War, ally: number, side: 'atta
   if (hasPact(state, 'guarantee', ally, leader)) return 'guarantee';
   if (state.countries[leader]?.overlord === ally) return 'overlord';
   if (war.cb === 'coalition' && coalitionAgainst(state, enemy)?.members.includes(ally)) return 'coalition';
+  if (war.cb === 'crusade') return 'crusade';
   return 'alliance';
 }
 
 // ── Peace ─────────────────────────────────────────────────────────
 
+/** The Holy Land costs a fixed share of the war, and a little more for every province it holds. */
+function holyLandCost(state: GameState, world: SimWorld, war: War, loserDev: number): number {
+  let cost = 25;
+  for (const id of holyLandOf(state, world, war)) cost += ((state.provinces[id].dev / loserDev) * 130 + 4) * 0.3;
+  return cost;
+}
+
 /** War score a deal costs the side that gains from it. */
-export function peaceCost(state: GameState, war: War, winner: 'attacker' | 'defender', terms: PeaceTerms): number {
+export function peaceCost(
+  state: GameState,
+  world: SimWorld,
+  war: War,
+  winner: 'attacker' | 'defender',
+  terms: PeaceTerms,
+): number {
   if (terms.white) return 0;
   const losers = winner === 'attacker' ? war.defenders : war.attackers;
   const loserDev = Math.max(1, sideDev(state, losers));
   const winLeader = state.countries[winner === 'attacker' ? war.attacker : war.defender];
   const loseLeader = state.countries[winner === 'attacker' ? war.defender : war.attacker];
   const claimed = new Set(winLeader?.claims ?? []);
+  if (war.cb === 'holy' && winner === 'attacker') claimed.add(war.goal);
   let cost = 0;
   for (const id of terms.provinces) {
     const p = state.provinces[id];
     const base = (p.dev / loserDev) * 100 * 1.3 + 4;
     cost += claimed.has(id) ? base * 0.5 : base;
   }
+  if (terms.holyLand) cost += holyLandCost(state, world, war, loserDev);
   if (terms.gold > 0) cost += (terms.gold / Math.max(10, income(state, loseLeader).total * 12)) * 25;
   if (terms.throne) cost += 70;
   if (terms.tributary) {
@@ -608,6 +701,19 @@ export function peaceCost(state: GameState, war: War, winner: 'attacker' | 'defe
   return Math.min(100, cost);
 }
 
+/** What terms cost the side asking for them, after its chancellor has negotiated. */
+export function offerCost(
+  state: GameState,
+  world: SimWorld,
+  war: War,
+  side: 'attacker' | 'defender',
+  terms: PeaceTerms,
+): number {
+  const proposer = state.countries[side === 'attacker' ? war.attacker : war.defender];
+  const discount = 1 - Math.min(0.2, taskSkill(state, proposer, 'chancellor', 'negotiate') * 0.01);
+  return peaceCost(state, world, war, side, terms) * discount;
+}
+
 /** A war between a realm and its own rebels. */
 export function isRevolt(state: GameState, war: War): boolean {
   return state.countries[war.attacker]?.rebel?.realm === war.defender;
@@ -617,16 +723,21 @@ export function isRevolt(state: GameState, war: War): boolean {
 export function allowedTerms(state: GameState, war: War, winner: 'attacker' | 'defender') {
   const loseLeader = state.countries[winner === 'attacker' ? war.defender : war.attacker];
   const revolt = isRevolt(state, war);
+  const crusaders = war.cb === 'crusade' && winner === 'attacker';
   return {
     throne: war.cb === 'throne' && winner === 'attacker',
     independence: war.cb === 'independence' && winner === 'attacker',
     demands: war.cb === 'revolt' && winner === 'attacker',
     crush: revolt && winner === 'defender',
+    holyLand: crusaders,
     /** land and gold change hands only between realms, not with rebels */
     spoils: !revolt,
+    /** crusaders fight for the Holy Land alone, not for land of their own */
+    land: !revolt && !crusaders,
     tributary:
       !revolt &&
       war.cb !== 'independence' &&
+      !crusaders &&
       !!loseLeader &&
       !loseLeader.liege &&
       !loseLeader.overlord &&
@@ -644,7 +755,13 @@ export interface PeaceCheck {
 }
 
 /** Would the other side accept? `from` is the side proposing (and gaining). */
-export function peaceAcceptance(state: GameState, war: War, from: number, terms: PeaceTerms): PeaceCheck {
+export function peaceAcceptance(
+  state: GameState,
+  world: SimWorld,
+  war: War,
+  from: number,
+  terms: PeaceTerms,
+): PeaceCheck {
   const side = sideOf(war, from);
   if (!side) return { accept: false, reason: 'Not in this war' };
   const score = scoreFor(state, war, from);
@@ -661,12 +778,12 @@ export function peaceAcceptance(state: GameState, war: War, from: number, terms:
     (terms.tributary && !allowed.tributary) ||
     (terms.demands && !allowed.demands) ||
     (terms.crush && !allowed.crush) ||
+    (terms.holyLand && !allowed.holyLand) ||
+    (terms.provinces.length > 0 && !allowed.land) ||
     ((terms.provinces.length > 0 || terms.gold > 0) && !allowed.spoils)
   )
     return { accept: false, reason: 'Those terms are not possible in this war' };
-  const proposer = state.countries[side === 'attacker' ? war.attacker : war.defender];
-  const discount = 1 - Math.min(0.2, taskSkill(state, proposer, 'chancellor', 'negotiate') * 0.01);
-  const cost = peaceCost(state, war, side, terms) * discount;
+  const cost = offerCost(state, world, war, side, terms);
   if (score >= cost || score >= 99)
     return { accept: true, reason: `War score ${Math.round(score)} covers the cost of ${Math.round(cost)}` };
   return { accept: false, reason: `Needs war score ${Math.round(cost)}; you have ${Math.round(score)}` };
@@ -722,6 +839,8 @@ export function endWar(
       addAggression(state, world, winLeader.index, realmProvinces(state, loseLeader.index), 0.25);
       makeTributary(state, loseLeader.index, winLeader.index);
     }
+    if (terms.holyLand && grantHolyLand(state, world, war)) changed = true;
+    if (war.cb === 'holy' || war.cb === 'crusade') holyVictory(state, war, winner!);
   }
   if (winLeader) {
     addAggression(state, world, winLeader.index, claimed, AE_FACTOR.claim);
@@ -730,7 +849,7 @@ export function endWar(
       world,
       winLeader.index,
       taken,
-      war.cb === 'coalition' ? AE_FACTOR.coalition : war.cb === 'conquest' ? AE_FACTOR.conquest : 1,
+      war.cb === 'coalition' || war.cb === 'conquest' || war.cb === 'holy' ? AE_FACTOR[war.cb] : 1,
     );
   }
   // Truces between the leaders, and between each realm that fought and the other side's leader.
@@ -763,6 +882,7 @@ export function endWar(
         terms.throne ? 'the crown' : '',
         terms.independence ? 'independence' : '',
         terms.tributary && loseLeader ? `tribute from ${loseLeader.name}` : '',
+        terms.holyLand ? 'the Holy Land' : '',
         names.length > 3 ? `${names.length} provinces` : names.join(' and '),
         terms.gold ? `${Math.round(terms.gold)} gold` : '',
       ]

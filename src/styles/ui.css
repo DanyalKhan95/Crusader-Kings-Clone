@@ -632,13 +632,14 @@
   left: 12px;
   top: 92px;
   z-index: 11;
-  width: 372px;
+  width: 384px;
   max-height: calc(100% - 104px);
   overflow-y: auto;
   overscroll-behavior: contain;
 }
 .sp-body {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 14px;
   padding: 16px 16px 18px;
 }
@@ -1343,10 +1344,12 @@ button.holder:hover {
 }
 .tab {
   flex: 1 1 auto;
-  padding: 7px 2px 8px;
+  min-width: 0;
+  padding: 7px 0 8px;
   font-family: var(--font-caps);
-  font-size: 13.5px;
-  letter-spacing: 0.02em;
+  font-size: 13px;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
   color: var(--text-dim);
   background: none;
   border: 0;
@@ -2029,6 +2032,100 @@ button.holder:hover {
 }
 .estate .has-tip:has(> .btn) {
   justify-self: start;
+}
+
+/* ── Faith (milestone 4) ─────────────────────────────────────── */
+
+.faith-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+.faith-head > .icon {
+  width: 30px;
+  height: 30px;
+  color: var(--gold);
+}
+.faith-head > span {
+  display: grid;
+}
+.faith-name {
+  font-size: 21px;
+  line-height: 1.15;
+}
+.btn.tiny {
+  min-height: 22px;
+  padding: 0 7px;
+  font-size: 12.5px;
+}
+.btn-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px;
+}
+.btn-row:empty {
+  display: none;
+}
+.shares {
+  display: grid;
+  gap: 5px;
+  margin: 0 0 8px;
+  padding: 0;
+  list-style: none;
+}
+.shares > li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 70px 34px;
+  gap: 8px;
+  align-items: center;
+  font-size: 14px;
+}
+.shares > li > span:first-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.shares.with-actions > li {
+  grid-template-columns: minmax(0, 1fr) 60px 34px 62px;
+}
+.share-action {
+  display: flex;
+  justify-content: flex-end;
+}
+.share-bar {
+  display: block;
+  height: 7px;
+  background: #0b0806;
+  border: 1px solid var(--line-soft);
+  border-radius: 4px;
+  overflow: hidden;
+}
+.share-bar > span {
+  display: block;
+  height: 100%;
+}
+.shares .num {
+  text-align: right;
+}
+.holy-site {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 6px;
+  color: var(--gold-bright);
+  font-size: 14px;
+}
+.holy-site .icon {
+  width: 16px;
+  height: 16px;
+}
+.adopt {
+  margin-top: 8px;
+}
+p.tight {
+  margin: 0 0 8px;
 }
 
 /* ── Narrow screens ──────────────────────────────────────────── */

@@ -454,6 +454,9 @@ export const CULTURE_ZONES: [string, Ring][] = [
   Z('mapuche', [[-74.0, -32.0], [-70.0, -32.0], [-70.0, -42.5], [-74.0, -42.5]]),
   Z('tupi', [[-50.0, -1.0], [-35.0, -5.0], [-39.0, -15.0], [-48.5, -28.0], [-53.0, -28.0], [-52.0, -20.0], [-47.0, -10.0]]),
   Z('guarani', [[-58.5, -20.0], [-53.0, -20.0], [-53.0, -30.0], [-58.5, -30.0]]),
+  // Kakheti and Hereti were Georgian; Syunik and Artsakh Armenian.
+  Z('georgian', [[45.5, 42.2], [46.8, 41.9], [47.6, 41.5], [47.3, 41.0], [46.3, 41.1], [45.5, 41.4]]),
+  Z('armenian', [[45.8, 40.4], [46.8, 40.1], [47.0, 39.2], [46.3, 38.9], [45.6, 39.4]]),
 ];
 
 /** Places nobody lived in 1066 — they start empty and can be colonized. */
@@ -492,6 +495,8 @@ export const RELIGION_ZONES: [string, Ring][] = [
 
 /** Countries whose state religion differs from their capital's population. */
 export const STATE_RELIGION: Record<string, string> = {
+  // King Stenkil was Christian; the temple at Uppsala still stood.
+  SWE: 'catholic',
   FAT: 'ismaili',
   YEM: 'ismaili',
   QAR: 'ismaili',
@@ -509,6 +514,7 @@ export const STATE_RELIGION: Record<string, string> = {
 
 /** Countries whose ruling culture differs from their capital's population. */
 export const STATE_CULTURE: Record<string, string> = {
+  VEN: 'italian',
   SEL: 'oghuz',
   KRM: 'oghuz',
   NRM: 'norman',
