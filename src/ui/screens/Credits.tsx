@@ -1,3 +1,5 @@
+import type { AssetKind } from '../../shared/assets';
+import { allArt } from '../art';
 import { useGame } from '../game';
 import { Icon } from '../Icon';
 
@@ -79,10 +81,57 @@ export function Credits() {
             </li>
           ))}
         </ul>
+        <ArtCredits />
         <p className="dim small">
           Crowns &amp; Centuries is free software under the GNU General Public License, version 3.
         </p>
       </div>
     </div>
+  );
+}
+
+const KIND_TITLES: Record<AssetKind, string> = {
+  event: 'Event pictures',
+  scene: 'Scenes of war and peace',
+  card: 'Cards',
+  title: 'Title and loading screens',
+  portrait: 'Portraits',
+  unit: 'Figures on the map',
+  symbol: 'Map symbols',
+  frame: 'Frames',
+  music: 'Music',
+  effect: 'Sound effects',
+  ambience: 'Ambient sound',
+};
+
+/** Every picture and sound the game ships, by kind, with its author, licence and source. */
+function ArtCredits() {
+  const art = allArt();
+  if (!art.length) return null;
+  const generated = art.filter((a) => a.generated).length;
+  const kinds = [...new Set(art.map((a) => a.kind))];
+  return (
+    <section className="sp-section art-credits">
+      <h3 className="section-title">Art and sound</h3>
+      {generated > 0 && (
+        <p className="dim small">
+          {generated} of the {art.length} pictures and sounds were generated with the tools named below.
+        </p>
+      )}
+      {kinds.map((k) => (
+        <details key={k}>
+          <summary className="caps">
+            {KIND_TITLES[k]} · {art.filter((a) => a.kind === k).length}
+          </summary>
+          <ul className="art-credit-list small">
+            {art
+              .filter((a) => a.kind === k)
+              .map((a) => (
+                <li key={a.id}>{a.credit}</li>
+              ))}
+          </ul>
+        </details>
+      ))}
+    </section>
   );
 }

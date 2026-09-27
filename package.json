@@ -24,7 +24,8 @@
     "mapgen:validate": "node --import tsx tools/mapgen/validate.ts",
     "artifact": "node --import tsx tools/artifact/prepare.ts",
     "icons": "node --import tsx tools/icons/extract.ts",
-    "simulate": "node --import tsx tools/simulate.ts"
+    "simulate": "node --import tsx tools/simulate.ts",
+    "assets": "node --import tsx tools/assets/build.ts"
   },
   "dependencies": {
     "@fontsource/alegreya": "^5.3.0",

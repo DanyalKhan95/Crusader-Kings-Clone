@@ -20,6 +20,7 @@ when a milestone lands.
   summary (wars, conquests, debts, speed). Use it for balance changes.
 - `npm run artifact`: after a build, writes `dist/artifact.html` and `dist/artifact-files.json` for
   publishing to claude.ai.
+- `npm run assets` (`-- --check` to only check): builds `public/art` from `art/manifest.json`.
 
 ## Layout
 
@@ -160,6 +161,16 @@ when a milestone lands.
   era under `[data-era]`, which follows the player's era. Fonts ship as files; `npm run artifact`
   inlines them into the artifact's stylesheet (its host only allows fonts from its own CSS), so add
   only the weights a theme uses, Latin subset.
+
+## Art and sound
+
+- Every picture and sound is listed in `art/manifest.json` with its source, author, licence and, if
+  generated, the tool (`art/README.md`). `npm run assets` refuses anything without them, or under a
+  licence the game may not ship (non-commercial, no derivatives). Never hand-edit `public/art`.
+- The game asks for art with `art({ kind, era, region, type })` (`src/ui/art.ts`), which gives up
+  the region, then the type, then the era, and returns null when nothing fits: the caller then draws
+  its own look, as the web demo does with no art at all.
+- The credits screen lists every shipped asset from `public/art/index.json`.
 
 ## Map data
 

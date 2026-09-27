@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { loadWorld, type LoadProgress } from '../game/world';
 import { createGameState } from '../sim/setup';
+import { loadArt } from './art';
 import { Guard } from './ErrorPanel';
 import { createGame, GameContext, useGame, type Game } from './game';
 import { GameRoot } from './GameRoot';
@@ -18,10 +19,14 @@ export function App() {
 
   useEffect(() => {
     let cancelled = false;
-    loadWorld(DATA_BASE, (p) => {
-      if (!cancelled) setProgress(p);
-    })
-      .then(({ world, scenario, bundle }) => {
+    // The art's index is small and optional: without it the game draws its own.
+    Promise.all([
+      loadWorld(DATA_BASE, (p) => {
+        if (!cancelled) setProgress(p);
+      }),
+      loadArt(),
+    ])
+      .then(([{ world, scenario, bundle }]) => {
         if (cancelled) return;
         const g = createGame(world, scenario, createGameState(world, scenario), bundle);
         // Tests and the curious can reach the running game with ?debug in the address.
