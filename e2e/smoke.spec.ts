@@ -417,9 +417,68 @@ test('keeps the ledger of nations and ends the age in 2066', async ({ page }) =>
   await end.getByRole('button', { name: 'Play on' }).click();
   await expect(page.locator('.modal')).toHaveCount(0);
 
-  // The game menu keeps the sound settings.
+  // The settings keep the sound.
   await page.getByRole('button', { name: 'Game menu' }).click();
+  await page.getByRole('button', { name: 'Settings' }).click();
+  await page.getByRole('dialog', { name: 'Settings' }).getByRole('button', { name: 'Sound' }).click();
   await page.locator('.sound-row', { hasText: 'Music' }).locator('input[type=checkbox]').check();
   expect(await page.evaluate(() => localStorage.getItem('crowns-and-centuries:audio'))).toContain('"music":true');
+  expect(errors).toEqual([]);
+});
+
+test('settles in: a larger interface, a key of its own and a faster top speed', async ({ page }) => {
+  const errors = watchErrors(page);
+  await page.goto('/?debug');
+  await page.getByRole('button', { name: 'New Campaign' }).click({ timeout: 120_000 });
+  await page.getByRole('button', { name: 'Play as England' }).click();
+  await expect(page.locator('.date-long')).toHaveText('15th of September, 1066 AD');
+  const plate = async () => (await page.locator('.panel.nation').boundingBox())!;
+  const before = await plate();
+
+  await page.getByRole('button', { name: 'Game menu' }).click();
+  await page.getByRole('button', { name: 'Settings' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Settings' });
+
+  // The whole interface grows by a quarter; the map stays as it was.
+  await dialog.getByRole('radiogroup', { name: 'Interface scale' }).getByRole('radio', { name: '125%' }).click();
+  await expect(page.locator('html')).toHaveCSS('--ui-scale', '1.25');
+  const after = await plate();
+  expect(after.width / before.width).toBeCloseTo(1.25, 1);
+  expect((await page.getByTestId('map').boundingBox())!.width).toBe(1600);
+
+  // Pause moves from Space to P.
+  await dialog.getByRole('button', { name: 'Keys' }).click();
+  await dialog.getByRole('button', { name: 'Pause and resume, first key: Space' }).click();
+  await expect(dialog.getByRole('button', { name: 'Pause and resume, first key: press a key' })).toHaveText(
+    'Press a key…',
+  );
+  await page.keyboard.press('p');
+  await expect(dialog.getByRole('button', { name: 'Pause and resume, first key: P' })).toBeVisible();
+
+  // Speed 5 runs as fast as the machine allows.
+  await dialog.getByRole('button', { name: 'Time and saving' }).click();
+  await dialog.getByRole('radiogroup', { name: 'Fastest speed' }).getByRole('radio', { name: 'Unlimited' }).click();
+  const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('crowns-and-centuries:settings')!));
+  expect(saved).toMatchObject({ uiScale: 1.25, topSpeed: 0, keys: { pause: ['P'] } });
+
+  // Esc goes back to the game menu, and again to the game.
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('dialog', { name: 'The scriptorium' })).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(page.locator('.modal')).toHaveCount(0);
+
+  await page.keyboard.press(' ');
+  await expect(page.locator('.dateplate')).toHaveClass(/paused/);
+  await page.keyboard.press('p');
+  await expect(page.locator('.dateplate')).toHaveClass(/running/);
+  await page.keyboard.press('p');
+  await expect(page.locator('.dateplate')).toHaveClass(/paused/);
+  await expect(page.getByRole('button', { name: 'Resume (P)' })).toBeVisible();
+
+  // How to play lists the new key.
+  await page.keyboard.press('h');
+  const help = page.getByRole('dialog', { name: 'How to play' });
+  await help.getByRole('button', { name: 'Keys and mouse' }).click();
+  await expect(help.locator('.help-keys tr', { hasText: 'Pause and resume' })).toContainText('P');
   expect(errors).toEqual([]);
 });

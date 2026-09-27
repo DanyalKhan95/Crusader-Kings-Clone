@@ -60,6 +60,8 @@ export interface UnitStyle {
 export class UnitLayer {
   private ctx: CanvasRenderingContext2D;
   private hits: Hit[] = [];
+  /** Size of the banners, with the interface's scale. */
+  scale = 1;
 
   constructor(
     readonly canvas: HTMLCanvasElement,
@@ -125,7 +127,8 @@ export class UnitLayer {
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.clearRect(0, 0, cam.width, cam.height);
     this.hits = [];
-    const dpr = cam.dpr;
+    // Sizes in device pixels: a CSS pixel, grown with the interface.
+    const dpr = cam.dpr * this.scale;
     const W = this.worldW;
     const toScreen = (x: number, y: number): [number, number] => {
       let dx = x - cam.x;
@@ -298,7 +301,7 @@ export class UnitLayer {
     lerpPoint: (a: [number, number], b: [number, number], f: number) => [number, number],
     onScreen: (sx: number, sy: number, pad?: number) => boolean,
   ) {
-    const dpr = cam.dpr;
+    const dpr = cam.dpr * this.scale;
     const point = (id: number) => (this.region(id).kind === 'land' ? this.portPoint(id) : this.region(id).label);
     const fraction = (f: Fleet) => (f.path.length && f.stepDays > 0 ? Math.min(1, f.progress / f.stepDays) : 0);
     // Routes of our fleets and of the selected one

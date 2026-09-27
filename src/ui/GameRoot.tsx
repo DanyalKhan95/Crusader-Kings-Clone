@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { MAP_MODES } from '../game/mapModes';
+import type { MapMode } from '../game/mapModes';
 import { closePanel, setMapMode, setSpeed, togglePause, toMenu } from './actions';
 import { sound } from './audio';
 import { DeclareWar } from './dialogs/DeclareWar';
@@ -9,11 +9,13 @@ import { Help } from './dialogs/Help';
 import { Ledger } from './dialogs/Ledger';
 import { Fallen, GameMenu } from './dialogs/GameMenu';
 import { Offer, Peace } from './dialogs/Peace';
+import { Settings } from './dialogs/Settings';
 import { TechScreen } from './dialogs/TechScreen';
 import { useGame } from './game';
 import { HoverTooltip } from './hud/HoverTooltip';
 import { Hud } from './hud/Hud';
 import { MapModeBar } from './hud/MapModeBar';
+import { actionsFor, keyOf, type KeyAction } from './keys';
 import { isTyping } from './map/MapController';
 import { ChooseRealm } from './screens/ChooseRealm';
 import { Credits } from './screens/Credits';
@@ -49,7 +51,9 @@ export function GameRoot() {
       }
       if (e.key === 'Escape') {
         if (s.modal === 'offer' || s.modal === 'fallen' || s.modal === 'event' || s.modal === 'end') return;
-        if (s.modal !== 'none') game.ui.set({ modal: 'none' });
+        // In a campaign the settings open from the game menu, and go back to it.
+        if (s.modal === 'settings' && s.phase === 'playing') game.ui.set({ modal: 'menu' });
+        else if (s.modal !== 'none') game.ui.set({ modal: 'none' });
         else if (s.orderMode) game.ui.set({ orderMode: false });
         else if (s.phase === 'playing' && s.panel !== 'none') closePanel(game);
         else if (s.phase === 'playing') game.ui.set({ modal: 'menu', speed: 0 });
@@ -57,28 +61,26 @@ export function GameRoot() {
         return;
       }
       if (s.phase === 'menu' || s.modal !== 'none') return;
-      if (s.phase === 'playing') {
-        if (e.key === ' ') {
+      for (const action of actionsFor(keyOf(e))) {
+        if (runAction(action, s.phase === 'playing')) {
           e.preventDefault();
-          togglePause(game);
-          return;
-        }
-        if (/^[1-5]$/.test(e.key)) {
-          setSpeed(game, Number(e.key));
-          return;
-        }
-        if (e.key === 'l' || e.key === 'L') {
-          game.ui.set({ modal: 'ledger', speed: 0 });
-          return;
-        }
-        if (e.key === 'h' || e.key === 'H' || e.key === 'F1') {
-          e.preventDefault();
-          game.ui.set({ modal: 'help', speed: 0 });
           return;
         }
       }
-      const mode = MAP_MODES.find((m) => m.key === e.key.toUpperCase());
-      if (mode) setMapMode(game, mode.id);
+    };
+    /** Does what a key is bound to, if it can be done now. */
+    const runAction = (action: KeyAction, playing: boolean): boolean => {
+      if (action.startsWith('mode:')) {
+        setMapMode(game, action.slice(5) as MapMode);
+        return true;
+      }
+      if (!playing) return false;
+      if (action === 'pause') togglePause(game);
+      else if (action.startsWith('speed')) setSpeed(game, Number(action.slice(5)));
+      else if (action === 'ledger') game.ui.set({ modal: 'ledger', speed: 0 });
+      else if (action === 'help') game.ui.set({ modal: 'help', speed: 0 });
+      else return false;
+      return true;
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
@@ -93,6 +95,7 @@ export function GameRoot() {
       {phase !== 'menu' && <HoverTooltip />}
       {modal === 'credits' && <Credits />}
       {modal === 'help' && <Help />}
+      {modal === 'settings' && <Settings />}
       {phase === 'playing' && modal === 'menu' && <GameMenu />}
       {phase === 'playing' && modal === 'declare' && <DeclareWar />}
       {phase === 'playing' && modal === 'peace' && <Peace />}

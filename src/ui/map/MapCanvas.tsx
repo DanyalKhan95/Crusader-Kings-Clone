@@ -5,6 +5,7 @@ import { orderArmy, pickRealmAt, selectArmy, selectFleet, selectProvince } from 
 import { emblemKey, emblemSvg } from '../CoatOfArms';
 import { useGame, type Game, type UIState } from '../game';
 import { attachRunner } from '../runner';
+import { appliedScale, QUALITY_DPR, settings, uiScale } from '../settings';
 import { MapController } from './MapController';
 
 /** Where the title screen opens: the Mediterranean and Europe. */
@@ -126,6 +127,16 @@ export function MapCanvas({ onError }: { onError: (message: string) => void }) {
     };
     sync();
     const unsubscribe = game.ui.subscribe(sync);
+    const applyMapSettings = () => {
+      const s = settings.get();
+      map.setQuality(QUALITY_DPR[s.quality]);
+      map.setLetteringScale(uiScale());
+      map.frameCap = s.frameCap;
+      map.animations = s.animations;
+    };
+    applyMapSettings();
+    const unsubscribeSettings = settings.subscribe(applyMapSettings);
+    const unsubscribeScale = appliedScale.subscribe(applyMapSettings);
 
     let cancelled = false;
     Promise.all([map.load(), loadFonts(map.labelText())])
@@ -143,6 +154,8 @@ export function MapCanvas({ onError }: { onError: (message: string) => void }) {
     return () => {
       cancelled = true;
       unsubscribe();
+      unsubscribeSettings();
+      unsubscribeScale();
       document.fonts?.removeEventListener('loadingdone', onFonts);
       map.dispose();
       if (game.map === map) game.map = null;
@@ -159,19 +172,23 @@ export function MapCanvas({ onError }: { onError: (message: string) => void }) {
   );
 }
 
-/** Tooltips follow the pointer without React: position is written straight to the element. */
+/**
+ * Tooltips follow the pointer without React: position is written straight to the element. The
+ * interface is zoomed by its scale, so viewport pixels are divided by it on the way in.
+ */
 export function moveTooltip(game: Game, x: number, y: number) {
   game.pointer.x = x;
   game.pointer.y = y;
   const el = game.tooltipEl;
   if (!el) return;
-  const w = el.offsetWidth,
-    h = el.offsetHeight;
+  const k = uiScale();
+  const w = el.offsetWidth * k,
+    h = el.offsetHeight * k;
   const vw = window.innerWidth,
     vh = window.innerHeight;
-  let left = x + 16,
-    top = y + 18;
-  if (left + w > vw - 8) left = x - w - 12;
-  if (top + h > vh - 8) top = y - h - 12;
-  el.style.transform = `translate(${Math.max(8, left)}px, ${Math.max(8, top)}px)`;
+  let left = x + 16 * k,
+    top = y + 18 * k;
+  if (left + w > vw - 8) left = x - w - 12 * k;
+  if (top + h > vh - 8) top = y - h - 12 * k;
+  el.style.transform = `translate(${Math.max(8, left) / k}px, ${Math.max(8, top) / k}px)`;
 }

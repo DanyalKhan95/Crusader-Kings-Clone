@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from 'react';
 import { toDate } from '../../sim/calendar';
 import { deserialize, serialize } from '../../sim/save';
 import { notice, replaceState, resume, startChoosing, toMenu } from '../actions';
-import { sound, type AudioSettings } from '../audio';
 import { formatDate } from '../format';
 import { useGame, type Game } from '../game';
 import { Icon } from '../Icon';
@@ -80,6 +79,9 @@ export function GameMenu() {
         <button className="btn" onClick={() => fileRef.current?.click()}>
           <Icon name="cloud-upload" /> Load a save file
         </button>
+        <button className="btn" onClick={() => game.ui.set({ modal: 'settings' })}>
+          <Icon name="settings-knobs" /> Settings
+        </button>
         <button className="btn" onClick={() => game.ui.set({ modal: 'help' })}>
           <Icon name="scroll-quill" /> How to play
         </button>
@@ -118,7 +120,6 @@ export function GameMenu() {
         )}
         {busy && <p className="dim small">{busy}</p>}
       </section>
-      <SoundSettings />
       <div className="modal-actions">
         <button className="btn ghost" onClick={() => startChoosing(game)}>
           New campaign
@@ -128,45 +129,6 @@ export function GameMenu() {
         </button>
       </div>
     </Modal>
-  );
-}
-
-/** Sound effects and music, each on or off with its own volume, kept in this browser. */
-function SoundSettings() {
-  const [s, setS] = useState(sound.settings);
-  const update = (patch: Partial<AudioSettings>) => {
-    sound.unlock();
-    sound.update(patch);
-    setS(sound.settings);
-  };
-  const row = (on: 'effects' | 'music', volume: 'effectsVolume' | 'musicVolume', label: string, blurb: string) => (
-    <div className="sound-row">
-      <label className={`choice compact ${s[on] ? 'active' : ''}`}>
-        <input type="checkbox" checked={s[on]} onChange={(e) => update({ [on]: e.target.checked })} />
-        <span>
-          <span className="choice-name">{label}</span>
-          <span className="dim small">{blurb}</span>
-        </span>
-      </label>
-      <input
-        type="range"
-        min={0}
-        max={1}
-        step={0.05}
-        value={s[volume]}
-        disabled={!s[on]}
-        aria-label={`${label}: volume`}
-        onChange={(e) => update({ [volume]: Number(e.target.value) })}
-        onPointerUp={() => on === 'effects' && sound.play('coin')}
-      />
-    </div>
-  );
-  return (
-    <section className="sp-section">
-      <h3 className="section-title">Sound</h3>
-      {row('effects', 'effectsVolume', 'Sound effects', 'The drums of war, bells, the clash of battle.')}
-      {row('music', 'musicVolume', 'Music', 'Quiet music in the manner of your age.')}
-    </section>
   );
 }
 

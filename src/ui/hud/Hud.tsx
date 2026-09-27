@@ -15,6 +15,8 @@ import { formatDate } from '../format';
 import { useGame } from '../game';
 import { Icon } from '../Icon';
 import { formatMen } from '../../render/units';
+import { withKey } from '../keys';
+import { useSettings } from '../settings';
 import { useStore } from '../store';
 import { SidePanel } from './SidePanel';
 import { BreakdownList, fmtSigned, WithTip } from './Tip';
@@ -220,15 +222,12 @@ function TimeControls() {
   const game = useGame();
   const speed = useStore(game.ui, (s) => s.speed);
   useStore(game.ui, (s) => s.tick);
+  useSettings((s) => s.keys);
   const d = toDate(game.state.day);
+  const pause = withKey(speed ? 'Pause' : 'Resume', 'pause');
   return (
     <div className={`panel dateplate ${speed ? 'running' : 'paused'}`}>
-      <button
-        className="btn ghost icon-btn"
-        onClick={() => togglePause(game)}
-        aria-label={speed ? 'Pause (space)' : 'Resume (space)'}
-        title={speed ? 'Pause (space)' : 'Resume (space)'}
-      >
+      <button className="btn ghost icon-btn" onClick={() => togglePause(game)} aria-label={pause} title={pause}>
         <Icon name={speed ? 'pause-button' : 'play-button'} />
       </button>
       <span className="date date-long">{formatDate(d)}</span>
@@ -242,7 +241,7 @@ function TimeControls() {
             role="radio"
             aria-checked={speed >= s}
             aria-label={`Speed ${s}`}
-            title={`Speed ${s} (key ${s})`}
+            title={withKey(`Speed ${s}`, `speed${s as 1 | 2 | 3 | 4 | 5}`)}
             className={`pip ${speed >= s ? 'on' : ''}`}
             onClick={() => setSpeed(game, s)}
           />
@@ -252,8 +251,8 @@ function TimeControls() {
         className="btn ghost icon-btn"
         data-tour="ledger"
         onClick={() => game.ui.set({ modal: 'ledger', speed: 0 })}
-        aria-label="The ledger of nations (L)"
-        title="The ledger of nations (L)"
+        aria-label={withKey('The ledger of nations', 'ledger')}
+        title={withKey('The ledger of nations', 'ledger')}
       >
         <Icon name="scroll-unfurled" />
       </button>

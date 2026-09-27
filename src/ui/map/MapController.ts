@@ -14,6 +14,7 @@ import { FLAG_HOVERED, FLAG_SELECTED, MapRenderer } from '../../render/mapRender
 import type { MeshBundle } from '../../render/meshBuilder';
 import { Picker } from '../../render/picking';
 import { UnitLayer, type UnitStyle } from '../../render/units';
+import { actionsFor, keyOf, type KeyAction } from '../keys';
 
 export interface MapCallbacks {
   /** Region under the pointer changed (0 = none); client coordinates for tooltips. */
@@ -50,11 +51,11 @@ interface Flight {
 }
 
 const CLICK_SLOP = 6; // CSS px a press may travel and still count as a click
-const PAN_KEYS: Record<string, [number, number]> = {
-  ArrowLeft: [-1, 0],
-  ArrowRight: [1, 0],
-  ArrowUp: [0, -1],
-  ArrowDown: [0, 1],
+const PAN: Partial<Record<KeyAction, [number, number]>> = {
+  panLeft: [-1, 0],
+  panRight: [1, 0],
+  panUp: [0, -1],
+  panDown: [0, 1],
 };
 
 const ease = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
@@ -83,7 +84,16 @@ export class MapController {
   private flight: Flight | null = null;
   private zoomTarget = 0;
   private zoomAnchor: [number, number] = [0, 0];
-  private keys = new Set<string>();
+  /** Pan actions held down, by the physical key that holds them. */
+  private held = new Map<string, KeyAction[]>();
+  /** The most device pixels the map spends on a CSS pixel (the quality setting). */
+  private maxDpr = 2;
+  /** When the next frame may be drawn under a frame cap. */
+  private nextFrameMs = 0;
+  /** Frames a second at most; 0 draws every frame the display offers. */
+  frameCap = 0;
+  /** Pulsing highlights, camera glides and drift; off, the map keeps still. */
+  animations = true;
   private pointers = new Map<number, { x: number; y: number }>();
   private press: { x: number; y: number; moved: boolean } | null = null;
   private pinch = 0;
@@ -248,8 +258,24 @@ export class MapController {
 
   // ── Camera ──────────────────────────────────────────────────────
 
-  /** Glides to a map point; zooms out mid-flight when the hop is long. */
+  /** How sharp the map is drawn: the most device pixels for each CSS pixel. */
+  setQuality(maxDpr: number) {
+    if (maxDpr === this.maxDpr) return;
+    this.maxDpr = maxDpr;
+    this.resize();
+  }
+
+  /** Size of the map's lettering and banners, with the interface's scale. */
+  setLetteringScale(scale: number) {
+    if (scale === this.labels.scale) return;
+    this.labels.scale = scale;
+    this.units.scale = scale;
+    this.invalidate();
+  }
+
+  /** Glides to a map point; zooms out mid-flight when the hop is long. Without animations, it jumps. */
   flyTo(x: number, y: number, zoom: number, dur = 1100) {
+    if (!this.animations) dur = 1;
     const c = this.camera;
     let dx = x - c.x;
     const W = c.worldW;
@@ -385,6 +411,12 @@ export class MapController {
   private tick = (tMs: number) => {
     if (this.disposed) return;
     this.raf = requestAnimationFrame(this.tick);
+    if (this.frameCap) {
+      // Under a cap, skip frames that come too soon; a millisecond's grace absorbs the display's jitter.
+      if (tMs < this.nextFrameMs - 1) return;
+      this.nextFrameMs += 1000 / this.frameCap;
+      if (this.nextFrameMs < tMs) this.nextFrameMs = tMs + 1000 / this.frameCap;
+    }
     const t = tMs / 1000;
     const dt = this.lastT ? Math.min(0.1, t - this.lastT) : 0;
     this.lastT = t;
@@ -394,9 +426,10 @@ export class MapController {
     const key = `${c.x.toFixed(2)} ${c.y.toFixed(2)} ${c.zoom.toFixed(5)} ${c.width} ${c.height}`;
     const moved = key !== this.camKey;
     this.camKey = key;
-    if (moved || this.glDirty || this.selected) {
+    // The selected province pulses, so it needs every frame while animations are on.
+    if (moved || this.glDirty || (this.selected && this.animations)) {
       this.glDirty = false;
-      this.renderer.render(c, t);
+      this.renderer.render(c, this.animations ? t : 0);
     }
     if (moved || this.labelsDirty) {
       this.labelsDirty = false;
@@ -449,23 +482,24 @@ export class MapController {
       c.zoomAt(this.zoomAnchor[0], this.zoomAnchor[1], factor);
       if (Math.abs(Math.log(this.zoomTarget / c.zoom)) < 0.002) this.zoomTarget = 0;
     }
-    if (this.keys.size) {
+    if (this.held.size) {
       let kx = 0,
         ky = 0;
-      for (const k of this.keys) {
-        const d = PAN_KEYS[k];
-        if (d) {
-          kx += d[0];
-          ky += d[1];
+      for (const actions of this.held.values())
+        for (const a of actions) {
+          const d = PAN[a];
+          if (d) {
+            kx += d[0];
+            ky += d[1];
+          }
         }
-      }
       const speed = 900 * dt; // CSS px per second
       if (kx || ky) {
         this.flight = null;
         c.panBy(-kx * speed, -ky * speed);
       }
     }
-    if (this.drift && !this.flight) {
+    if (this.drift && !this.flight && this.animations) {
       c.x += this.drift * dt;
       c.clamp();
     }
@@ -473,7 +507,7 @@ export class MapController {
 
   private resize() {
     const r = this.host.getBoundingClientRect();
-    this.camera.resize(r.width, r.height, Math.min(2, window.devicePixelRatio || 1));
+    this.camera.resize(r.width, r.height, Math.min(this.maxDpr, window.devicePixelRatio || 1));
     this.invalidate();
   }
 
@@ -602,19 +636,23 @@ export class MapController {
   };
 
   private onKeyDown = (e: KeyboardEvent) => {
-    if (isTyping(e)) return;
-    if (PAN_KEYS[e.key]) {
-      this.keys.add(e.key);
+    if (isTyping(e) || e.ctrlKey || e.metaKey || e.altKey) return;
+    const actions = actionsFor(keyOf(e));
+    const pan = actions.filter((a) => PAN[a]);
+    if (pan.length) {
+      // Held by the physical key, so letting go works whatever Shift did to the key's name.
+      this.held.set(e.code || e.key, pan);
       e.preventDefault();
-    } else if (e.key === '+' || e.key === '=') this.zoomBy(1.6);
-    else if (e.key === '-' || e.key === '_') this.zoomBy(1 / 1.6);
+    }
+    if (actions.includes('zoomIn')) this.zoomBy(1.6);
+    else if (actions.includes('zoomOut')) this.zoomBy(1 / 1.6);
   };
 
   private onKeyUp = (e: KeyboardEvent) => {
-    this.keys.delete(e.key);
+    this.held.delete(e.code || e.key);
   };
 
-  private onBlur = () => this.keys.clear();
+  private onBlur = () => this.held.clear();
 }
 
 export function isTyping(e: KeyboardEvent): boolean {

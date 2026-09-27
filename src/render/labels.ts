@@ -240,6 +240,8 @@ export class LabelLayer {
   realms: TextLabel[] = [];
   /** Regions whose names are not shown (unknown to the viewer). */
   hidden: ((id: number) => boolean) | null = null;
+  /** Size of the lettering, with the interface's scale. */
+  scale = 1;
 
   constructor(
     readonly canvas: HTMLCanvasElement,
@@ -296,7 +298,8 @@ export class LabelLayer {
     }
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.clearRect(0, 0, cam.width, cam.height);
-    const dpr = cam.dpr;
+    // Sizes in device pixels: a CSS pixel, grown with the interface.
+    const dpr = cam.dpr * this.scale;
     const toScreen = (x: number, y: number): [number, number] => {
       let dx = x - cam.x;
       if (dx > this.worldW / 2) dx -= this.worldW;

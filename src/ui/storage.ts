@@ -81,6 +81,18 @@ export async function loadGame(slot: string): Promise<string | null> {
   }
 }
 
+/** The meta of a save kept in localStorage, or null for anything else stored under the game's name. */
+function savedMeta(raw: string | null): SaveMeta | null {
+  try {
+    const meta = (JSON.parse(raw ?? '') as { meta?: Partial<SaveMeta> } | null)?.meta;
+    return meta && typeof meta.slot === 'string' && typeof meta.label === 'string' && typeof meta.saved === 'string'
+      ? (meta as SaveMeta)
+      : null;
+  } catch {
+    return null;
+  }
+}
+
 export async function listSaves(): Promise<SaveMeta[]> {
   const out: SaveMeta[] = [];
   try {
@@ -93,8 +105,9 @@ export async function listSaves(): Promise<SaveMeta[]> {
     for (let i = 0; i < localStorage.length; i++) {
       const key = localStorage.key(i);
       if (!key?.startsWith(`${DB}:`)) continue;
-      const { meta } = JSON.parse(localStorage.getItem(key)!) as { meta: SaveMeta };
-      if (!out.some((m) => m.slot === meta.slot)) out.push(meta);
+      // The settings, the sound and the tour share the prefix: only entries with a save's meta count.
+      const meta = savedMeta(localStorage.getItem(key));
+      if (meta && !out.some((m) => m.slot === meta.slot)) out.push(meta);
     }
   } catch {
     /* ignore */

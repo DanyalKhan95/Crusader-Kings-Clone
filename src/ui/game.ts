@@ -15,7 +15,19 @@ export type Phase = 'menu' | 'choose' | 'playing';
 export type Panel = 'none' | 'province' | 'country' | 'army' | 'fleet' | 'war';
 export type CountryTab = 'realm' | 'treasury' | 'military' | 'court' | 'laws' | 'faith' | 'diplomacy';
 export type Modal =
-  'none' | 'credits' | 'menu' | 'declare' | 'peace' | 'offer' | 'fallen' | 'tech' | 'event' | 'ledger' | 'end' | 'help';
+  | 'none'
+  | 'credits'
+  | 'menu'
+  | 'declare'
+  | 'peace'
+  | 'offer'
+  | 'fallen'
+  | 'tech'
+  | 'event'
+  | 'ledger'
+  | 'end'
+  | 'help'
+  | 'settings';
 
 export interface UIState {
   phase: Phase;

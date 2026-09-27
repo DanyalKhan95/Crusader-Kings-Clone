@@ -13,7 +13,7 @@ body {
   background: var(--ground);
   color: var(--text);
   font-family: var(--font-body);
-  font-size: 15px;
+  font-size: calc(15px * var(--text-scale, 1));
   line-height: 1.4;
   overflow: hidden;
   -webkit-font-smoothing: antialiased;
@@ -74,7 +74,7 @@ h3 {
   min-height: 38px;
   padding: 6px 18px;
   font-family: var(--font-caps);
-  font-size: 15px;
+  font-size: calc(15px * var(--text-scale, 1));
   letter-spacing: 0.06em;
   color: var(--gold-bright);
   background: linear-gradient(180deg, #2f2419, #1d160f);

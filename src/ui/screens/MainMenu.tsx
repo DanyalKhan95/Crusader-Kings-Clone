@@ -34,6 +34,9 @@ export function MainMenu() {
           <button className="btn" onClick={() => game.ui.set({ modal: 'help' })}>
             <Icon name="scroll-quill" /> How to Play
           </button>
+          <button className="btn" onClick={() => game.ui.set({ modal: 'settings' })}>
+            <Icon name="settings-knobs" /> Settings
+          </button>
           <button className="btn" onClick={() => game.ui.set({ modal: 'credits' })}>
             <Icon name="open-book" /> Sources &amp; Credits
           </button>

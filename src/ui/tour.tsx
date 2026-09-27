@@ -3,10 +3,13 @@
  * itself on the first campaign in this browser, can be skipped, and is remembered once seen.
  */
 import { useLayoutEffect, useRef, useState, type ReactNode } from 'react';
+import { MAP_MODES } from '../game/mapModes';
 import { toDate } from '../sim/calendar';
 import { theName } from '../sim/chronicle';
 import { formatDate } from './format';
 import { useGame, type Game } from './game';
+import { shortcut, withKey } from './keys';
+import { uiScale } from './settings';
 import { useStore } from './store';
 
 const SEEN = 'crowns-and-centuries:tour';
@@ -79,8 +82,9 @@ const STEPS: Step[] = [
     title: 'Time',
     text: () => (
       <>
-        The world waits for you. Press Space or the play button to let the days run, and 1 to 5 for the speed. Anything
-        that needs your answer, a declaration of war, an offer, an event, stops the clock.
+        The world waits for you. Press {shortcut('pause')} or the play button to let the days run, and{' '}
+        {shortcut('speed1')} to {shortcut('speed5')} for the speed. Anything that needs your answer, a declaration of
+        war, an offer, an event, stops the clock.
       </>
     ),
   },
@@ -90,7 +94,7 @@ const STEPS: Step[] = [
     text: () => (
       <>
         See the world by realm or country, terrain, development, people, faith or, as your realm sees it, friends and
-        foes. The keys are Q to U.
+        foes. The keys are {MAP_MODES.map((m) => shortcut(`mode:${m.id}`)).join(' ')}.
       </>
     ),
   },
@@ -108,8 +112,8 @@ const STEPS: Step[] = [
     title: 'The ledger of nations',
     text: () => (
       <>
-        Each New Year your realm scores for its standing in the world. The ledger (L) ranks the nations, charts the
-        centuries and keeps the chronicle of great events. The age ends on the first day of 2066.
+        Each New Year your realm scores for its standing in the world. {withKey('The ledger', 'ledger')} ranks the
+        nations, charts the centuries and keeps the chronicle of great events. The age ends on the first day of 2066.
       </>
     ),
   },
@@ -118,8 +122,8 @@ const STEPS: Step[] = [
     title: 'The game menu',
     text: () => (
       <>
-        Save and load here. The game also saves itself every few minutes. How to play (H) explains every part of the
-        game whenever you need it. Good fortune.
+        Save and load here, and change the settings. The game also saves itself every few minutes.{' '}
+        {withKey('How to play', 'help')} explains every part of the game whenever you need it. Good fortune.
       </>
     ),
   },
@@ -175,12 +179,19 @@ export function Tour() {
 
   if (!def) return null;
   const last = step === STEPS.length;
+  // Measured in viewport pixels; the interface is zoomed by its scale.
+  const k = uiScale();
   return (
     <div className="tour" role="dialog" aria-modal="true" aria-labelledby="tour-title">
       {target ? (
         <div
           className="tour-spot"
-          style={{ left: target.left - 6, top: target.top - 6, width: target.width + 12, height: target.height + 12 }}
+          style={{
+            left: target.left / k - 6,
+            top: target.top / k - 6,
+            width: target.width / k + 12,
+            height: target.height / k + 12,
+          }}
         />
       ) : (
         <div className="tour-dim" />
@@ -188,7 +199,7 @@ export function Tour() {
       <div
         ref={card}
         className="panel tour-card"
-        style={pos ? { left: pos.left, top: pos.top } : { visibility: 'hidden' }}
+        style={pos ? { left: pos.left / k, top: pos.top / k } : { visibility: 'hidden' }}
       >
         <p className="caps sp-kicker">
           {step} of {STEPS.length}

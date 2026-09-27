@@ -9,15 +9,25 @@ import { advanceDay } from '../sim/tick';
 import { sound } from './audio';
 import { formatDate } from './format';
 import { saveGame } from './storage';
+import { settings } from './settings';
 import type { Game } from './game';
 
-/** Days per second at speeds 1–5 (0 = paused). Speed 5 runs as fast as the frame budget allows. */
+/**
+ * Days per second at speeds 1–5 (0 = paused). The top speed is a setting: 120 days a second by
+ * default, or as fast as the frame budget allows.
+ */
 export const SPEEDS = [0, 1, 2.5, 6, 15, 120];
 const FRAME_BUDGET_MS = 10;
+/** Days a frame may run without a top speed: the frame budget stops it first. */
+const MAX_BACKLOG_UNCAPPED = 64;
 const UI_INTERVAL_MS = 120;
 const MAX_TOASTS = 5;
-/** Real time between autosaves while the game runs. */
-const AUTOSAVE_MS = 4 * 60 * 1000;
+
+/** Days a second at a speed, with the player's top speed. */
+export function daysPerSecond(speed: number): number {
+  if (speed < SPEEDS.length - 1) return SPEEDS[speed] ?? 0;
+  return settings.get().topSpeed || Infinity;
+}
 
 /** Saves the running game to the autosave slot, quietly; a browser that refuses storage is ignored. */
 function autosave(game: Game) {
@@ -30,6 +40,7 @@ function autosave(game: Game) {
 
 export function attachRunner(game: Game) {
   let backlog = 0;
+  let lastSpeed = 0;
   let lastUi = 0;
   let mapVersion = game.state.mapVersion;
   let borderVersion = game.state.borderVersion;
@@ -112,7 +123,12 @@ export function attachRunner(game: Game) {
       backlog = 0;
       return;
     }
-    backlog = Math.min(backlog + dt * SPEEDS[ui.speed], 4);
+    // Days owed carry over a few frames at most, so a slow frame is not paid back all at once; a new
+    // speed starts afresh. Without a top speed the frame budget alone sets the pace.
+    if (ui.speed !== lastSpeed) backlog = 0;
+    lastSpeed = ui.speed;
+    const rate = daysPerSecond(ui.speed);
+    backlog = rate === Infinity ? MAX_BACKLOG_UNCAPPED : Math.min(backlog + dt * rate, Math.max(4, rate / 30));
     const t0 = performance.now();
     let days = 0;
     while (backlog >= 1) {
@@ -131,7 +147,8 @@ export function attachRunner(game: Game) {
     }
     if (days) sync(false);
     // Out of the frame: the save serialises the world and compresses it.
-    if (days && performance.now() - lastSave > AUTOSAVE_MS && game.state.player) {
+    const every = settings.get().autosaveMinutes * 60_000;
+    if (days && every && performance.now() - lastSave > every && game.state.player) {
       lastSave = performance.now();
       setTimeout(() => autosave(game), 0);
     }

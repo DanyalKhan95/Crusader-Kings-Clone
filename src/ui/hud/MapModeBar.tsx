@@ -4,6 +4,8 @@ import { faithColor, faithName } from '../../sim/beliefs';
 import { setMapMode } from '../actions';
 import { useGame } from '../game';
 import { Icon } from '../Icon';
+import { shortcut, withKey } from '../keys';
+import { useSettings } from '../settings';
 import { useStore } from '../store';
 
 const MODE_ICONS: Record<MapMode, IconName> = {
@@ -20,6 +22,7 @@ export function MapModeBar() {
   const game = useGame();
   const mode = useStore(game.ui, (s) => s.mapMode);
   const phase = useStore(game.ui, (s) => s.phase);
+  useSettings((s) => s.keys);
   const current = MAP_MODES.find((m) => m.id === mode)!;
   return (
     <div className={`mapmodes-wrap phase-${phase}`}>
@@ -27,19 +30,22 @@ export function MapModeBar() {
       <nav className="panel mapmodes" aria-label="Map modes">
         <span className="mapmodes-caption caps">{current.label}</span>
         <div className="mapmodes-row">
-          {MAP_MODES.map((m) => (
-            <button
-              key={m.id}
-              className={`mapmode ${mode === m.id ? 'active' : ''}`}
-              onClick={() => setMapMode(game, m.id)}
-              aria-pressed={mode === m.id}
-              aria-label={`${m.label} map (${m.key})`}
-              title={`${m.label} (${m.key}): ${m.hint}`}
-            >
-              <Icon name={MODE_ICONS[m.id]} />
-              <kbd>{m.key}</kbd>
-            </button>
-          ))}
+          {MAP_MODES.map((m) => {
+            const key = shortcut(`mode:${m.id}`);
+            return (
+              <button
+                key={m.id}
+                className={`mapmode ${mode === m.id ? 'active' : ''}`}
+                onClick={() => setMapMode(game, m.id)}
+                aria-pressed={mode === m.id}
+                aria-label={withKey(`${m.label} map`, `mode:${m.id}`)}
+                title={`${withKey(m.label, `mode:${m.id}`)}: ${m.hint}`}
+              >
+                <Icon name={MODE_ICONS[m.id]} />
+                {key && <kbd>{key}</kbd>}
+              </button>
+            );
+          })}
         </div>
       </nav>
     </div>
