@@ -352,8 +352,9 @@ after the content they show has settled.
         meet the budget, because the UI reads the state directly.
   - [ ] load time: fonts and data as files in the app and on Pages, inlined only for the artifact
 - [ ] A content registry, to prepare for mods:
-  - [ ] typed data files with schemas, checked at build time and loaded in one place
-  - [ ] events and featured realms first; other content moves as its system is reworked
+  - [ ] typed data files with schemas, checked by the tests and loaded in one place
+  - [ ] the featured realms and the modifiers first; other content moves as its system is reworked
+        (events with the condition language of M15, since their conditions are code today)
 - [ ] An asset pipeline:
   - [ ] a manifest of every image and sound, giving its source, licence and author and whether it
         was generated, for the credits and for store disclosures

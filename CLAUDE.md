@@ -106,9 +106,10 @@ when a milestone lands.
     a colonial region (by modern country code) pass to a colonial nation: a vassal with
     `colony` set, which cannot be integrated and grows restless once it knows popular
     sovereignty.
-  - Modifiers (`modifiers.ts`, data in `src/data/modifiers.ts`): timed effects on a realm, summed
-    with `modifierEffect` and shown in breakdowns with `modifierParts`. New effect keys go in
-    `ModifierEffects` and `MODIFIER_TEXT`. They touch one realm only, so they clear its estate
+  - Modifiers (`modifiers.ts`, data in `src/content/modifiers.json`, typed in
+    `src/data/modifiers.ts`): timed effects on a realm, summed with `modifierEffect` and shown in
+    breakdowns with `modifierParts`. New effect keys go in `ModifierEffects` and `MODIFIER_TEXT`
+    (the schema takes its keys from there). They touch one realm only, so they clear its estate
     figures with `invalidateRealm`, not `invalidatePolitics`.
   - Events (`events.ts`, definitions in `src/data/events.ts`): conditions and AI weights ask an
     `EventContext`, so the data file imports no simulation code; effects are declarative, and
@@ -161,6 +162,15 @@ when a milestone lands.
   era under `[data-era]`, which follows the player's era. Fonts ship as files; `npm run artifact`
   inlines them into the artifact's stylesheet (its host only allows fonts from its own CSS), so add
   only the weights a theme uses, Latin subset.
+
+## Content
+
+- Content that mods will one day add to or change lives as JSON in `src/content`, each file checked
+  on load against a schema written with `src/shared/schema.ts` and registered with `defineContent`
+  (`src/content/registry.ts`). The module in `src/data` that owns it keeps the types, the schema and
+  the export the rest of the game uses. So far: the featured realms and the modifiers.
+- A system's content moves there when the system is reworked. Events wait for the condition language
+  of M15, since their conditions are code today.
 
 ## Art and sound
 
