@@ -9,6 +9,9 @@ whole world. The player controls a country rather than a dynasty.
 - **Players:** single player against AI.
 - **Characters:** a ruler, a council and commanders. No family trees.
 - **Look:** the UI theme follows the player's era, and coats of arms become flags in later eras.
+  From M12 the map follows the era too.
+- **Platforms:** a desktop app for Windows, macOS and Linux (from M9), with the web build as a free
+  demo.
 
 ## Decisions
 
@@ -18,6 +21,8 @@ whole world. The player controls a country rather than a dynasty.
     seeded, with the RNG state inside the game state, so it also runs headless in Node for tests
     and balance runs. The whole state is plain JSON, which makes saving a `JSON.stringify`.
   - The player and the AI act through the same validated commands (`src/sim/commands.ts`).
+  - The desktop app is an Electron shell around the same build: the same WebGL2 on every system,
+    and Steamworks through steamworks.js if the game goes to Steam.
 - **Map:**
   - Miller projection, 16384×8192 map units.
   - About 3,000 land provinces, 498 sea zones and 35 lakes.
@@ -28,6 +33,51 @@ whole world. The player controls a country rather than a dynasty.
 - **Delivery:**
   - GitHub Pages, built by `.github/workflows/deploy.yml` on every push.
   - A private claude.ai artifact, updated after each milestone.
+  - From M9, desktop builds. The store is undecided (Steam, itch.io or both), so nothing may rule
+    either out. Early Access comes first, with no fixed date; its players give the feedback.
+  - The web build and the artifact become the free demo. They use the code-drawn fallbacks for
+    anything the app ships as files.
+
+## Direction for the release
+
+Decided in September 2026, before M9.
+
+- **Audience:** a game people play for many hours. Polish, onboarding and balance come before
+  breadth.
+- **Nation-first:** the player is a country, and characters stay light. Royal marriages (M14) give
+  rulers a consort and a house name, but no family trees.
+- **Scope:**
+  - Single player only, with nothing held back for multiplayer.
+  - English only.
+  - Mid-range PCs: 60 frames a second at 1080p on a machine a few years old.
+- **Art:** true to each period, taking cues from Paradox games for map readability and from
+  Pentiment for illustrated, manuscript-true art.
+  - The map has three styles: a manuscript map to about 1450, an engraved atlas to about 1800, and a
+    modern map after. They follow the player's era, and a setting pins one.
+  - Place names follow the era and the owner's culture.
+  - Units are painted figures by era, region and type.
+  - Portraits are painted in layers.
+  - Events, loading screens, cards and treaties get period pictures.
+  - Painted frames dress the full screens and events; the HUD stays crisp CSS.
+- **Assets:** open-licensed and generated images and sounds, no commissions. Every asset is listed
+  in a manifest with its source, licence and whether it was generated.
+- **Sound:** recorded period music and effects, and ambience that follows the camera, with richer
+  procedural sound as the fallback.
+- **Interface:**
+  - An outliner, an alerts bar, a message log with filters, context menus, and hotkeys for
+    everything.
+  - Full screens for the realm's affairs, with the side panel kept for quick looks.
+  - Hints, advisors and an encyclopedia rather than a scripted tutorial.
+- **Gameplay:**
+  - Battles are shaped before they start, by doctrines and the make-up of armies. Players do not
+    give orders during a battle.
+  - Missions: trees for the featured realms and regions, and an ambition picker for everyone.
+  - Deeper war, economy, diplomacy and story.
+  - Era report cards alongside the score.
+  - Game rules at the start of a campaign. Difficulty changes how well the AI plays more than its
+    bonuses, and plausible or free history is a rule.
+- **Mods:** no loader yet. Content moves into data files with schemas as each system is reworked.
+- **Name:** Crowns & Centuries. Store-facing text and in-game wording leave out Crusader Kings.
 
 ## Milestones
 
@@ -269,6 +319,233 @@ whole world. The player controls a country rather than a dynasty.
       of each era (off until chosen), with volumes in the game menu.
 - [x] Saves from milestone 7 load.
 
+## The road to release
+
+Milestones 9 to 18 take a complete prototype to Early Access, in the order chosen: foundations and
+the interface first, so that the art and the new systems have a place to land. The map's new look
+comes before the deeper systems, because it needs nothing from them. The painted pictures come
+after the content they show has settled.
+
+### M9: Foundations for a release
+
+- [ ] Desktop app: an Electron shell around the same build, for Windows, macOS and Linux:
+  - [ ] windowed, borderless and fullscreen, remembered between sessions
+  - [ ] saves and settings as files in the player's documents folder
+  - [ ] unsigned test builds from CI (signing and installers come with Early Access)
+- [ ] The web build becomes the free demo:
+  - [ ] a build flag for the demo's limits (to be decided, e.g. the first century)
+  - [ ] code-drawn fallbacks for everything the app ships as files
+- [ ] A settings screen:
+  - [ ] interface scale and text size
+  - [ ] key bindings, every one rebindable, with the keys shown in tooltips and in How to play
+  - [ ] graphics and performance: a quality preset, a frame cap, map effects and the top speed
+  - [ ] sound, as now
+- [ ] Saves:
+  - [ ] named saves, and several autosaves in rotation
+  - [ ] a save browser with the realm, its arms, the date and the time played
+  - [ ] ironman-ready: a save the game keeps and overwrites itself
+- [ ] Performance:
+  - [ ] a budget on a mid-range reference machine: 60 frames a second, with speed 5 holding its
+        pace in the 1900s
+  - [ ] a performance overlay: frame time, simulation time per day, and the heaviest systems
+  - [ ] find and fix the hot spots. Move the simulation into a worker only if the main thread cannot
+        meet the budget, because the UI reads the state directly.
+  - [ ] load time: fonts and data as files in the app and on Pages, inlined only for the artifact
+- [ ] A content registry, to prepare for mods:
+  - [ ] typed data files with schemas, checked at build time and loaded in one place
+  - [ ] events and featured realms first; other content moves as its system is reworked
+- [ ] An asset pipeline:
+  - [ ] a manifest of every image and sound, giving its source, licence and author and whether it
+        was generated, for the credits and for store disclosures
+  - [ ] packing into atlases and loading by era
+  - [ ] fallbacks from the most specific asset down to the code-drawn one
+- [ ] An error screen that keeps the game running where it can and offers the save and the log for a
+      bug report.
+- [ ] Saves from milestone 8 load.
+
+### M10: The new HUD
+
+- [ ] An outliner on the right, collapsible, listing:
+  - [ ] armies, fleets and sieges
+  - [ ] wars, buildings under way and colonies
+  - [ ] missions and spy networks
+  - [ ] a click selects the item and flies there
+- [ ] An alerts bar: icons for what needs the player, each with its reason and a click to the fix:
+  - [ ] idle council tasks, an empty treasury or rising debt
+  - [ ] armies over the supply limit
+  - [ ] rebels and factions
+  - [ ] peace offers, or a war that can be won at the table
+  - [ ] claims ready, and laws that may change again
+- [ ] A message log:
+  - [ ] the campaign's news kept, searchable and filtered by kind
+  - [ ] for each kind, a setting: a pop-up, a pause, the log only, or nothing. This replaces the
+        fixed rule that important news pauses.
+- [ ] Context menus: right-clicking a province or realm, with no army or fleet selected, lists its
+      actions (declare war, forge a claim, send a gift, build, recruit).
+- [ ] Hotkeys, all rebindable: every screen, cycling armies and fleets, the capital, and the common
+      actions.
+- [ ] Less clutter on the map (by 1340, hundreds of fleet markers cover Europe):
+  - [ ] layers for your own, allied, enemy and other armies and fleets
+  - [ ] at far zoom, one marker per realm and region
+  - [ ] foreign fleets in port hidden unless they are at war with you
+- [ ] Realm names fade at close zoom instead of covering the provinces.
+- [ ] The guided tour and How to play updated for the new HUD.
+
+### M11: Realm screens and learning the game
+
+- [ ] Full screens for the realm's affairs; the side panel stays for provinces, armies, fleets and
+      foreign realms:
+  - [ ] Court: ruler, heir, council and their tasks
+  - [ ] Economy: income and expenses over time, loans, provinces and their buildings
+  - [ ] Military: armies, men-at-arms, the navy and transports, recruitment
+  - [ ] Diplomacy: every realm's opinion and treaties, subjects and coalitions
+  - [ ] Faith and culture; laws, estates and government; technology
+  - [ ] each with a place for a painted frame (the art comes in M16)
+- [ ] Hints: the first time a screen or mechanic appears, a short note with a link to the
+      encyclopedia. A setting turns them off.
+- [ ] Advisors: the councillors suggest what to do next, from the same judgements the AI makes
+      ("We could forge a claim on Gwynedd", "Gold is piling up: develop London").
+- [ ] An encyclopedia:
+  - [ ] a searchable reference of every mechanic, formula and term
+  - [ ] built from the game's data where it can be: technologies, units, buildings, laws, casus
+        belli, faiths and events
+  - [ ] terms in tooltips link to it
+- [ ] The tour points at the new screens.
+
+### M12: The map through the ages
+
+- [ ] Three map styles that follow the player's era, with a setting to pin one:
+  - [ ] a manuscript map, to about 1450: parchment, inked coasts, painted hills and forests, walled
+        towns, gilt borders
+  - [ ] an engraved atlas, to about 1800: hachured relief, stippled seas and rhumb lines,
+        hand-coloured borders, cartouches and compass roses
+  - [ ] a modern map, after: clean political colours over shaded relief, and crisp borders
+  - [ ] a crossfade when the era changes
+- [ ] Map symbols (mountains, forests, towns, holy places) placed by the map pipeline and drawn in
+      each style.
+- [ ] Detail at close zoom in each style (the terrain is soft at one texel per map unit).
+- [ ] The edge of the known world drawn in each style, instead of ruled lines across the sea.
+- [ ] Realm, province and sea names lettered in the hands and types of each age.
+- [ ] Place names by era and by the owner's culture:
+  - [ ] Constantinople and Istanbul, Königsberg and Kaliningrad
+  - [ ] period names in place of the admin-style ones ("North-West Aktobe")
+- [ ] Every map mode readable in every style.
+- [ ] e2e screenshots of each style at world, Europe and county zoom.
+
+### M13: War and peace
+
+- [ ] A clearer war score:
+  - [ ] the war goal counts for more the longer it is held
+  - [ ] battles, occupation and blockades each show their share
+  - [ ] every peace offer shows the enemy's answer and its reasons
+- [ ] Peace terms: release nations, make vassals, force a change of faith, humiliate, reparations
+      over years, break alliances, return claimed land.
+- [ ] Logistics and fronts:
+  - [ ] supply that depends on the season, the land and the latitude, with winter attrition
+  - [ ] supply lines: armies deep in enemy land need a connection home, or they starve
+  - [ ] forts that hold the land around them: an enemy cannot march past without a siege
+- [ ] Occupation: looting, unrest and partisans in held land; sieges with assaults and breaches.
+- [ ] Battles shaped before they start:
+  - [ ] commanders with doctrines by era: shock, fire, defence, skirmish and siege
+  - [ ] army composition that matters: the front, the flanks, missiles and siege engines
+  - [ ] a battle report: its phases, losses by unit, and the terrain, river and commanders as
+        breakdowns
+- [ ] AI for all of it.
+- [ ] Balance: fewer and weightier wars. Today there are about 250 in 30 years, three quarters over
+      forged claims. The target is set from long runs.
+- [ ] Saves from milestone 12 load.
+
+### M14: Economy and diplomacy
+
+- [ ] Buildings:
+  - [ ] more kinds, in chains by era
+  - [ ] a limited number of slots per province (by development and terrain), so that each province
+        is specialised by choice
+- [ ] Strategic resources in provinces, from the land and curated tables: horses, iron, saltpetre,
+      timber, coal and oil. Some units and buildings need them.
+- [ ] Great projects built over years for lasting effects: cathedrals, palaces, universities,
+      observatories and canals. They give the late game's gold a use.
+- [ ] Royal marriages between realms: better relations, and claims that may bring a personal union
+      when a line fails.
+- [ ] More kinds of subject, each with its own duties and loyalty: personal unions, marches,
+      protectorates, puppets and trading companies.
+- [ ] Great powers:
+  - [ ] a ranking from the early modern era
+  - [ ] spheres of influence
+  - [ ] congresses that settle wars among several great powers
+- [ ] AI for all of it.
+- [ ] Balance, with targets from long runs:
+  - [ ] late-game bloat: armies of several hundred thousand, some 10,000 warships by 1716, and
+        treasuries of 400,000
+  - [ ] snowballing giants: the Song rank first in every run, and Iberia is swallowed
+- [ ] Saves from milestone 13 load.
+
+### M15: Missions, story and game rules
+
+- [ ] Missions:
+  - [ ] trees for the featured realms and for regions (the British Isles, Iberia, Italy, the steppe,
+        India, China and others)
+  - [ ] an ambition picker for every realm: goals that fit its situation, with rewards
+- [ ] Events, from about 40 to over 200:
+  - [ ] chains that unfold over months or years
+  - [ ] national, regional, faith and cultural flavour
+  - [ ] historical moments when the world fits them (Magna Carta, the fall of Constantinople, the
+        printing press)
+- [ ] Era report cards: at each era's end, how the realm stands against its rivals, with the era's
+      chronicle. The score and the end-of-age ranking stay.
+- [ ] Game rules for a new campaign:
+  - [ ] difficulty, set mostly by how well and how boldly the AI plays, with modest bonuses only at
+        the top
+  - [ ] how much the AI targets the player
+  - [ ] plagues, the Horde, crusades, the Reformation and world wars: on, rarer or off
+  - [ ] the pace of technology, growth, colonisation and exploration
+  - [ ] history: plausible (the AI leans towards what happened) or free
+  - [ ] ironman
+- [ ] Saves from milestone 14 load.
+
+### M16: Painted figures, portraits and pictures
+
+- [ ] A style guide for each era, true to its period: manuscript miniature, Renaissance panel,
+      engraving, oil and lithograph, poster and photograph, flat graphic.
+- [ ] Painted unit figures on the map:
+  - [ ] by era and region
+  - [ ] by type: foot, horse, missile and siege; ships of the line, escorts, submarines and
+        transports
+  - [ ] with marching, besieging and fighting states
+- [ ] Painted portraits in layers: faces, hair, clothes, crowns and marks of office by era and
+      region. Each is composed per character and ages with the years.
+- [ ] Pictures for:
+  - [ ] events
+  - [ ] the title and loading screens, by era
+  - [ ] technology, building and decision cards
+  - [ ] battles, declarations of war and peace treaties
+- [ ] Painted frames for the full screens and events.
+- [ ] Sources: public-domain period art and open-licensed images, and generated images where none
+      fits, all in the asset manifest.
+
+### M17: The sound of the ages
+
+- [ ] Recorded music, several pieces per era, from public-domain and open-licensed recordings or
+      generated. Pieces for war, peace and plague.
+- [ ] Recorded effects for each era.
+- [ ] Ambient sound that follows the camera: sea, wind, towns and distant battle.
+- [ ] Richer procedural sound for the web demo and as a fallback.
+
+### M18: Early Access
+
+- [ ] Balance from long runs, against targets for wars, conquests, armies and navies, treasuries
+      and the spread of power.
+- [ ] The performance budget met on the reference machine all the way to 2066.
+- [ ] Builds for Steam and itch.io: signing, installers and updates.
+- [ ] Store-facing text and in-game wording without Crusader Kings.
+- [ ] Credits and licences:
+  - [ ] code under GPL-3.0, with the source available
+  - [ ] data, and every asset
+  - [ ] disclosures for generated content
+- [ ] A promise that saves carry over through Early Access, a list of known issues, and a public
+      roadmap.
+- [ ] The web demo with its limits.
+
 ## After every milestone
 
 - Typecheck, lint, unit tests, build, and `npm run mapgen:validate` if the data changed.
@@ -276,6 +553,7 @@ whole world. The player controls a country rather than a dynasty.
 - Commit and push; GitHub Pages redeploys.
 - Rebuild the artifact (`npm run build && npm run artifact`) and republish it to the same claude.ai
   URL.
+- From M9: check that the desktop build starts and loads a save.
 
 ## Known gaps and ideas
 
@@ -283,9 +561,9 @@ whole world. The player controls a country rather than a dynasty.
   - Historical names exist for about 290 major cities.
   - Parts of Central Asia and the Americas still read like modern admin regions ("North-West
     Aktobe").
-  - A later pass will add cultural names.
-- **Close zoom:** the terrain is soft, at one texel per map unit. A detail texture or procedural
-  grain would help.
+  - Names by era and culture are planned for M12.
+- **Close zoom:** the terrain is soft, at one texel per map unit. Detail in each map style is
+  planned for M12.
 - **Small realms:** these were dropped where a province is bigger than the whole realm (for
   example the Duchy of Naples).
 - **Balance:**
@@ -357,8 +635,10 @@ whole world. The player controls a country rather than a dynasty.
   late, down from 19 ms before the month's work was spread over its first week. Estate and faith
   figures are cached per day, and routes an army or fleet cannot take are ruled out by cached
   reachability checks before any search. A web worker for the simulation would take the rest
-  off the main thread, but the UI reads the state directly.
-- **Size:** the stylesheet is 1.1 MB, most of it the inlined fonts of the six era themes.
+  off the main thread, but the UI reads the state directly. M9 sets a budget first and moves the
+  simulation only if it must.
+- **Size:** the stylesheet is 1.1 MB, most of it the inlined fonts of the six era themes. In M9,
+  fonts become files everywhere except the artifact.
 - **Fleets and armies at sea:** transports are a pool per realm rather than ships in fleets, so
   an escort protects armies only in the sea zone where it sails. Ships are built at once, like
   men-at-arms.
