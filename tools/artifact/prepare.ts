@@ -24,11 +24,14 @@ const inlined = new Set<string>();
 /** A copy of a built stylesheet with its fonts as data URIs, next to it; returns the copy's path. */
 function inlineFonts(cssPath: string): string {
   const dir = dirname(cssPath);
-  const css = readFileSync(cssPath, 'utf8').replace(/url\(\s*(['"]?)([^'")]+\.woff2?)\1\s*\)/g, (_, _q, url: string) => {
-    const file = join(dir, url);
-    inlined.add(relative(DIST, file).split(sep).join('/'));
-    return `url(data:font/woff2;base64,${readFileSync(file).toString('base64')})`;
-  });
+  const css = readFileSync(cssPath, 'utf8').replace(
+    /url\(\s*(['"]?)([^'")]+\.woff2?)\1\s*\)/g,
+    (_, _q, url: string) => {
+      const file = join(dir, url);
+      inlined.add(relative(DIST, file).split(sep).join('/'));
+      return `url(data:font/woff2;base64,${readFileSync(file).toString('base64')})`;
+    },
+  );
   const out = join(dir, `artifact-${basename(cssPath)}`);
   writeFileSync(out, css);
   return out;
