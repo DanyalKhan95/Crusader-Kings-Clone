@@ -327,7 +327,7 @@ the interface first, so that the art and the new systems have a place to land. T
 comes before the deeper systems, because it needs nothing from them. The painted pictures come
 after the content they show has settled.
 
-### M9: Foundations for a release
+### M9: Foundations for a release (done)
 
 - [x] Desktop app: an Electron shell around the same build, for Windows, macOS and Linux:
   - [x] windowed or fullscreen, remembered between sessions with the window's size and place, and
@@ -339,9 +339,13 @@ after the content they show has settled.
         offer to start again if the game stops
   - [x] unsigned test builds from CI: an installer and a zip for Windows, a disk image and a zip for
         macOS, an AppImage and a tarball for Linux (signing comes with Early Access)
-- [ ] The web build becomes the free demo:
-  - [ ] a build flag for the demo's limits (to be decided, e.g. the first century)
-  - [ ] code-drawn fallbacks for everything the app ships as files
+- [x] The web build becomes the free demo:
+  - [x] a build flag for the demo's limits: `npm run build:demo` makes a demo whose world stops a
+        century on, on 15 September 1166, with a closing screen, and whose title screen says it is
+        the demo. The limit is one constant (`DEMO_END` in `src/ui/demo.ts`). Pages and the
+        artifact stay the full game until the release (M18) decides otherwise.
+  - [x] code-drawn fallbacks for everything the app ships as files: the demo's art index is empty,
+        so every picture falls back to the game's own drawing
 - [x] A settings screen:
   - [x] interface scale and text size
   - [x] key bindings, every one rebindable, with the keys shown in tooltips and in How to play
@@ -380,7 +384,8 @@ after the content they show has settled.
   - [x] fallbacks from the most specific asset down to the code-drawn one
 - [x] An error screen that keeps the game running where it can and offers the save and the log for a
       bug report.
-- [ ] Saves from milestone 8 load.
+- [x] Saves from milestone 8 load: a save written by the M8 build (England in 1126) loads and plays
+      on, headless and from the title screen of a fresh browser, which now always offers Load Game.
 
 ### M10: The new HUD
 

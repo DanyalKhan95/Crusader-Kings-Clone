@@ -128,6 +128,44 @@ test('keeps its archive: named saves, overwriting, deleting, and Continue after 
   expect(errors).toEqual([]);
 });
 
+test('carries a campaign to another browser: a save file out, and in from the title screen', async ({
+  page,
+  browser,
+}) => {
+  const errors = watchErrors(page);
+  await page.goto('/');
+  await page.getByRole('button', { name: 'New Campaign' }).click({ timeout: 120_000 });
+  await page.locator('.bookmark', { hasText: 'Byzantium' }).click();
+  await page.getByRole('button', { name: 'Play as Byzantium' }).click();
+  await page.keyboard.press('5');
+  await expect(page.locator('.date-long')).not.toHaveText('15th of September, 1066 AD', { timeout: 30_000 });
+  await page.keyboard.press(' ');
+  const date = await page.locator('.date-long').textContent();
+  await page.getByRole('button', { name: 'Game menu' }).click();
+  const [download] = await Promise.all([
+    page.waitForEvent('download'),
+    page.getByRole('button', { name: 'Export save file' }).click(),
+  ]);
+  expect(download.suggestedFilename()).toMatch(/^crowns-and-centuries-BYZ-1066\.json$/);
+  const file = await download.path();
+
+  // A browser that has never seen the game opens it from the title screen.
+  const other = await browser.newContext({ viewport: { width: 1600, height: 900 } });
+  const fresh = await other.newPage();
+  const freshErrors = watchErrors(fresh);
+  await fresh.addInitScript(() => localStorage.setItem('crowns-and-centuries:tour', 'done'));
+  await fresh.goto('/');
+  await fresh.getByRole('button', { name: 'Load Game' }).click({ timeout: 120_000 });
+  const archive = fresh.getByRole('dialog', { name: 'Load a game' });
+  await expect(archive).toContainText('No saved games yet.');
+  await archive.locator('input[type=file]').setInputFiles(file);
+  await expect(fresh.locator('.nation-name')).toHaveText('Byzantine Empire');
+  await expect(fresh.locator('.date-long')).toHaveText(date!);
+  await other.close();
+  expect(errors).toEqual([]);
+  expect(freshErrors).toEqual([]);
+});
+
 test('makes friends: an alliance, the diplomacy map and a forged claim', async ({ page }) => {
   const errors = watchErrors(page);
   await page.goto('/?debug');

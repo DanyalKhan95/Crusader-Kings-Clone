@@ -353,6 +353,17 @@
   letter-spacing: 0.2em;
   color: var(--text-dim);
 }
+/* The free demo says so under the years. */
+.menu-demo {
+  width: fit-content;
+  margin: 10px 0 0;
+  padding: 3px 10px;
+  border: 1px solid var(--gold);
+  border-radius: 2px;
+  font-size: calc(12px * var(--text-scale, 1));
+  letter-spacing: 0.16em;
+  color: var(--gold);
+}
 .menu-years-rule {
   width: 90px;
 }

@@ -28,7 +28,8 @@ export type Modal =
   | 'end'
   | 'help'
   | 'settings'
-  | 'load';
+  | 'load'
+  | 'demoEnd';
 
 export interface UIState {
   phase: Phase;

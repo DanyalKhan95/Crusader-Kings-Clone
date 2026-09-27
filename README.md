@@ -11,26 +11,32 @@ every push).
 
 ## Status
 
-**Milestone 8: the endgame and polish.** All eight milestones of the plan are in: the game can be
-played from 1066 to 2066 and beyond. Every other realm is run by the AI.
+**Milestone 9: foundations for a release.** The game can be played from 1066 to 2066 and beyond,
+every other realm run by the AI, and it is on the road to Early Access as a desktop app (milestones
+9 to 18 in the [roadmap](docs/ROADMAP.md)). This milestone laid the ground for what follows:
 
-- **The standing of nations:** each New Year every independent realm scores for its share of the
-  world's people and land, its tributaries, its learning, its armies, its holy places and its good
-  order. On 1 January 2066 the age ends and the nations are ranked; you may play on.
-- **The ledger of nations** (`L`): the nations ranked, the great realms charted decade by decade,
-  and a chronicle of the thousand years, from Hastings to the last world war.
-- **Balance** from headless runs of 1,000 years: gold buys development, and hoards waste away;
-  the crusades end with the seventeenth century; the Reformation takes the German and Nordic north;
-  rivalries between great powers start the world wars.
-- **Performance:** the month's work spread over its first week, heavy days kept to a frame of
-  their own, and saves of the late game five times smaller.
-- **How to play** (`H`), a **guided tour** of your first campaign, an **autosave**, and **sound**:
-  effects for the news of the realm and music in the manner of each age, made on the fly with
-  Web Audio.
-
-![The end of the age: on 1 January 2066 the nations of the world are ranked](docs/images/end-2066.webp)
+- **A desktop app** for Windows, macOS and Linux: windowed or fullscreen, saves and settings as
+  files in your documents folder, and the campaign saved when the window closes. Unsigned test
+  builds come from CI; the web version stays as a free demo.
+- **Settings:** the size of the interface and its text, map quality, a frame cap, animations, the
+  top speed and autosaves, and every key rebindable, shown in the tooltips and in How to play.
+- **Saves:** named saves, three autosaves in rotation, a save browser with each realm's arms, date
+  and time played, ironman campaigns, and save files to carry a campaign elsewhere.
+- **When something breaks,** an error screen stops the clock, keeps the game, and saves a report
+  with the error, the log and the campaign.
+- **Speed:** a performance overlay (`F3`) and a budget for the simulation that no day breaks in
+  worlds of 1340, 1915 and 2030: none above 12 ms, and 99 in 100 under 8 ms.
+- **Ready for art and mods:** a pipeline that lists every picture and sound with its source and
+  licence, and content in checked data files, starting with the featured realms and the modifiers.
 
 Earlier milestones:
+
+- **The endgame and polish (M8):** the standing of nations and the end of the age in 2066; the
+  ledger of nations (`L`) with a chronicle of the thousand years; balance from headless runs of a
+  thousand years; How to play (`H`), a guided tour of the first campaign, and sound made on the fly
+  with Web Audio.
+
+![The end of the age: on 1 January 2066 the nations of the world are ranked](docs/images/end-2066.webp)
 
 - **Events, decisions and espionage (M7):** some 35 events across the eras, each a choice with
   its costs shown; the Black Death and later pestilences; Halley's comet, the Horde, the
@@ -77,8 +83,11 @@ The plan, what each milestone brought and the known gaps are in [docs/ROADMAP.md
 | Map modes         | buttons at the bottom right              | `Q` `W` `E` `R` `T` `Y` `U` |
 | Ledger of nations | scroll at the top right                  | `L`                         |
 | How to play       | game menu                                | `H`                         |
+| Performance       | settings                                 | `F3`                        |
 | Close panel, menu |                                          | `Esc`                       |
 | Fullscreen (app)  | settings                                 | `F11`, `Alt+Enter`          |
+
+Every key can be changed in the settings.
 
 ## Running it
 
@@ -86,6 +95,7 @@ The plan, what each milestone brought and the known gaps are in [docs/ROADMAP.md
 npm install
 npm run dev        # http://localhost:5173
 npm run build      # static site in dist/, works from any folder or host
+npm run build:demo # the free web demo: the world stops a century on, and it ships no art
 ```
 
 Checks:
@@ -95,6 +105,7 @@ npm run typecheck && npm run lint && npm test
 npm run e2e        # Playwright smoke test (builds and serves the site itself)
 npm run mapgen:validate
 npm run simulate -- --years 50   # the whole world under AI, headless, with a summary
+npm run daycost -- --load save.json   # the performance budget's measure (see M9 in the roadmap)
 ```
 
 The generated map lives in `public/data` and is committed, so none of the above needs the map

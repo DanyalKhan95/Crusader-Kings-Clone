@@ -8,6 +8,9 @@ when a milestone lands.
 
 - `npm run dev`: Vite dev server.
 - `npm run build`: static site in `dist/` with relative paths (`base: './'`).
+- `npm run build:demo`: the free web demo (Vite mode `demo`, `__DEMO__` in the code): the world
+  stops on `DEMO_END` (`src/ui/demo.ts`, 15 September 1166) and the art index is empty. Pages and
+  the artifact still build the full game.
 - `npm run typecheck`: four projects: the app, `tests/` + `e2e/`, `tools/`, and `electron/` (plain
   CommonJS checked through JSDoc).
 - `npm run lint`, `npm run format`: ESLint flat config and Prettier at 120 columns.

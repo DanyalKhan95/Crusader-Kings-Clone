@@ -3,6 +3,7 @@ import { canContinue, resume, startChoosing } from '../actions';
 import { loadChosen } from '../dialogs/Saves';
 import { useGame } from '../game';
 import { Icon } from '../Icon';
+import { DEMO } from '../demo';
 import { native } from '../platform';
 import { listSaves } from '../saves';
 import type { SaveMeta } from '../storage';
@@ -13,14 +14,11 @@ export function MainMenu() {
   const inMemory = canContinue(game);
   // With no campaign open, Continue picks up the latest save.
   const [latest, setLatest] = useState<SaveMeta | null>(null);
-  const [anySaves, setAnySaves] = useState(false);
   useEffect(() => {
     let live = true;
     listSaves()
       .then((saves) => {
-        if (!live) return;
-        setLatest(saves[0] ?? null);
-        setAnySaves(saves.length > 0);
+        if (live) setLatest(saves[0] ?? null);
       })
       .catch(() => undefined);
     return () => {
@@ -41,6 +39,7 @@ export function MainMenu() {
           <span className="menu-years-rule" aria-hidden="true" />
           <span>2066</span>
         </p>
+        {DEMO && <p className="caps menu-demo">Free demo · the first century</p>}
         <div className="menu-actions">
           {cont && (
             <button
@@ -55,11 +54,10 @@ export function MainMenu() {
           <button className={`btn big ${cont ? '' : 'primary'}`} onClick={() => startChoosing(game)} autoFocus={!cont}>
             <Icon name="crown" /> New Campaign
           </button>
-          {(anySaves || inMemory) && (
-            <button className="btn" onClick={() => game.ui.set({ modal: 'load' })}>
-              <Icon name="load" /> Load Game
-            </button>
-          )}
+          {/* Always: a save file may come from another browser or the desktop app. */}
+          <button className="btn" onClick={() => game.ui.set({ modal: 'load' })}>
+            <Icon name="load" /> Load Game
+          </button>
           <button className="btn" onClick={() => game.ui.set({ modal: 'help' })}>
             <Icon name="scroll-quill" /> How to Play
           </button>

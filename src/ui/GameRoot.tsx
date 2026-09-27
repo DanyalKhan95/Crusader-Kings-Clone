@@ -3,6 +3,7 @@ import type { MapMode } from '../game/mapModes';
 import { closePanel, setMapMode, setSpeed, togglePause, toMenu } from './actions';
 import { sound } from './audio';
 import { DeclareWar } from './dialogs/DeclareWar';
+import { DemoEnd } from './dialogs/DemoEnd';
 import { EndOfAge } from './dialogs/EndOfAge';
 import { EventDialog } from './dialogs/EventDialog';
 import { Help } from './dialogs/Help';
@@ -109,6 +110,7 @@ export function GameRoot() {
       {phase === 'playing' && modal === 'event' && <EventDialog />}
       {phase === 'playing' && modal === 'ledger' && <Ledger />}
       {phase === 'playing' && modal === 'end' && <EndOfAge />}
+      {phase === 'playing' && modal === 'demoEnd' && <DemoEnd />}
       {phase === 'playing' && <Tour />}
     </>
   );

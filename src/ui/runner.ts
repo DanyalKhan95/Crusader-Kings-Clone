@@ -6,6 +6,7 @@ import { toDate } from '../sim/calendar';
 import { playerEvent } from '../sim/events';
 import { advanceDay } from '../sim/tick';
 import { sound } from './audio';
+import { demoOver } from './demo';
 import { report } from './errors';
 import { formatDate } from './format';
 import type { Game } from './game';
@@ -117,6 +118,12 @@ export function attachRunner(game: Game) {
       backlog = 0;
       return;
     }
+    // The demo's century is over: time stands still, and the player is told why.
+    if (demoOver(game.state.day)) {
+      backlog = 0;
+      game.ui.set({ speed: 0, modal: 'demoEnd' });
+      return;
+    }
     // Days owed carry over a few frames at most, so a slow frame is not paid back all at once; a new
     // speed starts afresh. Without a top speed the frame budget alone sets the pace.
     if (ui.speed !== lastSpeed) backlog = 0;
@@ -153,6 +160,7 @@ export function attachRunner(game: Game) {
       if (last && last.id > lastMessage && last.important) break;
       if (game.state.offers.some((o) => o.to === game.state.player)) break;
       if (playerEvent(game.state)) break;
+      if (demoOver(game.state.day)) break;
     }
     if (days) sync(false);
     // Out of the frame: the save serialises the world and compresses it. An ironman campaign keeps
