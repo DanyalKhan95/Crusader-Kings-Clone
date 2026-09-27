@@ -32,6 +32,8 @@ export function daysPerSecond(speed: number): number {
 export function attachRunner(game: Game) {
   let backlog = 0;
   let lastSpeed = 0;
+  /** Days run and the time they took, for the performance overlay. */
+  const stats = { days: 0, simMs: 0 };
   let lastUi = 0;
   let mapVersion = game.state.mapVersion;
   let borderVersion = game.state.borderVersion;
@@ -129,6 +131,8 @@ export function attachRunner(game: Game) {
       if (start - t0 >= FRAME_BUDGET_MS || (days && start - t0 + cost[next] > FRAME_BUDGET_MS)) break;
       try {
         advanceDay(game.state, game.world);
+        stats.days++;
+        stats.simMs += performance.now() - start;
       } catch (e) {
         // The day broke off half done: stop the clock and say so, rather than fail again every frame.
         report(e, 'simulation', true, `on ${formatDate(toDate(game.state.day))}`);
@@ -170,7 +174,7 @@ export function attachRunner(game: Game) {
     sync(true);
   };
 
-  return { frame, sync: () => sync(true), reset };
+  return { frame, sync: () => sync(true), reset, stats };
 }
 
 export type Runner = ReturnType<typeof attachRunner>;

@@ -16,6 +16,7 @@ import {
   RESERVED_KEYS,
   resetKeys,
   unbindKey,
+  withKey,
   type KeyAction,
   type KeyGroup,
 } from '../keys';
@@ -206,6 +207,16 @@ function GraphicsSection() {
           label={s.animations ? 'On' : 'Off'}
           checked={s.animations}
           onChange={(animations) => settings.set({ animations })}
+        />
+      </Row>
+      <Row
+        name="Performance overlay"
+        blurb={`Frames a second, days a second, and what takes the time. ${withKey('Also on a key', 'perfOverlay')}.`}
+      >
+        <Toggle
+          label={s.perfOverlay ? 'Shown' : 'Hidden'}
+          checked={s.perfOverlay}
+          onChange={(perfOverlay) => settings.set({ perfOverlay })}
         />
       </Row>
     </>

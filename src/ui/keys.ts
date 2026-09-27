@@ -15,6 +15,7 @@ export type KeyAction =
   | 'speed5'
   | 'ledger'
   | 'help'
+  | 'perfOverlay'
   | `mode:${MapMode}`
   | 'panLeft'
   | 'panRight'
@@ -43,6 +44,7 @@ export const KEY_ACTIONS: KeyActionInfo[] = [
   })),
   { id: 'ledger', label: 'The ledger of nations', group: 'Screens', keys: ['L'] },
   { id: 'help', label: 'How to play', group: 'Screens', keys: ['H', 'F1'] },
+  { id: 'perfOverlay', label: 'Performance overlay', group: 'Screens', keys: ['F3'] },
   ...MAP_MODES.map((m): KeyActionInfo => ({
     id: `mode:${m.id}`,
     label: `${m.label} map`,

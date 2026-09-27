@@ -1,6 +1,7 @@
 /**
  * Runs the world headless with every country under AI control and reports what happened.
- *   npm run simulate -- --years 50 [--seed 7]
+ *   npm run simulate -- --years 50 [--seed 7] [--load save.json] [--profile]
+ * --load starts from a save (every realm under AI); --profile reports where each day's time goes.
  */
 import { readFileSync } from 'node:fs';
 import { faithName } from '../src/sim/beliefs.ts';
@@ -14,6 +15,8 @@ import { armySize, lordOf, provincesOf, realmProvinces } from '../src/sim/querie
 import { createGameState } from '../src/sim/setup.ts';
 import { advanceDay } from '../src/sim/tick.ts';
 import { fleetSize } from '../src/sim/naval.ts';
+import { ProfileTotals, setProfileSink } from '../src/sim/profile.ts';
+import { deserialize } from '../src/sim/save.ts';
 import { makeSimWorld } from '../src/sim/world.ts';
 import { ranking as scoreRanking } from '../src/sim/score.ts';
 import type { RegionData, ScenarioData, WorldData } from '../src/shared/dataTypes.ts';
@@ -22,14 +25,25 @@ const arg = (name: string, fallback: number) => {
   const i = process.argv.indexOf(`--${name}`);
   return i >= 0 ? Number(process.argv[i + 1]) : fallback;
 };
+const text = (name: string) => {
+  const i = process.argv.indexOf(`--${name}`);
+  return i >= 0 ? process.argv[i + 1] : undefined;
+};
 const years = arg('years', 20);
 const seed = arg('seed', 0);
 const every = arg('every', 5);
+const load = text('load');
+const profile = process.argv.includes('--profile') ? new ProfileTotals() : null;
 
 const read = <T>(f: string): T => JSON.parse(readFileSync(`public/data/${f}`, 'utf8')) as T;
 const world = makeSimWorld(read<WorldData>('world.json'), read<RegionData[]>('provinces.json'));
 const scenario = read<ScenarioData>('scenario-1066.json');
-const state = createGameState(world, scenario, seed ? { seed } : {});
+const state = load
+  ? deserialize(readFileSync(load, 'utf8'), world)
+  : createGameState(world, scenario, seed ? { seed } : {});
+// Every realm under AI, the player's too.
+state.player = 0;
+if (profile) setProfileSink(profile);
 
 const fmt = (d: number) => {
   const t = toDate(d);
@@ -101,6 +115,14 @@ for (let d = 0; d < years * 365; d++) {
 const ms = performance.now() - t0;
 const days = state.day - start;
 console.log(`\n${days} days in ${(ms / 1000).toFixed(1)} s: ${Math.round((days / ms) * 1000)} days per second`);
+if (profile) {
+  const total = profile.total();
+  console.log(`where the time goes (${(total / days).toFixed(2)} ms a day on average):`);
+  for (const c of profile.ranked().slice(0, 24))
+    console.log(
+      `  ${c.system.padEnd(22)} ${((c.ms / total) * 100).toFixed(1).padStart(5)}%  ${(c.ms / days).toFixed(3).padStart(7)} ms a day  ${(c.ms / c.calls).toFixed(3).padStart(7)} ms a run  max ${c.max.toFixed(1)} ms`,
+    );
+}
 console.log(`wars started ${wars}, ended ${peaces}: ${[...byCause].map(([k, n]) => `${k} ${n}`).join(', ')}`);
 const changed = state.provinces.filter((p, id) => p && p.owner !== initialOwners[id]).length;
 console.log(`provinces that changed hands: ${changed}`);

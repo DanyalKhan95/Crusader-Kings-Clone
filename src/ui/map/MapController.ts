@@ -92,6 +92,8 @@ export class MapController {
   private nextFrameMs = 0;
   /** Frames a second at most; 0 draws every frame the display offers. */
   frameCap = 0;
+  /** Frames drawn and the time spent on them (game time included), for the performance overlay. */
+  readonly stats = { frames: 0, busyMs: 0, worstMs: 0 };
   /** Pulsing highlights, camera glides and drift; off, the map keeps still. */
   animations = true;
   private pointers = new Map<number, { x: number; y: number }>();
@@ -420,6 +422,7 @@ export class MapController {
     const t = tMs / 1000;
     const dt = this.lastT ? Math.min(0.1, t - this.lastT) : 0;
     this.lastT = t;
+    const busyFrom = performance.now();
     this.onFrame?.(dt);
     this.stepCamera(dt);
     const c = this.camera;
@@ -446,6 +449,10 @@ export class MapController {
         this.fog ? this.isUnknown : null,
       );
     }
+    const busy = performance.now() - busyFrom;
+    this.stats.frames++;
+    this.stats.busyMs += busy;
+    if (busy > this.stats.worstMs) this.stats.worstMs = busy;
   };
 
   /** Forces a full redraw on the next frame. */

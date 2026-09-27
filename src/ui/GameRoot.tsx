@@ -17,6 +17,7 @@ import { HoverTooltip } from './hud/HoverTooltip';
 import { Hud } from './hud/Hud';
 import { MapModeBar } from './hud/MapModeBar';
 import { actionsFor, keyOf, type KeyAction } from './keys';
+import { settings } from './settings';
 import { isTyping } from './map/MapController';
 import { ChooseRealm } from './screens/ChooseRealm';
 import { Credits } from './screens/Credits';
@@ -80,6 +81,7 @@ export function GameRoot() {
       else if (action.startsWith('speed')) setSpeed(game, Number(action.slice(5)));
       else if (action === 'ledger') game.ui.set({ modal: 'ledger', speed: 0 });
       else if (action === 'help') game.ui.set({ modal: 'help', speed: 0 });
+      else if (action === 'perfOverlay') settings.set({ perfOverlay: !settings.get().perfOverlay });
       else return false;
       return true;
     };

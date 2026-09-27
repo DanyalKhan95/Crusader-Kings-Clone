@@ -3499,3 +3499,35 @@ kbd.unbound {
   background: var(--panel-inset);
   border-radius: var(--radius);
 }
+
+/* ── Performance overlay (milestone 9) ───────────────────────── */
+
+.perf {
+  position: absolute;
+  top: 104px;
+  left: 50%;
+  z-index: 35;
+  transform: translateX(-50%);
+  min-width: 260px;
+  padding: 7px 11px 8px;
+  font-family: ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
+  font-size: calc(11.5px * var(--text-scale, 1));
+  line-height: 1.5;
+  pointer-events: none;
+  background: rgba(14, 10, 7, 0.86);
+}
+.perf b {
+  color: var(--gold-bright);
+}
+.perf-systems {
+  display: grid;
+  margin: 3px 0;
+  padding: 3px 0;
+  list-style: none;
+  border-block: 1px solid var(--line-soft);
+}
+.perf-systems li {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}

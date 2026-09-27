@@ -586,6 +586,12 @@ test('settles in: a larger interface, a key of its own and a faster top speed', 
   await expect(page.locator('.dateplate')).toHaveClass(/paused/);
   await expect(page.getByRole('button', { name: 'Resume (P)' })).toBeVisible();
 
+  // F3 shows what the frames and the days cost, and hides it again.
+  await page.keyboard.press('F3');
+  await expect(page.getByRole('complementary', { name: 'Performance' })).toContainText('fps');
+  await page.keyboard.press('F3');
+  await expect(page.getByRole('complementary', { name: 'Performance' })).toHaveCount(0);
+
   // How to play lists the new key.
   await page.keyboard.press('h');
   const help = page.getByRole('dialog', { name: 'How to play' });

@@ -22,6 +22,8 @@ export interface Settings {
   topSpeed: number;
   /** minutes of play between autosaves; 0 for never */
   autosaveMinutes: number;
+  /** frame time and the simulation's costs on screen */
+  perfOverlay: boolean;
   /** key bindings that differ from the defaults, by action */
   keys: Record<string, string[]>;
 }
@@ -34,6 +36,7 @@ export const DEFAULT_SETTINGS: Settings = {
   animations: true,
   topSpeed: 120,
   autosaveMinutes: 4,
+  perfOverlay: false,
   keys: {},
 };
 
@@ -64,6 +67,7 @@ export function sanitizeSettings(raw: unknown, d: Settings = DEFAULT_SETTINGS): 
     animations: typeof r.animations === 'boolean' ? r.animations : d.animations,
     topSpeed: pick(r.topSpeed, TOP_SPEEDS, d.topSpeed),
     autosaveMinutes: pick(r.autosaveMinutes, AUTOSAVE_MINUTES, d.autosaveMinutes),
+    perfOverlay: typeof r.perfOverlay === 'boolean' ? r.perfOverlay : d.perfOverlay,
     keys,
   };
 }

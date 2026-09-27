@@ -18,12 +18,14 @@ import { formatMen } from '../../render/units';
 import { withKey } from '../keys';
 import { useSettings } from '../settings';
 import { useStore } from '../store';
+import { PerfOverlay } from './PerfOverlay';
 import { SidePanel } from './SidePanel';
 import { BreakdownList, fmtSigned, WithTip } from './Tip';
 import { NoticeBar, Toasts } from './Toasts';
 
 export function Hud() {
   const game = useGame();
+  const perf = useSettings((s) => s.perfOverlay);
   // Frame the player's realm on arrival; child panels have reported their insets by now.
   useEffect(() => {
     const { player } = game.ui.get();
@@ -36,6 +38,7 @@ export function Hud() {
       <Toasts />
       <SidePanel />
       <NoticeBar />
+      {perf && <PerfOverlay />}
     </>
   );
 }
