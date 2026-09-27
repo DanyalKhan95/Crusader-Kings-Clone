@@ -12,6 +12,7 @@ import {
   bindKey,
   bindings,
   KEY_ACTIONS,
+  KEY_GROUPS,
   keyLabel,
   keyOf,
   RESERVED_KEYS,
@@ -20,7 +21,6 @@ import {
   unbindKey,
   withKey,
   type KeyAction,
-  type KeyGroup,
 } from '../keys';
 import { MESSAGE_KINDS, RULE_INFO } from '../messages';
 import { native, type WindowMode } from '../platform';
@@ -422,7 +422,6 @@ function SoundSection() {
   );
 }
 
-const GROUPS: KeyGroup[] = ['Time', 'Screens', 'Map modes', 'Camera'];
 const LABEL = new Map(KEY_ACTIONS.map((a) => [a.id, a.label]));
 
 /** Every action with its two keys; click a key, then press the new one. */
@@ -498,7 +497,7 @@ function KeysSection() {
           {note}
         </p>
       )}
-      {GROUPS.map((g) => (
+      {KEY_GROUPS.map((g) => (
         <section key={g} className="key-group">
           <h4 className="caps key-group-title">{g}</h4>
           <ul className="key-list">

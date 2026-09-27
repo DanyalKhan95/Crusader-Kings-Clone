@@ -49,6 +49,13 @@ when a milestone lands.
   - UI state is a tiny external store (`store.ts`).
   - The game handle is `useGame()`.
   - Panels that cover the map register with `useMapInsets`, so camera framing avoids them.
+  - A right-click on the map (a long press on touch) goes to `secondaryClick` (`actions.ts`): it
+    orders the selected army or fleet of the player's, or opens the place's menu
+    (`hud/ContextMenu.tsx`). `menuFor` works out the menu from the same checks as the panels, so a
+    new action there belongs in both, with its reason when it cannot be done.
+  - Every key is an action in `keys.ts` (`KEY_ACTIONS`, rebindable in the settings); actions on
+    the map are run by `GameRoot`, panning and zoom by `MapController`. Keep default keys unique:
+    a test checks it.
 - **`src/game/`:** loading the static world (`world.ts`) and map modes.
 - **`src/sim/`:** the simulation. Pure TypeScript with no DOM access, and deterministic:
   - Randomness only through `rng.ts`, whose state lives in `GameState.rng`. Never `Math.random`

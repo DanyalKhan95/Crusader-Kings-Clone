@@ -19,6 +19,7 @@ import { withKey } from '../keys';
 import { useSettings } from '../settings';
 import { useStore } from '../store';
 import { Alerts } from './Alerts';
+import { ContextMenu } from './ContextMenu';
 import { Outliner } from './Outliner';
 import { PerfOverlay } from './PerfOverlay';
 import { SidePanel } from './SidePanel';
@@ -44,6 +45,7 @@ export function Hud() {
       <Toasts />
       <SidePanel />
       <NoticeBar />
+      <ContextMenu />
       {perf && <PerfOverlay />}
     </>
   );
@@ -212,7 +214,7 @@ function EraButton() {
               </li>
             ))}
           </ul>
-          <p className="tip-text">Open the technology screen.</p>
+          <p className="tip-text">{withKey('Open the technology screen', 'tech')}.</p>
         </div>
       }
     >

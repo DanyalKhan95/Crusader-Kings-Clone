@@ -4,7 +4,7 @@
  * click selects an entry and flies there. The outliner and each of its parts fold away, and stay as
  * they were left.
  */
-import { useRef, useState, type ReactNode } from 'react';
+import { useRef, type ReactNode } from 'react';
 import type { IconName } from '../../assets/icons';
 import { BUILDINGS } from '../../data/buildings';
 import { formatMen } from '../../render/units';
@@ -19,8 +19,9 @@ import { CoatOfArms } from '../CoatOfArms';
 import { useGame, type Game } from '../game';
 import { Icon } from '../Icon';
 import { useMapInsets } from '../map/useMapInsets';
+import { withKey } from '../keys';
 import { readPref, writePref } from '../prefs';
-import { useStore } from '../store';
+import { createStore, useStore } from '../store';
 
 type SectionId = 'armies' | 'fleets' | 'sieges' | 'wars' | 'buildings' | 'colonies' | 'missions' | 'spies';
 
@@ -40,6 +41,15 @@ function loadLayout(): Layout {
   // Small screens start with the outliner folded, so that it leaves the map clear.
   const small = typeof window !== 'undefined' && window.matchMedia?.('(max-width: 760px)').matches;
   return { open: !small, closed: [] };
+}
+
+/** How the player left the outliner, kept between visits. */
+const layoutStore = createStore<Layout>(loadLayout());
+layoutStore.subscribe(() => writePref('outliner', JSON.stringify(layoutStore.get())));
+
+/** Opens the outliner, or folds it away (a key does it too). */
+export function toggleOutliner() {
+  layoutStore.set((l) => ({ open: !l.open }));
 }
 
 interface Entry {
@@ -281,18 +291,20 @@ export function Outliner() {
   useStore(game.ui, (s) => s.tick);
   useStore(game.ui, (s) => `${s.panel}:${s.selectedArmy}:${s.selectedFleet}:${s.selectedProvince}:${s.selectedWar}`);
   const player = useStore(game.ui, (s) => s.player);
-  const [layout, setLayout] = useState(loadLayout);
-  const update = (next: Layout) => {
-    setLayout(next);
-    writePref('outliner', JSON.stringify(next));
-  };
+  const layout = useStore(layoutStore, (l) => l);
+  const update = (next: Layout) => layoutStore.set(next);
   const me = game.state.countries[player];
   if (!me) return null;
   const list = sections(game, me);
   return layout.open ? (
     <OpenOutliner list={list} layout={layout} update={update} />
   ) : (
-    <button className="panel outliner-closed" onClick={() => update({ ...layout, open: true })} aria-expanded="false">
+    <button
+      className="panel outliner-closed"
+      onClick={() => update({ ...layout, open: true })}
+      aria-expanded="false"
+      title={withKey('Show the outliner', 'outliner')}
+    >
       <Icon name="scroll-unfurled" />
       <span className="caps">Outliner</span>
     </button>
@@ -320,7 +332,7 @@ function OpenOutliner({ list, layout, update }: { list: Section[]; layout: Layou
           onClick={() => update({ ...layout, open: false })}
           aria-expanded="true"
           aria-label="Fold the outliner away"
-          title="Fold the outliner away"
+          title={withKey('Fold the outliner away', 'outliner')}
         >
           <Icon name="contract" />
         </button>

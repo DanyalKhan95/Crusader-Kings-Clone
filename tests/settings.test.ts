@@ -3,6 +3,7 @@ import {
   actionsFor,
   bindKey,
   bindings,
+  KEY_ACTIONS,
   keyLabel,
   keyOf,
   resetKeys,
@@ -62,6 +63,17 @@ describe('key bindings', () => {
     expect(keyOf({ key: 'ArrowUp' })).toBe('ArrowUp');
     expect(keyLabel('ArrowUp')).toBe('↑');
     expect(keyLabel('-')).toBe('−');
+  });
+
+  it('give every action a key of its own', () => {
+    const taken = new Map<string, string>();
+    for (const a of KEY_ACTIONS)
+      for (const k of a.keys) {
+        expect(taken.get(k), `${k} is bound to ${taken.get(k)} and ${a.id}`).toBeUndefined();
+        taken.set(k, a.id);
+      }
+    expect(actionsFor('A')).toEqual(['tab:military']);
+    expect(actionsFor('Home')).toEqual(['capital']);
   });
 
   it('start from the defaults', () => {

@@ -13,6 +13,7 @@ import { CoatOfArms } from '../CoatOfArms';
 import { capitalize, formatDate } from '../format';
 import { countryStats, useGame, type CountryTab } from '../game';
 import { Icon } from '../Icon';
+import { withKey } from '../keys';
 import { SEAT_TASKS, TASK_INFO } from '../../data/politics';
 import { toDate } from '../../sim/calendar';
 import { CharacterCard, Portrait } from '../people';
@@ -60,6 +61,7 @@ export function CountryView({ index }: { index: number }) {
                 role="tab"
                 aria-selected={tab === t.id}
                 className={`tab ${tab === t.id ? 'active' : ''}`}
+                title={withKey(t.label, `tab:${t.id}`)}
                 onClick={() => game.ui.set({ countryTab: t.id })}
               >
                 {t.label}

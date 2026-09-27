@@ -1,6 +1,16 @@
 import { useEffect } from 'react';
 import type { MapMode } from '../game/mapModes';
-import { closePanel, setMapMode, setSpeed, togglePause, toMenu } from './actions';
+import {
+  closePanel,
+  cycleArmies,
+  cycleFleets,
+  goToCapital,
+  openRealmTab,
+  setMapMode,
+  setSpeed,
+  togglePause,
+  toMenu,
+} from './actions';
 import { sound } from './audio';
 import { DeclareWar } from './dialogs/DeclareWar';
 import { DemoEnd } from './dialogs/DemoEnd';
@@ -14,10 +24,11 @@ import { Offer, Peace } from './dialogs/Peace';
 import { LoadGame } from './dialogs/Saves';
 import { Settings } from './dialogs/Settings';
 import { TechScreen } from './dialogs/TechScreen';
-import { useGame } from './game';
+import { useGame, type CountryTab } from './game';
 import { HoverTooltip } from './hud/HoverTooltip';
 import { Hud } from './hud/Hud';
 import { MapModeBar } from './hud/MapModeBar';
+import { toggleOutliner } from './hud/Outliner';
 import { actionsFor, keyOf, type KeyAction } from './keys';
 import { settings } from './settings';
 import { isTyping } from './map/MapController';
@@ -54,6 +65,11 @@ export function GameRoot() {
         return;
       }
       if (e.key === 'Escape') {
+        // A place's menu closes first, and the game menu does not open behind it.
+        if (s.contextMenu) {
+          game.ui.set({ contextMenu: null });
+          return;
+        }
         if (s.modal === 'offer' || s.modal === 'fallen' || s.modal === 'event' || s.modal === 'end') return;
         // The settings go back to the screen they were opened from.
         if (s.modal === 'settings') game.ui.set({ modal: s.settingsBack });
@@ -66,14 +82,14 @@ export function GameRoot() {
       }
       if (s.phase === 'menu' || s.modal !== 'none') return;
       for (const action of actionsFor(keyOf(e))) {
-        if (runAction(action, s.phase === 'playing')) {
+        if (runAction(action, s.phase === 'playing', e.shiftKey)) {
           e.preventDefault();
           return;
         }
       }
     };
     /** Does what a key is bound to, if it can be done now. */
-    const runAction = (action: KeyAction, playing: boolean): boolean => {
+    const runAction = (action: KeyAction, playing: boolean, shift: boolean): boolean => {
       if (action.startsWith('mode:')) {
         setMapMode(game, action.slice(5) as MapMode);
         return true;
@@ -81,10 +97,16 @@ export function GameRoot() {
       if (!playing) return false;
       if (action === 'pause') togglePause(game);
       else if (action.startsWith('speed')) setSpeed(game, Number(action.slice(5)));
+      else if (action.startsWith('tab:')) openRealmTab(game, action.slice(4) as CountryTab, true);
+      else if (action === 'tech') game.ui.set({ modal: 'tech' });
       else if (action === 'ledger') game.ui.set({ modal: 'ledger', speed: 0 });
       else if (action === 'log') game.ui.set({ modal: 'log', speed: 0 });
+      else if (action === 'outliner') toggleOutliner();
       else if (action === 'help') game.ui.set({ modal: 'help', speed: 0 });
       else if (action === 'perfOverlay') settings.set({ perfOverlay: !settings.get().perfOverlay });
+      else if (action === 'capital') goToCapital(game);
+      else if (action === 'nextArmy') cycleArmies(game, shift ? -1 : 1);
+      else if (action === 'nextFleet') cycleFleets(game, shift ? -1 : 1);
       else return false;
       return true;
     };

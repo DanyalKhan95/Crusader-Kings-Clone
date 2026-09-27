@@ -266,6 +266,78 @@ test('keeps the news: the log, its search and kinds, and news that goes to the l
   expect(errors).toEqual([]);
 });
 
+test('answers a right-click with what can be done there, and keys for the realm and its armies', async ({ page }) => {
+  const errors = watchErrors(page);
+  await page.goto('/?debug');
+  await page.getByRole('button', { name: 'New Campaign' }).click({ timeout: 120_000 });
+  await page.getByRole('button', { name: 'Play as England' }).click();
+  await expect(page.locator('.date-long')).toHaveText('15th of September, 1066 AD');
+  /** Where a province is on screen now. */
+  const where = (name: string) =>
+    page.evaluate((name) => {
+      type R = { name: string; label: [number, number] };
+      type G = {
+        world: { region(id: number): R | undefined };
+        state: { provinces: unknown[] };
+        map: { camera: { mapToScreen(x: number, y: number): [number, number] } };
+      };
+      const g = (window as unknown as { game: G }).game;
+      let r: R | undefined;
+      for (let id = 1; id < g.state.provinces.length && !r; id++)
+        if (g.world.region(id)?.name === name) r = g.world.region(id);
+      const [x, y] = g.map.camera.mapToScreen(r!.label[0], r!.label[1]);
+      const box = document.querySelector('[data-testid="map"]')!.getBoundingClientRect();
+      return { x: box.left + x, y: box.top + y };
+    }, name);
+  /** Where a province is once the camera has stopped gliding. */
+  const at = async (name: string) => {
+    let last = await where(name);
+    for (;;) {
+      await page.waitForTimeout(250);
+      const now = await where(name);
+      if (Math.hypot(now.x - last.x, now.y - last.y) < 1) return now;
+      last = now;
+    }
+  };
+
+  // Abroad: a claim forged from the menu, then war for it.
+  let p = await at('Powys');
+  await page.mouse.click(p.x, p.y, { button: 'right' });
+  const menu = page.getByRole('menu', { name: 'Powys' });
+  await menu.getByRole('menuitem', { name: /^Forge a claim/ }).click();
+  await expect(page.locator('.notice')).toHaveText('Your chancellor begins to forge a claim on Powys.');
+  await expect(menu).toHaveCount(0);
+  p = await at('Powys');
+  await page.mouse.click(p.x, p.y, { button: 'right' });
+  await expect(menu).toContainText('Your chancellor is forging a claim');
+  await menu.getByRole('menuitem', { name: 'Declare war on Gwynedd' }).click();
+  await expect(page.getByRole('dialog', { name: 'War with Kingdom of Gwynedd' })).toBeVisible();
+  await page.keyboard.press('Escape');
+
+  // At home: a building from the menu's second page, found by the keys alone.
+  p = await at('London');
+  await page.mouse.click(p.x, p.y, { button: 'right' });
+  const home = page.getByRole('menu', { name: 'London' });
+  await home.getByRole('menuitem', { name: /^Build/ }).click();
+  await expect(home.getByRole('menuitem', { name: /^Back/ })).toBeFocused();
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('ArrowDown');
+  await expect(home.getByRole('menuitem', { name: /^Cleared fields/ })).toBeFocused();
+  await page.keyboard.press('Enter');
+  await expect(home).toHaveCount(0);
+  const outliner = page.getByRole('complementary', { name: 'Outliner' });
+  await expect(outliner).toContainText('Cleared fields');
+
+  // Keys: a tab of the realm, the armies in turn, the outliner folded away.
+  await page.keyboard.press('a');
+  await expect(page.getByRole('tab', { name: 'Army' })).toHaveAttribute('aria-selected', 'true');
+  await page.keyboard.press('z');
+  await expect(page.locator('.side-panel')).toHaveAttribute('aria-label', 'Army');
+  await page.keyboard.press('o');
+  await expect(outliner).toHaveCount(0);
+  expect(errors).toEqual([]);
+});
+
 test('makes friends: an alliance, the diplomacy map and a forged claim', async ({ page }) => {
   const errors = watchErrors(page);
   await page.goto('/?debug');

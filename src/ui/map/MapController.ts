@@ -26,8 +26,8 @@ export interface MapCallbacks {
   clickArmy(id: number): void;
   /** A fleet banner was clicked. */
   clickFleet(id: number): void;
-  /** Right-click (or long order tap) on a region. */
-  order(region: number): void;
+  /** A right-click, or a long press on a touch screen, on a region; client coordinates for a menu. */
+  secondary(region: number, clientX: number, clientY: number): void;
 }
 
 /** Screen edges (CSS px) covered by panels; framing centres targets in what is left. */
@@ -51,6 +51,7 @@ interface Flight {
 }
 
 const CLICK_SLOP = 6; // CSS px a press may travel and still count as a click
+const LONG_PRESS_MS = 500; // a touch held this long, without moving, is a right-click
 const PAN: Partial<Record<KeyAction, [number, number]>> = {
   panLeft: [-1, 0],
   panRight: [1, 0],
@@ -99,6 +100,8 @@ export class MapController {
   private pointers = new Map<number, { x: number; y: number }>();
   private press: { x: number; y: number; moved: boolean } | null = null;
   private pinch = 0;
+  private longPress = 0;
+  private lastPointerType = 'mouse';
   private ro: ResizeObserver;
   private disposed = false;
   private insets: Insets = { top: 0, right: 0, bottom: 0, left: 0 };
@@ -206,6 +209,7 @@ export class MapController {
   dispose() {
     this.disposed = true;
     cancelAnimationFrame(this.raf);
+    this.cancelLongPress();
     this.ro.disconnect();
     const h = this.host;
     h.removeEventListener('pointerdown', this.onPointerDown);
@@ -542,19 +546,40 @@ export class MapController {
   }
 
   private onPointerDown = (e: PointerEvent) => {
+    this.lastPointerType = e.pointerType;
     if (e.button !== 0 && e.pointerType === 'mouse') return;
     if (e.pointerType === 'mouse' && e.ctrlKey) return; // macOS secondary click
     this.host.setPointerCapture(e.pointerId);
     const [x, y] = this.local(e);
     this.pointers.set(e.pointerId, { x, y });
-    if (this.pointers.size === 1) this.press = { x, y, moved: false };
-    else {
+    if (this.pointers.size === 1) {
+      this.press = { x, y, moved: false };
+      if (e.pointerType !== 'mouse') this.armLongPress(e.clientX, e.clientY);
+    } else {
       this.press = null;
+      this.cancelLongPress();
       this.pinch = this.pinchSpan();
     }
     this.flight = null;
     this.zoomTarget = 0;
   };
+
+  /** A finger held still on the map opens what a right-click would. */
+  private armLongPress(clientX: number, clientY: number) {
+    this.cancelLongPress();
+    this.longPress = window.setTimeout(() => {
+      this.longPress = 0;
+      const press = this.press;
+      if (!press || press.moved || this.pointers.size !== 1) return;
+      this.press = null; // the lift that follows is not a click
+      this.cb.secondary(this.pickAt(press.x, press.y), clientX, clientY);
+    }, LONG_PRESS_MS);
+  }
+
+  private cancelLongPress() {
+    if (this.longPress) window.clearTimeout(this.longPress);
+    this.longPress = 0;
+  }
 
   private pinchSpan(): number {
     const [a, b] = [...this.pointers.values()];
@@ -584,7 +609,10 @@ export class MapController {
       return;
     }
     if (this.press) {
-      if (!this.press.moved && Math.hypot(x - this.press.x, y - this.press.y) > CLICK_SLOP) this.press.moved = true;
+      if (!this.press.moved && Math.hypot(x - this.press.x, y - this.press.y) > CLICK_SLOP) {
+        this.press.moved = true;
+        this.cancelLongPress();
+      }
       if (this.press.moved) {
         this.camera.panBy(dx, dy);
         this.host.classList.add('dragging');
@@ -602,6 +630,7 @@ export class MapController {
 
   private onPointerUp = (e: PointerEvent) => {
     if (!this.pointers.has(e.pointerId)) return;
+    this.cancelLongPress();
     this.pointers.delete(e.pointerId);
     if (this.host.hasPointerCapture(e.pointerId)) this.host.releasePointerCapture(e.pointerId);
     this.host.classList.remove('dragging');
@@ -624,8 +653,10 @@ export class MapController {
 
   private onContextMenu = (e: MouseEvent) => {
     e.preventDefault();
+    // Touch screens have the long press, and some browsers send this after it as well.
+    if (((e as PointerEvent).pointerType || this.lastPointerType) === 'touch') return;
     const [x, y] = this.local(e);
-    this.cb.order(this.pickAt(x, y));
+    this.cb.secondary(this.pickAt(x, y), e.clientX, e.clientY);
   };
 
   private onPointerLeave = (e: PointerEvent) => {

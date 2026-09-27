@@ -77,12 +77,18 @@ The plan, what each milestone brought and the known gaps are in [docs/ROADMAP.md
 | Pan               | drag                                     | arrow keys                  |
 | Zoom              | wheel, pinch, double-click               | `+` / `-`                   |
 | Inspect, treat    | click a province, army or coat of arms   |                             |
+| What to do there  | right-click a place, or hold a finger    |                             |
 | March             | select an army, then right-click a place |                             |
 | Sail              | select a fleet, then right-click a sea   |                             |
 | Pause, speed      | buttons at the top right                 | `Space`, `1`–`5`            |
 | Map modes         | buttons at the bottom right              | `Q` `W` `E` `R` `T` `Y` `U` |
+| Your realm's tabs | coat of arms at the top left             | `I` `G` `A` `C` `J` `F` `D` |
+| Technology        | the era at the top                       | `K`                         |
 | Ledger of nations | scroll at the top right                  | `L`                         |
 | Log of news       | quill at the top right                   | `N`                         |
+| Outliner          | on the right                             | `O`                         |
+| Capital           |                                          | `Home`                      |
+| Next army, fleet  | the outliner                             | `Z`, `X` (`Shift`: back)    |
 | How to play       | game menu                                | `H`                         |
 | Performance       | settings                                 | `F3`                        |
 | Close panel, menu |                                          | `Esc`                       |

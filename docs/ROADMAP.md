@@ -407,10 +407,13 @@ after the content they show has settled.
         under the quill beside the date, or `N`); a line that names a place goes there
   - [x] for each kind, a setting: a pop-up, a pause, the log only, or nothing. This replaces the
         fixed rule that important news pauses; Auto, the default, keeps that rule.
-- [ ] Context menus: right-clicking a province or realm, with no army or fleet selected, lists its
-      actions (declare war, forge a claim, send a gift, build, recruit).
-- [ ] Hotkeys, all rebindable: every screen, cycling armies and fleets, the capital, and the common
-      actions.
+- [x] Context menus: right-clicking a province or realm, with no army or fleet selected, lists its
+      actions (declare war, forge a claim, send a gift, build, recruit). Also missions and schools,
+      treaties, spies, integration and colonies; a long press does it on touch screens, and what
+      cannot be done says why.
+- [x] Hotkeys, all rebindable: every screen, cycling armies and fleets, the capital, and the common
+      actions (the realm's tabs `I G A C J F D`, technology `K`, the outliner `O`, the capital
+      `Home`, the next army `Z` and fleet `X`, with Shift the one before).
 - [ ] Less clutter on the map (by 1340, hundreds of fleet markers cover Europe):
   - [ ] layers for your own, allied, enemy and other armies and fleets
   - [ ] at far zoom, one marker per realm and region

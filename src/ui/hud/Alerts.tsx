@@ -12,7 +12,7 @@ import { armySize, isInRealm, topLiege } from '../../sim/queries';
 import { COUNCIL_SEATS, type Country, type PeaceTerms, type War } from '../../sim/types';
 import { allowedTerms, canDeclare, peaceAcceptance, winnerSide } from '../../sim/war';
 import { formatMen } from '../../render/units';
-import { flyToProvince, selectArmy, selectCountry, selectWar } from '../actions';
+import { flyToProvince, openDeclareWar, openRealmTab, selectArmy, selectWar } from '../actions';
 import { useGame, type CountryTab, type Game } from '../game';
 import { Icon } from '../Icon';
 import { useStore } from '../store';
@@ -30,10 +30,7 @@ export interface Alert {
   onClick: () => void;
 }
 
-const openTab = (game: Game, tab: CountryTab) => {
-  selectCountry(game, game.state.player);
-  game.ui.set({ countryTab: tab });
-};
+const openTab = (game: Game, tab: CountryTab) => openRealmTab(game, tab);
 
 /** The terms that would end a war as it was declared: the goal, and no more. */
 function goalTerms(game: Game, war: War): PeaceTerms | null {
@@ -198,8 +195,7 @@ export function alertsFor(game: Game): Alert[] {
       lines: ready.map((id) => `${world.region(id).name}, held by ${state.countries[state.provinces[id].owner]?.name}`),
       tone: 'good',
       action: 'Declare war for it',
-      onClick: () =>
-        game.ui.set({ modal: 'declare', dialogCountry: topLiege(state, state.provinces[ready[0]].owner), speed: 0 }),
+      onClick: () => openDeclareWar(game, topLiege(state, state.provinces[ready[0]].owner), ready[0]),
     });
 
   // Laws that may change again.

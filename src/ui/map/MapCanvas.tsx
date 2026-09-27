@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import type { UnitStyle } from '../../render/units';
 import { latToY, lonToX } from '../../shared/projection';
-import { orderArmy, pickRealmAt, selectArmy, selectFleet, selectProvince } from '../actions';
+import { orderArmy, pickRealmAt, secondaryClick, selectArmy, selectFleet, selectProvince } from '../actions';
 import { emblemKey, emblemSvg } from '../CoatOfArms';
 import { useGame, type Game, type UIState } from '../game';
 import { attachRunner } from '../runner';
@@ -93,9 +93,7 @@ export function MapCanvas({ onError }: { onError: (message: string) => void }) {
           clickFleet: (id) => {
             if (game.ui.get().phase === 'playing') selectFleet(game, id);
           },
-          order: (id) => {
-            if (game.ui.get().phase === 'playing') orderArmy(game, id);
-          },
+          secondary: (id, x, y) => secondaryClick(game, id, x, y),
         },
       );
     } catch (e) {

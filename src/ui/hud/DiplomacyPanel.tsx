@@ -29,7 +29,7 @@ import { DEMAND_INFO } from '../../sim/revolts';
 import type { Country, PactKind } from '../../sim/types';
 import { scoreFor } from '../../sim/war';
 import { formatMen } from '../../render/units';
-import { run, selectCountry, selectWar } from '../actions';
+import { openDeclareWar, run, selectCountry, selectWar } from '../actions';
 import { CoatOfArms } from '../CoatOfArms';
 import { formatDate } from '../format';
 import { useGame } from '../game';
@@ -242,10 +242,7 @@ export function ForeignDiplomacy({ c }: { c: Country }) {
           </button>
         )}
         {isLord && (
-          <button
-            className="btn small"
-            onClick={() => game.ui.set({ modal: 'declare', dialogCountry: c.index, speed: 0 })}
-          >
+          <button className="btn small" onClick={() => openDeclareWar(game, c.index)}>
             <Icon name="breaking-chain" /> Fight for independence
           </button>
         )}
@@ -294,7 +291,7 @@ export function ForeignDiplomacy({ c }: { c: Country }) {
         <button
           className="btn primary danger"
           disabled={hasTruce(state, myTop, top)}
-          onClick={() => game.ui.set({ modal: 'declare', dialogCountry: c.index, speed: 0 })}
+          onClick={() => openDeclareWar(game, c.index)}
         >
           <Icon name="crossed-swords" /> Declare war
         </button>

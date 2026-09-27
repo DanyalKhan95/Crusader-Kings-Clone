@@ -33,6 +33,14 @@ export type Modal =
   | 'demoEnd';
 export type SettingsSection = 'interface' | 'graphics' | 'game' | 'news' | 'sound' | 'keys';
 
+/** A menu of what can be done with a place, opened by a right-click or a long press. */
+export interface ContextMenuAt {
+  region: number;
+  /** where it opened, in viewport pixels */
+  x: number;
+  y: number;
+}
+
 export interface UIState {
   phase: Phase;
   /** Terrain and fonts are loaded and the first frame is drawn. */
@@ -56,8 +64,9 @@ export interface UIState {
   selectedArmy: number;
   selectedFleet: number;
   selectedWar: number;
-  /** the country a war declaration is aimed at */
+  /** the country a war declaration is aimed at, and the province it would be fought for (0 = any) */
   dialogCountry: number;
+  dialogGoal: number;
   /** the next map click orders the selected army or fleet there (touch screens) */
   orderMode: boolean;
   /** message ids shown as toasts */
@@ -71,6 +80,7 @@ export interface UIState {
   /** the section the settings open at, and the screen they go back to when closed */
   settingsSection: SettingsSection;
   settingsBack: Modal;
+  contextMenu: ContextMenuAt | null;
 }
 
 export interface Game {
@@ -111,6 +121,7 @@ export function createGame(world: StaticWorld, scenario: ScenarioData, state: Ga
     selectedFleet: 0,
     selectedWar: 0,
     dialogCountry: 0,
+    dialogGoal: 0,
     orderMode: false,
     toasts: [],
     notice: '',
@@ -118,6 +129,7 @@ export function createGame(world: StaticWorld, scenario: ScenarioData, state: Ga
     hiddenAlerts: [],
     settingsSection: 'interface',
     settingsBack: 'none',
+    contextMenu: null,
   });
   return {
     world,

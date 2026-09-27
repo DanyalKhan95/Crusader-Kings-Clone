@@ -57,8 +57,10 @@ const TOPICS: Topic[] = [
         <p>
           Drag the map to move it and turn the wheel to zoom, or use <Key action="panLeft" /> <Key action="panRight" />{' '}
           <Key action="panUp" /> <Key action="panDown" /> and <Key action="zoomIn" /> <Key action="zoomOut" />. Click a
-          province or a realm to see it in the panel. Map modes show the world by realm, country, terrain, development,
-          people, faith or, from your point of view, friends and foes. Every key can be changed in the settings.
+          province or a realm to see it in the panel; <strong>right-click</strong> it (or hold a finger on it) for what
+          you can do there: build and recruit at home, forge a claim, send a gift or declare war abroad, found a colony
+          in empty land. Map modes show the world by realm, country, terrain, development, people, faith or, from your
+          point of view, friends and foes. Every key can be changed in the settings.
         </p>
         <p>
           Beyond the lands your people know lies unknown country, drawn as bare parchment. Armies and fleets reveal what
@@ -232,6 +234,8 @@ function Key({ action }: { action: KeyAction }) {
   return k ? <kbd>{k}</kbd> : <kbd className="unbound">none</kbd>;
 }
 
+const REALM_TABS = ['realm', 'treasury', 'military', 'court', 'laws', 'faith', 'diplomacy'] as const;
+
 /** The key table, from the bindings as they are now. */
 function keyRows(): [string, string][] {
   const keys = (actions: KeyAction[]) =>
@@ -246,12 +250,17 @@ function keyRows(): [string, string][] {
       keys(MAP_MODES.map((m) => `mode:${m.id}` as const)),
       `Map modes: ${MAP_MODES.map((m) => m.label.toLowerCase()).join(', ')}`,
     ],
+    [keys(REALM_TABS.map((t) => `tab:${t}` as const)), 'Your realm, treasury, army, court, laws, faith and diplomacy'],
+    [keys(['tech']), 'Technology'],
     [keys(['ledger']), 'The ledger of nations'],
     [keys(['log']), 'The log of news'],
+    [keys(['outliner']), 'Show or fold the outliner'],
     [keys(['help']), 'How to play'],
     ['Esc', 'Close a window or panel; the game menu'],
+    [keys(['capital']), 'Go to the capital'],
+    [keys(['nextArmy', 'nextFleet']), 'The next army, the next fleet; with Shift, the one before'],
     [keys(['panLeft', 'panRight', 'panUp', 'panDown', 'zoomIn', 'zoomOut']), 'Move and zoom the map'],
-    ['Right-click', 'March the selected army or sail the selected fleet'],
+    ['Right-click', 'March the selected army or sail the selected fleet; with neither, what can be done there'],
     ['Double-click', 'Zoom in on a place'],
   ];
 }

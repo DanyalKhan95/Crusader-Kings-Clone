@@ -7,7 +7,7 @@ import { armyById, countryByTag, realmProvinces } from '../sim/queries';
 import { createGameState } from '../sim/setup';
 import type { GameState } from '../sim/types';
 import { sound } from './audio';
-import type { Game, SettingsSection } from './game';
+import type { CountryTab, Game, SettingsSection } from './game';
 import { tourSeen } from './tour';
 
 export function selectProvince(game: Game, id: number) {
@@ -37,6 +37,76 @@ export function selectWar(game: Game, id: number) {
 
 export function closePanel(game: Game) {
   game.ui.set({ panel: 'none', selectedProvince: 0, selectedArmy: 0, selectedFleet: 0, orderMode: false });
+}
+
+/** Opens a tab of the player's realm; with `toggle`, the same tab again closes the panel. */
+export function openRealmTab(game: Game, tab: CountryTab, toggle = false) {
+  const { panel, selectedCountry, countryTab } = game.ui.get();
+  const player = game.state.player;
+  if (toggle && panel === 'country' && selectedCountry === player && countryTab === tab) closePanel(game);
+  else game.ui.set({ panel: 'country', selectedCountry: player, countryTab: tab });
+}
+
+/** The next of the player's armies (or the one before), selected and in view. */
+export function cycleArmies(game: Game, step: 1 | -1) {
+  const { state } = game;
+  const list = state.armies.filter((a) => a.owner === state.player);
+  if (!list.length) return notice(game, 'No army of yours is in the field.');
+  const { panel, selectedArmy } = game.ui.get();
+  const next =
+    list[
+      following(
+        list.findIndex((a) => panel === 'army' && a.id === selectedArmy),
+        step,
+        list.length,
+      )
+    ];
+  selectArmy(game, next.id);
+  flyToProvince(game, next.location, 1.2);
+}
+
+/** The next of the player's fleets (or the one before), selected and in view. */
+export function cycleFleets(game: Game, step: 1 | -1) {
+  const { state } = game;
+  const list = state.fleets.filter((f) => f.owner === state.player);
+  if (!list.length) return notice(game, 'You have no fleet.');
+  const { panel, selectedFleet } = game.ui.get();
+  const next =
+    list[
+      following(
+        list.findIndex((f) => panel === 'fleet' && f.id === selectedFleet),
+        step,
+        list.length,
+      )
+    ];
+  selectFleet(game, next.id);
+  flyToProvince(game, next.location, 1.2);
+}
+
+/** The index after `at` in a ring of `n` (or before it); from none, the first or the last. */
+function following(at: number, step: 1 | -1, n: number): number {
+  if (at < 0) return step > 0 ? 0 : n - 1;
+  return (at + step + n) % n;
+}
+
+/** Opens the declaration of war on a realm, fought for a province if one is given and can be. */
+export function openDeclareWar(game: Game, target: number, goal = 0) {
+  game.ui.set({ modal: 'declare', dialogCountry: target, dialogGoal: goal, speed: 0, contextMenu: null });
+}
+
+/**
+ * A right-click on the map, or a long press on a touch screen: the selected army or fleet of the
+ * player's marches or sails there, and otherwise the place's menu opens.
+ */
+export function secondaryClick(game: Game, region: number, x: number, y: number) {
+  const { phase, panel, selectedArmy, selectedFleet } = game.ui.get();
+  if (phase !== 'playing') return;
+  const { state } = game;
+  const orders =
+    (panel === 'army' && armyById(state, selectedArmy)?.owner === state.player) ||
+    (panel === 'fleet' && fleetById(state, selectedFleet)?.owner === state.player);
+  if (orders) orderArmy(game, region);
+  else game.ui.set({ contextMenu: region ? { region, x, y } : null });
 }
 
 export function setMapMode(game: Game, mode: MapMode) {
@@ -100,6 +170,12 @@ export function togglePause(game: Game) {
 }
 
 // ── Camera ────────────────────────────────────────────────────────
+
+/** Flies to the player's capital. */
+export function goToCapital(game: Game) {
+  const capital = game.state.countries[game.state.player]?.capital;
+  if (capital) flyToProvince(game, capital, 1.2);
+}
 
 /** Frames a country together with its vassals. */
 export function flyToRealm(game: Game, index: number, minZoom = 0.3, maxZoom = 1.2) {

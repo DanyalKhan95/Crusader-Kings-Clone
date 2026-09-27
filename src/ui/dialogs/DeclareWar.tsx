@@ -24,6 +24,8 @@ const ANSWER: Record<CallPreview['answer'], string> = {
 export function DeclareWar() {
   const game = useGame();
   const target = useStore(game.ui, (s) => s.dialogCountry);
+  // A province the war was asked to be fought for, from a right-click or an alert.
+  const wanted = useStore(game.ui, (s) => s.dialogGoal);
   const state = game.state;
   const player = state.player;
   const me = state.countries[player];
@@ -45,9 +47,15 @@ export function DeclareWar() {
     if (coalitionAgainst(state, defender)?.members.includes(player)) options.push('coalition');
     options.push('conquest');
   }
-  const [cb, setCb] = useState<CasusBelli>(options[0]);
-  const [goal, setGoal] = useState<number>(claims[0] ?? 0);
-  const [holyGoal, setHolyGoal] = useState<number>(holy[0] ?? 0);
+  const [cb, setCb] = useState<CasusBelli>(
+    options.includes('claim') && claims.includes(wanted)
+      ? 'claim'
+      : options.includes('holy') && holy.includes(wanted)
+        ? 'holy'
+        : options[0],
+  );
+  const [goal, setGoal] = useState<number>(claims.includes(wanted) ? wanted : (claims[0] ?? 0));
+  const [holyGoal, setHolyGoal] = useState<number>(holy.includes(wanted) ? wanted : (holy[0] ?? 0));
   if (!d || !me) return null;
   const goalFor = cb === 'claim' ? goal : cb === 'holy' ? holyGoal : cb === 'throne' ? defender : 0;
   const check = canDeclare(state, game.world, player, target, cb, goalFor);

@@ -4,6 +4,7 @@
  * 'ArrowUp', 'F1'), so a binding reads as the key does. Esc always closes and goes back.
  */
 import { MAP_MODES, type MapMode } from '../game/mapModes';
+import type { CountryTab } from './game';
 import { settings } from './settings';
 
 export type KeyAction =
@@ -13,11 +14,17 @@ export type KeyAction =
   | 'speed3'
   | 'speed4'
   | 'speed5'
+  | `tab:${CountryTab}`
+  | 'tech'
   | 'ledger'
   | 'log'
+  | 'outliner'
   | 'help'
   | 'perfOverlay'
   | `mode:${MapMode}`
+  | 'capital'
+  | 'nextArmy'
+  | 'nextFleet'
   | 'panLeft'
   | 'panRight'
   | 'panUp'
@@ -25,7 +32,19 @@ export type KeyAction =
   | 'zoomIn'
   | 'zoomOut';
 
-export type KeyGroup = 'Time' | 'Screens' | 'Map modes' | 'Camera';
+export type KeyGroup = 'Time' | 'Your realm' | 'Screens' | 'Map modes' | 'The map';
+export const KEY_GROUPS: KeyGroup[] = ['Time', 'Your realm', 'Screens', 'Map modes', 'The map'];
+
+/** The tabs of the player's realm, with their keys: the letters of their names where they are free. */
+const TAB_KEYS: { tab: CountryTab; label: string; key: string }[] = [
+  { tab: 'realm', label: 'Your realm', key: 'I' },
+  { tab: 'treasury', label: 'The treasury', key: 'G' },
+  { tab: 'military', label: 'The army', key: 'A' },
+  { tab: 'court', label: 'The court', key: 'C' },
+  { tab: 'laws', label: 'Laws and estates', key: 'J' },
+  { tab: 'faith', label: 'Faith', key: 'F' },
+  { tab: 'diplomacy', label: 'Diplomacy', key: 'D' },
+];
 
 export interface KeyActionInfo {
   id: KeyAction;
@@ -43,8 +62,11 @@ export const KEY_ACTIONS: KeyActionInfo[] = [
     group: 'Time',
     keys: [String(n)],
   })),
+  ...TAB_KEYS.map((t): KeyActionInfo => ({ id: `tab:${t.tab}`, label: t.label, group: 'Your realm', keys: [t.key] })),
+  { id: 'tech', label: 'Technology', group: 'Screens', keys: ['K'] },
   { id: 'ledger', label: 'The ledger of nations', group: 'Screens', keys: ['L'] },
   { id: 'log', label: 'The log of news', group: 'Screens', keys: ['N'] },
+  { id: 'outliner', label: 'Show or fold the outliner', group: 'Screens', keys: ['O'] },
   { id: 'help', label: 'How to play', group: 'Screens', keys: ['H', 'F1'] },
   { id: 'perfOverlay', label: 'Performance overlay', group: 'Screens', keys: ['F3'] },
   ...MAP_MODES.map((m): KeyActionInfo => ({
@@ -53,12 +75,15 @@ export const KEY_ACTIONS: KeyActionInfo[] = [
     group: 'Map modes',
     keys: [m.key],
   })),
-  { id: 'panLeft', label: 'Move the map left', group: 'Camera', keys: ['ArrowLeft'] },
-  { id: 'panRight', label: 'Move the map right', group: 'Camera', keys: ['ArrowRight'] },
-  { id: 'panUp', label: 'Move the map up', group: 'Camera', keys: ['ArrowUp'] },
-  { id: 'panDown', label: 'Move the map down', group: 'Camera', keys: ['ArrowDown'] },
-  { id: 'zoomIn', label: 'Zoom in', group: 'Camera', keys: ['+', '='] },
-  { id: 'zoomOut', label: 'Zoom out', group: 'Camera', keys: ['-', '_'] },
+  { id: 'capital', label: 'Go to the capital', group: 'The map', keys: ['Home'] },
+  { id: 'nextArmy', label: 'The next army (with Shift, the one before)', group: 'The map', keys: ['Z'] },
+  { id: 'nextFleet', label: 'The next fleet (with Shift, the one before)', group: 'The map', keys: ['X'] },
+  { id: 'panLeft', label: 'Move the map left', group: 'The map', keys: ['ArrowLeft'] },
+  { id: 'panRight', label: 'Move the map right', group: 'The map', keys: ['ArrowRight'] },
+  { id: 'panUp', label: 'Move the map up', group: 'The map', keys: ['ArrowUp'] },
+  { id: 'panDown', label: 'Move the map down', group: 'The map', keys: ['ArrowDown'] },
+  { id: 'zoomIn', label: 'Zoom in', group: 'The map', keys: ['+', '='] },
+  { id: 'zoomOut', label: 'Zoom out', group: 'The map', keys: ['-', '_'] },
 ];
 
 const INFO = new Map(KEY_ACTIONS.map((a) => [a.id, a]));
