@@ -40,6 +40,7 @@ import {
 import { useStore } from '../store';
 import { Modal } from './Modal';
 import { SavesFolderButton } from './Saves';
+import { resetHints } from '../hints';
 
 const SECTIONS: { id: SettingsSection; title: string; icon: IconName }[] = [
   { id: 'interface', title: 'Interface', icon: 'settings-knobs' },
@@ -175,6 +176,15 @@ function InterfaceSection() {
           options={TEXT_SCALES.map((v) => ({ value: v, label: percent(v) }))}
           onChange={(textScale) => settings.set({ textScale })}
         />
+      </Row>
+      <Row
+        name="Hints"
+        blurb="A short note the first time a screen or a rule of the game comes up, with a way into the encyclopedia."
+      >
+        <Toggle label={s.hints ? 'Shown' : 'Hidden'} checked={s.hints} onChange={(hints) => settings.set({ hints })} />
+        <button className="btn small ghost" onClick={resetHints}>
+          Show them all again
+        </button>
       </Row>
     </>
   );

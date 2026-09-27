@@ -65,11 +65,14 @@ import { chance, pick, random } from './rng';
 import {
   ESTATES,
   type Army,
+  type BuildingType,
   type Country,
+  type CouncilSeat,
   type EstateId,
   type GameState,
   type PactKind,
   type PeaceTerms,
+  type TaskId,
   type UnitType,
   type War,
 } from './types';
@@ -148,41 +151,47 @@ export function monthlyAI(state: GameState, world: SimWorld, c: Country) {
 
 // ── Politics ──────────────────────────────────────────────────────
 
+/** The council's tasks that suit the moment: the AI sets them, and the player's councillors recommend them. */
+export function councilPlan(state: GameState, c: Country): Record<CouncilSeat, TaskId> {
+  const fighting = warsOf(state, c.index).length > 0;
+  const d = diversity(state, c);
+  const rich = c.gold > Math.max(200, c.lastBalance * 12);
+  const unrest = ESTATES.some((e) => revoltRisk(state, c, e) > 0) || state.factions.some((f) => f.realm === c.index);
+  return {
+    chancellor: c.fabricating ? 'claims' : fighting ? 'negotiate' : 'embassies',
+    marshal: fighting ? 'drill' : 'levies',
+    steward: !fighting && d.foreign >= 0.2 && c.lastBalance > 0 ? 'assimilate' : rich ? 'develop' : 'taxes',
+    chaplain:
+      c.legitimacy < 40
+        ? 'legitimacy'
+        : c.stability < 1
+          ? 'stability'
+          : d.sister + d.heathen > 0.02
+            ? 'convert'
+            : c.legitimacy < 60
+              ? 'legitimacy'
+              : 'stability',
+    spymaster: unrest ? (fighting ? 'sieges' : 'watch') : fighting ? 'sieges' : c.spyTarget ? 'network' : 'watch',
+  };
+}
+
+/** An estate close to revolt that a privilege would calm. */
+export function estateOnTheBrink(state: GameState, c: Country): EstateId | null {
+  for (const e of ESTATES) if (!c.estates[e].privileged && revoltRisk(state, c, e) > 0) return e;
+  return null;
+}
+
 function politicsAI(state: GameState, c: Country) {
   const fighting = warsOf(state, c.index).length > 0;
   const loyal = (e: EstateId) => estateLoyalty(state, c, e).total;
-  // Council tasks suited to the moment.
-  c.tasks.chancellor = c.fabricating ? 'claims' : fighting ? 'negotiate' : 'embassies';
-  c.tasks.marshal = fighting ? 'drill' : 'levies';
+  Object.assign(c.tasks, councilPlan(state, c));
   const d = diversity(state, c);
-  const rich = c.gold > Math.max(200, c.lastBalance * 12);
-  c.tasks.steward = !fighting && d.foreign >= 0.2 && c.lastBalance > 0 ? 'assimilate' : rich ? 'develop' : 'taxes';
-  c.tasks.chaplain =
-    c.legitimacy < 40
-      ? 'legitimacy'
-      : c.stability < 1
-        ? 'stability'
-        : d.sister + d.heathen > 0.02
-          ? 'convert'
-          : c.legitimacy < 60
-            ? 'legitimacy'
-            : 'stability';
-  const unrest = ESTATES.some((e) => revoltRisk(state, c, e) > 0) || state.factions.some((f) => f.realm === c.index);
-  c.tasks.spymaster = unrest
-    ? fighting
-      ? 'sieges'
-      : 'watch'
-    : fighting
-      ? 'sieges'
-      : c.spyTarget
-        ? 'network'
-        : 'watch';
   // A privilege to calm an estate on the brink.
-  for (const e of ESTATES)
-    if (!c.estates[e].privileged && revoltRisk(state, c, e) > 0) {
-      grantPrivilege(state, c, e);
-      return;
-    }
+  const brink = estateOnTheBrink(state, c);
+  if (brink) {
+    grantPrivilege(state, c, brink);
+    return;
+  }
   if (lawCooldown(state, c) > 0 || !chance(state, 0.1)) return;
   const commons = loyal('commons'),
     burghers = loyal('burghers'),
@@ -250,14 +259,19 @@ function techAI(state: GameState, c: Country) {
   if (choice) reform(state, c, choice[0]);
 }
 
+/** A great people of the realm (a fifth of it) worth accepting, when the crown can afford the legitimacy. */
+export function cultureToAccept(state: GameState, c: Country): string | null {
+  for (const { culture, share } of cultureShares(state, c))
+    if (share >= 0.2 && c.legitimacy >= 50 && canAcceptCulture(state, c, culture).ok) return culture;
+  return null;
+}
+
 /** Great peoples of the realm are accepted; a pagan crown may take up the faith of a strong neighbour. */
 function faithAI(state: GameState, world: SimWorld, c: Country) {
-  if (chance(state, 0.05))
-    for (const { culture, share } of cultureShares(state, c))
-      if (share >= 0.2 && c.legitimacy >= 50 && canAcceptCulture(state, c, culture).ok) {
-        acceptCulture(state, c, culture);
-        break;
-      }
+  if (chance(state, 0.05)) {
+    const culture = cultureToAccept(state, c);
+    if (culture) acceptCulture(state, c, culture);
+  }
   if (!chance(state, 0.0015)) return;
   const options = faithsToAdopt(state, world, c);
   if (!options.length) return;
@@ -279,9 +293,8 @@ function economy(state: GameState, world: SimWorld, c: Country) {
   // Pay debts first.
   for (let i = c.loans.length - 1; i >= 0; i--) if (c.gold > c.loans[i].amount * 1.5) repayLoan(c, i);
   if (c.loans.length) return;
-  const reserve = Math.max(30, monthly * 3);
-  // Gold beyond any need: the realm keeps more soldiers, and puts the rest into the land.
-  const floor = Math.max(reserve * 3, monthly * 24);
+  // Gold beyond the floor is beyond any need: the realm keeps more soldiers, and puts the rest into the land.
+  const { reserve, floor } = treasuryMarks(monthly);
   // Keep some men-at-arms: their upkeep at home up to a quarter of income, or two fifths for a rich realm.
   const share = c.gold > floor ? 0.4 : 0.25;
   const era = militaryEra(c);
@@ -301,25 +314,9 @@ function economy(state: GameState, world: SimWorld, c: Country) {
   if (state.day < c.ai.nextBuild) return;
   const own = provincesOf(state, c.index);
   const projects = 1 + Math.floor(own.length / 20);
-  // Learning pays less with every school already built.
-  const schools = own.reduce((n, id) => n + (state.provinces[id].buildings.university ?? 0), 0);
   // What could be built and what each is worth, worked out once: each project changes only the gold
   // left and the province where it goes up.
-  const options: { id: number; type: (typeof BUILDING_ORDER)[number]; value: number; cost: number }[] = [];
-  if (c.gold >= reserve + 50)
-    for (const id of own) {
-      const p = state.provinces[id];
-      for (const type of BUILDING_ORDER) {
-        const check = canBuild(state, world, c.index, id, type);
-        if (!check.ok || c.gold - check.cost < reserve) continue;
-        const e = BUILDINGS[type].effects;
-        let value = p.dev * ((e.tax ?? 0) * 1.2 + (e.levy ?? 0) * 0.6 + (e.growth ?? 0) * 0.3);
-        if (e.research) value += (e.research * 10) / Math.sqrt(1 + schools) + p.dev * 0.05;
-        if (e.fort) value = id === c.capital || p.dev >= 10 ? 1.5 + p.dev * 0.1 : 0.3;
-        value /= check.cost;
-        options.push({ id, type, value, cost: check.cost });
-      }
-    }
+  const options = c.gold >= reserve + 50 ? buildingOptions(state, world, c, reserve) : [];
   const building = new Set<number>();
   for (let n = 0; n < projects && c.gold >= reserve + 50; n++) {
     let best: (typeof options)[number] | null = null;
@@ -336,20 +333,59 @@ function economy(state: GameState, world: SimWorld, c: Country) {
   if (c.gold > floor) invest(state, world, c, own, floor);
 }
 
+export interface BuildOption {
+  id: number;
+  type: BuildingType;
+  /** worth for each gold spent */
+  value: number;
+  cost: number;
+}
+
+/** What the realm could build now, keeping `reserve` gold, and what each is worth for its cost. */
+export function buildingOptions(state: GameState, world: SimWorld, c: Country, reserve: number): BuildOption[] {
+  const own = provincesOf(state, c.index);
+  // Learning pays less with every school already built.
+  const schools = own.reduce((n, id) => n + (state.provinces[id].buildings.university ?? 0), 0);
+  const options: BuildOption[] = [];
+  for (const id of own) {
+    const p = state.provinces[id];
+    for (const type of BUILDING_ORDER) {
+      const check = canBuild(state, world, c.index, id, type);
+      if (!check.ok || c.gold - check.cost < reserve) continue;
+      const e = BUILDINGS[type].effects;
+      let value = p.dev * ((e.tax ?? 0) * 1.2 + (e.levy ?? 0) * 0.6 + (e.growth ?? 0) * 0.3);
+      if (e.research) value += (e.research * 10) / Math.sqrt(1 + schools) + p.dev * 0.05;
+      if (e.fort) value = id === c.capital || p.dev >= 10 ? 1.5 + p.dev * 0.1 : 0.3;
+      value /= check.cost;
+      options.push({ id, type, value, cost: check.cost });
+    }
+  }
+  return options;
+}
+
+/** A province's worth to develop, for each gold a point costs (0 where it cannot be developed). */
+export function developOption(state: GameState, world: SimWorld, c: Country, id: number) {
+  const check = canDevelop(state, world, c.index, id);
+  if (!check.ok) return { id, value: 0, cost: Infinity };
+  const p = state.provinces[id];
+  return {
+    id,
+    value: (1 + buildingEffect(p, 'tax') + buildingEffect(p, 'levy') * 0.5) / check.cost,
+    cost: check.cost,
+  };
+}
+
+/** Gold a realm keeps against a bad month, and the treasury beyond which gold is better spent. */
+export function treasuryMarks(monthlyIncome: number): { reserve: number; floor: number } {
+  const reserve = Math.max(30, monthlyIncome * 3);
+  return { reserve, floor: Math.max(reserve * 3, monthlyIncome * 24) };
+}
+
 /** Puts spare gold into developing the realm's own provinces, a few points a month. */
 function invest(state: GameState, world: SimWorld, c: Country, own: number[], floor: number) {
   const points = 1 + Math.floor(own.length / 8);
   // Each province's worth and cost, worked out once and again only where a point went.
-  const option = (id: number) => {
-    const check = canDevelop(state, world, c.index, id);
-    if (!check.ok) return { id, value: 0, cost: Infinity };
-    const p = state.provinces[id];
-    return {
-      id,
-      value: (1 + buildingEffect(p, 'tax') + buildingEffect(p, 'levy') * 0.5) / check.cost,
-      cost: check.cost,
-    };
-  };
+  const option = (id: number) => developOption(state, world, c, id);
   const options = own.map(option);
   for (let n = 0; n < points; n++) {
     let best = -1,
@@ -368,13 +404,13 @@ function invest(state: GameState, world: SimWorld, c: Country, own: number[], fl
   }
 }
 
-/** Can this realm expect to beat that one, friends included? */
-function odds(state: GameState, attacker: number, target: number): number {
+/** Can this realm expect to beat that one, friends included? Above 1 it is the stronger. */
+export function odds(state: GameState, attacker: number, target: number): number {
   return offensiveStrength(state, attacker) / Math.max(1, defensiveStrength(state, target));
 }
 
 /** Realms we may not attack: friends, protégés, those bound to us. */
-function offLimits(state: GameState, c: number, t: number): boolean {
+export function offLimits(state: GameState, c: number, t: number): boolean {
   return (
     !!state.countries[t]?.rebel ||
     hasPact(state, 'alliance', c, t) ||
@@ -385,13 +421,17 @@ function offLimits(state: GameState, c: number, t: number): boolean {
   );
 }
 
-/** An ambitious realm sets its chancellor to forge a claim on a weaker neighbour. */
-function planClaims(state: GameState, world: SimWorld, c: Country) {
-  if (c.liege || c.fabricating || c.claims.length >= 2 || c.stability < 0 || c.loans.length) return;
-  const appetite = 0.18 + aggression(state, c) * 0.25;
-  if (!chance(state, Math.max(0.02, appetite * 0.6))) return;
+/**
+ * Provinces of weaker neighbours on the border that a claim could be forged on, keeping a reserve of
+ * gold, with what each is worth: its development by the odds, more for our own people.
+ */
+export function claimCandidates(
+  state: GameState,
+  world: SimWorld,
+  c: Country,
+): { id: number; target: number; ratio: number; value: number }[] {
   const reserve = Math.max(40, income(state, c).total * 2);
-  let best: { id: number; value: number } | null = null;
+  const out: { id: number; target: number; ratio: number; value: number }[] = [];
   for (const t of realmNeighbours(state, world, c.index)) {
     if (offLimits(state, c.index, t) || !state.countries[t]?.alive) continue;
     const ratio = odds(state, c.index, t);
@@ -399,11 +439,41 @@ function planClaims(state: GameState, world: SimWorld, c: Country) {
     for (const id of borderProvinces(state, world, c.index, t)) {
       if (!canFabricate(state, world, c.index, id).ok || c.gold - fabricationCost(state, id) < reserve) continue;
       const p = state.provinces[id];
-      const value = p.dev * Math.min(3, ratio) + (p.culture === c.culture ? 4 : 0) + random(state);
-      if (!best || value > best.value) best = { id, value };
+      out.push({ id, target: t, ratio, value: p.dev * Math.min(3, ratio) + (p.culture === c.culture ? 4 : 0) });
     }
   }
+  return out;
+}
+
+/** An ambitious realm sets its chancellor to forge a claim on a weaker neighbour. */
+function planClaims(state: GameState, world: SimWorld, c: Country) {
+  if (c.liege || c.fabricating || c.claims.length >= 2 || c.stability < 0 || c.loans.length) return;
+  const appetite = 0.18 + aggression(state, c) * 0.25;
+  if (!chance(state, Math.max(0.02, appetite * 0.6))) return;
+  let best: { id: number; value: number } | null = null;
+  for (const o of claimCandidates(state, world, c)) {
+    const value = o.value + random(state);
+    if (!best || value > best.value) best = { id: o.id, value };
+  }
   if (best) startFabrication(state, world, c.index, best.id);
+}
+
+/** Claims the realm could go to war for now, with odds good enough for the AI to try (1.4 or better). */
+export function claimWars(
+  state: GameState,
+  world: SimWorld,
+  c: Country,
+): { goal: number; target: number; ratio: number; value: number }[] {
+  const out: { goal: number; target: number; ratio: number; value: number }[] = [];
+  for (const id of c.claims) {
+    const o = state.provinces[id]?.owner ?? 0;
+    if (!o) continue;
+    const t = topLiege(state, o);
+    const ratio = odds(state, c.index, t);
+    if (ratio < 1.4 || !canDeclare(state, world, c.index, t, 'claim', id).ok) continue;
+    out.push({ goal: id, target: t, ratio, value: state.provinces[id].dev * Math.min(3, ratio) });
+  }
+  return out.sort((a, b) => b.value - a.value);
 }
 
 function considerWar(state: GameState, world: SimWorld, c: Country) {
@@ -559,8 +629,8 @@ function diplomacyAI(state: GameState, world: SimWorld, c: Country) {
   }
 }
 
-function seekAlliance(state: GameState, world: SimWorld, c: Country) {
-  if (c.overlord || alliesOf(state, c.index).length >= 2) return;
+/** The realm within 1,500 km that the realm would most like as an ally, if any would do. */
+export function bestAlly(state: GameState, world: SimWorld, c: Country): Country | null {
   let best: { o: Country; want: number } | null = null;
   for (const o of state.countries) {
     if (!o?.alive || o.liege || o.index === c.index || o.overlord) continue;
@@ -569,22 +639,34 @@ function seekAlliance(state: GameState, world: SimWorld, c: Country) {
     const want = pactWillingness(state, world, 'alliance', c.index, o.index).total;
     if (want >= 0 && (!best || want > best.want)) best = { o, want };
   }
-  if (!best) return;
-  if (best.o.index === state.player) proposeToPlayerPact(state, c, 'alliance');
-  else if (pactWillingness(state, world, 'alliance', best.o.index, c.index).total >= 0)
-    sign(state, 'alliance', c, best.o);
+  return best?.o ?? null;
 }
 
-/** Peace with a dangerous neighbour buys time. */
-function seekNap(state: GameState, world: SimWorld, c: Country) {
+function seekAlliance(state: GameState, world: SimWorld, c: Country) {
+  if (c.overlord || alliesOf(state, c.index).length >= 2) return;
+  const o = bestAlly(state, world, c);
+  if (!o) return;
+  if (o.index === state.player) proposeToPlayerPact(state, c, 'alliance');
+  else if (pactWillingness(state, world, 'alliance', o.index, c.index).total >= 0) sign(state, 'alliance', c, o);
+}
+
+/** The dangerous neighbour the realm would first seek a non-aggression pact with, if any. */
+export function napCandidate(state: GameState, world: SimWorld, c: Country): Country | null {
   for (const t of threatsTo(state, world, c.index)) {
     const o = state.countries[t];
     if (!o?.alive || o.liege || !canPropose(state, 'nap', c.index, t).ok) continue;
     if (pactWillingness(state, world, 'nap', c.index, t).total < 0) continue;
-    if (t === state.player) proposeToPlayerPact(state, c, 'nap');
-    else if (pactWillingness(state, world, 'nap', t, c.index).total >= 0) sign(state, 'nap', c, o);
-    return;
+    return o;
   }
+  return null;
+}
+
+/** Peace with a dangerous neighbour buys time. */
+function seekNap(state: GameState, world: SimWorld, c: Country) {
+  const o = napCandidate(state, world, c);
+  if (!o) return;
+  if (o.index === state.player) proposeToPlayerPact(state, c, 'nap');
+  else if (pactWillingness(state, world, 'nap', o.index, c.index).total >= 0) sign(state, 'nap', c, o);
 }
 
 /** Great realms take small friendly neighbours under their protection. */
@@ -602,15 +684,21 @@ function offerGuarantee(state: GameState, world: SimWorld, c: Country) {
   }
 }
 
-/** A liege absorbs a small, loyal vassal now and then. Great vassals (duchies and up) are left be. */
-function considerIntegration(state: GameState, world: SimWorld, c: Country) {
-  if (c.integrating || warsOf(state, c.index).length || !chance(state, 0.1)) return;
+/** A small, loyal vassal (a county, loyalty 25 or more) the realm could integrate. */
+export function vassalToIntegrate(state: GameState, world: SimWorld, c: Country): Country | null {
   for (const v of vassalsOf(state, c.index)) {
     if (v.rank !== 'county' || v.index === state.player) continue;
     if (loyalty(state, world, v.index).total < 25 || !canIntegrate(state, world, c.index, v.index).ok) continue;
-    startIntegration(state, world, c.index, v.index);
-    return;
+    return v;
   }
+  return null;
+}
+
+/** A liege absorbs a small, loyal vassal now and then. Great vassals (duchies and up) are left be. */
+function considerIntegration(state: GameState, world: SimWorld, c: Country) {
+  if (c.integrating || warsOf(state, c.index).length || !chance(state, 0.1)) return;
+  const v = vassalToIntegrate(state, world, c);
+  if (v) startIntegration(state, world, c.index, v.index);
 }
 
 // ── Peace ─────────────────────────────────────────────────────────

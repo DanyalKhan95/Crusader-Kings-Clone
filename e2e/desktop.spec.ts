@@ -40,8 +40,8 @@ test('keeps saves and settings as files, minds the window, and saves on the way 
   const home = mkdtempSync(join(tmpdir(), 'crowns-'));
   const saves = join(home, 'save games');
   const settingsFile = () => JSON.parse(readFileSync(join(home, 'settings.json'), 'utf8'));
-  // The settings file already says the tour was seen.
-  writeFileSync(join(home, 'settings.json'), JSON.stringify({ tour: 'done' }));
+  // The settings file already says the tour was seen, and turns the hints off.
+  writeFileSync(join(home, 'settings.json'), JSON.stringify({ tour: 'done', settings: { hints: false } }));
   try {
     let { app, page, errors } = await launch(home);
     await expect(page.getByRole('button', { name: 'Quit' })).toBeVisible({ timeout: 120_000 });

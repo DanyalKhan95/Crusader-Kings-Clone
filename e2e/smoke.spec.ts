@@ -2,10 +2,15 @@ import { expect, test, type Page } from '@playwright/test';
 import { readFileSync } from 'node:fs';
 import { toDay } from '../src/sim/calendar';
 
-// The guided tour greets the first campaign in a browser; every test but the tour's own has seen it.
+// The guided tour greets the first campaign in a browser, and hints follow it; every test but the
+// tour's and the hints' own has seen both.
 test.beforeEach(async ({ page }, info) => {
   if (!info.title.includes('guided tour'))
     await page.addInitScript(() => localStorage.setItem('crowns-and-centuries:tour', 'done'));
+  if (!info.title.includes('hints'))
+    await page.addInitScript(() =>
+      localStorage.setItem('crowns-and-centuries:settings', JSON.stringify({ hints: false })),
+    );
 });
 
 function watchErrors(page: Page): string[] {
@@ -727,6 +732,48 @@ test('looks things up: the encyclopedia, its search and the words that lead to i
   expect(errors).toEqual([]);
 });
 
+test('advises: the council’s counsel, and hints the first time a screen comes up', async ({ page }) => {
+  const errors = watchErrors(page);
+  await page.goto('/?debug');
+  await page.getByRole('button', { name: 'New Campaign' }).click({ timeout: 120_000 });
+  await page.getByRole('button', { name: 'Play as England' }).click();
+  await expect(page.locator('.date-long')).toHaveText('15th of September, 1066 AD');
+
+  // England is at war in 1066: the first hint says what that means, and goes once dismissed.
+  const hint = page.getByRole('note', { name: 'Hint: At war' });
+  await expect(hint).toBeVisible();
+  await hint.getByRole('button', { name: 'Got it' }).click();
+  await expect(hint).toHaveCount(0);
+
+  // The court's first hint, and the council's counsel with a click that does it.
+  await page.keyboard.press('c');
+  await expect(page.getByRole('note', { name: 'Hint: The council' })).toBeVisible();
+  const counsel = page.getByRole('region', { name: 'Counsel' });
+  await expect(counsel.locator('li').first()).toBeVisible();
+  const first = counsel.locator('li').first();
+  const text = await first.locator('.counsel-text').textContent();
+  await first.getByRole('button', { name: 'Not now' }).click();
+  await expect(counsel).not.toContainText(text!);
+
+  // Reading more marks the hint seen; hints can be turned off altogether.
+  await page.getByRole('note', { name: 'Hint: The council' }).getByRole('button', { name: 'Read more' }).click();
+  await expect(
+    page.getByRole('dialog', { name: 'Encyclopedia' }).getByRole('heading', { name: 'The council' }),
+  ).toBeVisible();
+  await page.keyboard.press('Escape');
+  await page.keyboard.press('g');
+  await page.getByRole('note', { name: 'Hint: The treasury' }).getByRole('button', { name: 'No more hints' }).click();
+  await page.keyboard.press('a');
+  await expect(page.getByRole('note')).toHaveCount(0);
+  const kept = await page.evaluate(() => ({
+    settings: JSON.parse(localStorage.getItem('crowns-and-centuries:settings')!),
+    seen: JSON.parse(localStorage.getItem('crowns-and-centuries:hints')!),
+  }));
+  expect(kept.settings.hints).toBe(false);
+  expect(kept.seen).toEqual(['war', 'screen:court']);
+  expect(errors).toEqual([]);
+});
+
 test('shows a new ruler around with the guided tour, and explains the game', async ({ page }) => {
   const errors = watchErrors(page);
   await page.goto('/');
@@ -746,7 +793,9 @@ test('shows a new ruler around with the guided tour, and explains the game', asy
   // The outliner and the alerts have a card of their own, lit on the right of the screen.
   await expect(page.getByRole('dialog', { name: 'What you have in hand' })).toContainText('The outliner lists');
   await expect(page.locator('.tour-spot')).toBeVisible();
-  for (let i = 0; i < 4; i++) await page.getByRole('button', { name: 'Next' }).click();
+  for (let i = 0; i < 3; i++) await page.getByRole('button', { name: 'Next' }).click();
+  await expect(page.getByRole('dialog', { name: 'Help at hand' })).toContainText('encyclopedia');
+  for (let i = 0; i < 2; i++) await page.getByRole('button', { name: 'Next' }).click();
   await expect(page.getByRole('dialog', { name: 'The game menu' })).toBeVisible();
   await page.getByRole('button', { name: 'Begin' }).click();
   await expect(page.locator('.tour')).toHaveCount(0);

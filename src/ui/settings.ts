@@ -38,6 +38,8 @@ export interface Settings {
   unitLayers: Record<UnitLayer, boolean>;
   /** foreign fleets lying in port, when they are not at war with the player */
   portFleets: boolean;
+  /** a note the first time a screen or a rule of the game comes up */
+  hints: boolean;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -53,6 +55,7 @@ export const DEFAULT_SETTINGS: Settings = {
   messages: {},
   unitLayers: { own: true, allies: true, enemies: true, others: true },
   portFleets: false,
+  hints: true,
 };
 
 export const UI_SCALES = [0.8, 0.9, 1, 1.1, 1.25, 1.5, 1.75, 2];
@@ -93,6 +96,7 @@ export function sanitizeSettings(raw: unknown, d: Settings = DEFAULT_SETTINGS): 
     messages,
     unitLayers,
     portFleets: typeof r.portFleets === 'boolean' ? r.portFleets : d.portFleets,
+    hints: typeof r.hints === 'boolean' ? r.hints : d.hints,
   };
 }
 

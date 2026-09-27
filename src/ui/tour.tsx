@@ -67,8 +67,9 @@ const STEPS: Step[] = [
       <>
         Your coat of arms opens the realm’s screens: the court and council, the economy, the military, diplomacy, faith
         and culture, government and laws, and technology, each on a key of its own (
-        {SCREEN_KEYS.map((k) => shortcut(`screen:${k.screen}`)).join(' ')}). Time runs on behind them. A province, an
-        army or another realm opens in the side panel instead; Esc goes back to the map.
+        {SCREEN_KEYS.map((k) => shortcut(`screen:${k.screen}`)).join(' ')}). Time runs on behind them, and your
+        councillors give their counsel there, each with a click that does it. A province, an army or another realm opens
+        in the side panel instead; Esc goes back to the map.
       </>
     ),
   },
@@ -110,9 +111,21 @@ const STEPS: Step[] = [
     title: 'Armies, war, and the right hand',
     text: () => (
       <>
-        Raise your army from the Army tab, select it on the map and right-click where it should march. With no army
-        selected, right-click a province (or hold a finger on it) for what you can do there: build and recruit at home;
-        forge a claim, send a gift or declare war abroad. Win battles and sieges, then make peace from the war’s panel.
+        Raise your army from the military screen, select it on the map and right-click where it should march. With no
+        army selected, right-click a province (or hold a finger on it) for what you can do there: build and recruit at
+        home; forge a claim, send a gift or declare war abroad. Win battles and sieges, then make peace from the war’s
+        panel.
+      </>
+    ),
+  },
+  {
+    target: '[data-tour="encyclopedia"]',
+    title: 'Help at hand',
+    text: () => (
+      <>
+        The book opens the encyclopedia ({shortcut('encyclopedia')}): every rule of the game with its numbers, and all
+        its records, to search. Underlined words in tooltips lead there, and a hint explains each screen the first time
+        it opens.
       </>
     ),
   },

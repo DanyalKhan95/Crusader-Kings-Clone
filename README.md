@@ -11,26 +11,31 @@ every push).
 
 ## Status
 
-**Milestone 9: foundations for a release.** The game can be played from 1066 to 2066 and beyond,
-every other realm run by the AI, and it is on the road to Early Access as a desktop app (milestones
-9 to 18 in the [roadmap](docs/ROADMAP.md)). This milestone laid the ground for what follows:
+**Milestone 11: realm screens and learning the game.** The game can be played from 1066 to 2066
+and beyond, every other realm run by the AI, and it is on the road to Early Access as a desktop app
+(milestones 9 to 18 in the [roadmap](docs/ROADMAP.md)). This milestone brought:
 
-- **A desktop app** for Windows, macOS and Linux: windowed or fullscreen, saves and settings as
-  files in your documents folder, and the campaign saved when the window closes. Unsigned test
-  builds come from CI; the web version stays as a free demo.
-- **Settings:** the size of the interface and its text, map quality, a frame cap, animations, the
-  top speed and autosaves, and every key rebindable, shown in the tooltips and in How to play.
-- **Saves:** named saves, three autosaves in rotation, a save browser with each realm's arms, date
-  and time played, ironman campaigns, and save files to carry a campaign elsewhere.
-- **When something breaks,** an error screen stops the clock, keeps the game, and saves a report
-  with the error, the log and the campaign.
-- **Speed:** a performance overlay (`F3`) and a budget for the simulation that no day breaks in
-  worlds of 1340, 1915 and 2030: none above 12 ms, and 99 in 100 under 8 ms.
-- **Ready for art and mods:** a pipeline that lists every picture and sound with its source and
-  licence, and content in checked data files, starting with the featured realms and the modifiers.
+- **Screens for the realm's affairs,** over the map while time runs on: the realm, the court, the
+  economy (income, expenses and the treasury charted month by month, and every province), the
+  military, diplomacy (every realm's opinion, wariness and treaties), faith and culture,
+  government and laws, and technology. The side panel keeps provinces, armies, fleets and other
+  realms.
+- **An encyclopedia** (`B`): every rule of the game with the numbers the simulation uses, and
+  entries built from its data (technologies, arms and ships by era, buildings, laws, governments,
+  faiths, events, modifiers and more), searchable, with the realm's own figures beside the rules.
+  Underlined words in tooltips lead to it.
+- **Counsel and hints:** the councillors suggest what to do next, from the same judgements the AI
+  makes, each with a click that does it; a hint explains each screen and turn of fortune the first
+  time it comes up.
 
 Earlier milestones:
 
+- **The new HUD (M10):** an outliner of armies, fleets, sieges, wars and works; an alerts bar that
+  leads to the fix; a message log with filters and a setting for each kind of news; menus on a
+  right-click; hotkeys for everything; layers for whose armies and fleets the map shows.
+- **Foundations for a release (M9):** a desktop app for Windows, macOS and Linux; settings for the
+  interface, graphics, speed and every key; named saves, autosaves and ironman; an error screen
+  that keeps the game; a performance budget; a pipeline for art and checked content for mods.
 - **The endgame and polish (M8):** the standing of nations and the end of the age in 2066; the
   ledger of nations (`L`) with a chronicle of the thousand years; balance from headless runs of a
   thousand years; How to play (`H`), a guided tour of the first campaign, and sound made on the fly
@@ -83,8 +88,9 @@ The plan, what each milestone brought and the known gaps are in [docs/ROADMAP.md
 | Pause, speed      | buttons at the top right                 | `Space`, `1`–`5`            |
 | Map modes         | buttons at the bottom right              | `Q` `W` `E` `R` `T` `Y` `U` |
 | Armies shown      | the banner after the map modes           |                             |
-| Your realm's tabs | coat of arms at the top left             | `I` `G` `A` `C` `J` `F` `D` |
+| Your realm        | coat of arms at the top left             | `I` `C` `G` `A` `D` `F` `J` |
 | Technology        | the era at the top                       | `K`                         |
+| Encyclopedia      | book at the top right                    | `B`                         |
 | Ledger of nations | scroll at the top right                  | `L`                         |
 | Log of news       | quill at the top right                   | `N`                         |
 | Outliner          | on the right                             | `O`                         |

@@ -12,6 +12,7 @@ import { flyToRealm, openEncyclopedia, openScreen, setSpeed, togglePause } from 
 import { Affairs } from '../affairs/Affairs';
 import { sound } from '../audio';
 import { CoatOfArms } from '../CoatOfArms';
+import { HintCard } from '../hints';
 import { MoreAbout } from '../encyclopedia/Term';
 import { formatDate, shortDate } from '../format';
 import { useGame } from '../game';
@@ -47,6 +48,7 @@ export function Hud() {
       <Toasts />
       <SidePanel />
       <Affairs />
+      <HintCard />
       <NoticeBar />
       <ContextMenu />
       {perf && <PerfOverlay />}

@@ -10,6 +10,7 @@ import { countryStats, useGame } from '../game';
 import { ColoniesSection } from '../hud/NavyPanel';
 import { DecisionsSection, ModifiersSection } from '../hud/RealmAffairs';
 import { goToProvince } from '../hud/SidePanel';
+import { Advice } from './Advice';
 import { BreakdownList } from '../hud/Tip';
 import { CountryFacts, CountryHeader } from '../realm';
 
@@ -38,6 +39,7 @@ export function RealmScreen({ c }: { c: Country }) {
           nations keeps the tally.
         </p>
       </section>
+      <Advice c={c} limit={3} />
       <div className="affairs-flow">
         <ModifiersSection c={c} />
         <DecisionsSection c={c} />

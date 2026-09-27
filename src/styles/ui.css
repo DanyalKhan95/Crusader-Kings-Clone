@@ -4984,3 +4984,116 @@ button.cm-item:focus-visible {
     margin-bottom: 6px;
   }
 }
+
+/* The council's counsel */
+.counsel-list {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.counsel-list li {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  gap: 10px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--line-soft);
+}
+.counsel-list li:last-child {
+  padding-bottom: 0;
+  border-bottom: 0;
+}
+.counsel-body {
+  display: grid;
+  gap: 4px;
+}
+.counsel-seat {
+  font-size: calc(12px * var(--text-scale, 1));
+  letter-spacing: 0.05em;
+  color: var(--gold);
+}
+.counsel-text {
+  margin: 0;
+  font-size: calc(14px * var(--text-scale, 1));
+  line-height: 1.45;
+}
+.counsel-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+}
+.counsel-actions .term {
+  font-size: calc(13px * var(--text-scale, 1));
+  color: var(--text-dim);
+}
+
+/* Hints for a new ruler */
+.hint {
+  position: absolute;
+  left: 50%;
+  bottom: calc(22px + env(safe-area-inset-bottom, 0px));
+  z-index: 15;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 12px;
+  width: min(460px, calc(100% - 24px));
+  padding: 12px 16px 14px 14px;
+  transform: translateX(-50%);
+  animation: hint-in 0.3s ease-out;
+}
+.hint > .icon {
+  width: 26px;
+  height: 26px;
+  margin-top: 2px;
+  color: var(--gold);
+}
+.hint-body {
+  display: grid;
+  gap: 4px;
+}
+.hint-kicker {
+  margin: 0;
+  font-size: calc(11.5px * var(--text-scale, 1));
+  letter-spacing: 0.08em;
+  color: var(--text-faint);
+}
+.hint-title {
+  margin: 0;
+  font-size: calc(21px * var(--text-scale, 1));
+  line-height: 1.15;
+  color: var(--gold-bright);
+}
+.hint-text {
+  margin: 0;
+  font-size: calc(14px * var(--text-scale, 1));
+  line-height: 1.45;
+}
+.hint-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+  margin-top: 4px;
+}
+@keyframes hint-in {
+  from {
+    opacity: 0;
+    translate: 0 12px;
+  }
+}
+.still .hint {
+  animation: none;
+}
+@media (max-width: 760px) {
+  .hint {
+    bottom: calc(76px + env(safe-area-inset-bottom, 0px));
+  }
+}
+.hint-actions .link-like {
+  color: var(--text-dim);
+  text-decoration: underline dotted;
+  text-underline-offset: 3px;
+}

@@ -40,7 +40,9 @@ const TOPICS: Topic[] = [
           their keys (<Key action="screen:realm" /> <Key action="screen:court" /> <Key action="screen:economy" />{' '}
           <Key action="screen:military" /> <Key action="screen:diplomacy" /> <Key action="screen:faith" />{' '}
           <Key action="screen:government" /> <Key action="screen:technology" />
-          ); the side panel shows provinces, armies, fleets and other realms.
+          ); the side panel shows provinces, armies, fleets and other realms. Your councillors give their counsel on the
+          realm and court screens, each with a click that does it, and a hint explains each screen the first time it
+          opens.
         </p>
         <p>
           Every figure in the game can be explained: hover over a number to see the parts it is made of, and the reasons

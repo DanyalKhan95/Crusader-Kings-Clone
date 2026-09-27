@@ -426,26 +426,41 @@ after the content they show has settled.
 - [x] Saves from milestone 9 load as they were: the campaign's state did not change shape, only the
       number of messages it keeps.
 
-### M11: Realm screens and learning the game
+### M11: Realm screens and learning the game (done)
 
-- [ ] Full screens for the realm's affairs; the side panel stays for provinces, armies, fleets and
-      foreign realms:
-  - [ ] Court: ruler, heir, council and their tasks
-  - [ ] Economy: income and expenses over time, loans, provinces and their buildings
-  - [ ] Military: armies, men-at-arms, the navy and transports, recruitment
-  - [ ] Diplomacy: every realm's opinion and treaties, subjects and coalitions
-  - [ ] Faith and culture; laws, estates and government; technology
-  - [ ] each with a place for a painted frame (the art comes in M16)
-- [ ] Hints: the first time a screen or mechanic appears, a short note with a link to the
-      encyclopedia. A setting turns them off.
-- [ ] Advisors: the councillors suggest what to do next, from the same judgements the AI makes
-      ("We could forge a claim on Gwynedd", "Gold is piling up: develop London").
-- [ ] An encyclopedia:
-  - [ ] a searchable reference of every mechanic, formula and term
-  - [ ] built from the game's data where it can be: technologies, units, buildings, laws, casus
-        belli, faiths and events
-  - [ ] terms in tooltips link to it
-- [ ] The tour points at the new screens.
+- [x] Full screens for the realm's affairs; the side panel stays for provinces, armies, fleets and
+      foreign realms. Time runs on behind them; the arms at the top left and the keys
+      `I C G A D F J K` open them, and Esc, or picking anything for the side panel, goes back:
+  - [x] the realm: its facts, standing, modifiers, decisions, subjects and richest land
+  - [x] court: ruler, heir, council and their tasks, the courtiers and the line of rulers
+  - [x] economy: income and expenses and the treasury over time (the player's realm keeps twenty
+        years of monthly accounts in its save), the breakdowns, loans, and every province with its
+        taxes, levies and buildings
+  - [x] military: levies over time, armies and what each is doing, men-at-arms, the navy and
+        transports, recruitment and the wars
+  - [x] diplomacy: every realm's opinion, wariness, strength and treaties, sortable; subjects and
+        coalitions
+  - [x] faith and culture; laws, estates and government; technology
+  - [x] each with a place for a painted frame (the art comes in M16)
+- [x] Hints: the first time a screen, a panel or a turn of fortune comes up (war, a siege, debt,
+      unrest, a doubtful right, pestilence, a coalition), a short note with a link to the
+      encyclopedia. A setting turns them off, and brings them all back.
+- [x] Advisors: the councillors suggest what to do next, from the same judgements the AI makes
+      ("We could forge a claim on Powys", "Gold is piling up: develop London"), each with a click
+      that does it, on the realm and court screens. The AI's judgements were drawn out into
+      functions both use (`councilPlan`, `claimCandidates`, `buildingOptions` and others in
+      `sim/ai.ts`), with the simulation's results unchanged to the last bit.
+- [x] An encyclopedia (`B`, and the book beside the log):
+  - [x] a searchable reference of every mechanic, formula and term: 53 articles with the numbers
+        the simulation uses, read from its constants where it keeps them, and the realm's own
+        figures beside them during a campaign
+  - [x] built from the game's data where it can be: technologies, eras, arms and ships through the
+        ages, buildings, laws, governments, estates and the council, casus belli and treaties,
+        faiths and heresies, nations, events and their choices, modifiers, traits, plots and
+        plagues (367 entries in all)
+  - [x] terms in tooltips link to it, and a tip that holds a link can be reached and clicked
+- [x] The tour points at the new screens, the counsel and the encyclopedia.
+- [x] Saves from milestone 10 load: the only new field is the player's books.
 
 ### M12: The map through the ages
 

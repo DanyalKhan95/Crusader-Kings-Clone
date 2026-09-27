@@ -62,6 +62,24 @@ when a milestone lands.
   - Every key is an action in `keys.ts` (`KEY_ACTIONS`, rebindable in the settings); actions on
     the map are run by `GameRoot`, panning and zoom by `MapController`. Keep default keys unique:
     a test checks it.
+  - The player's realm has full screens over the map (`src/ui/affairs/`, `ui.screen`), not modals:
+    time runs on behind them. Anything that selects for the side panel (`select*` in `actions.ts`),
+    a map mode or a map key closes them, since the side panel lies beneath.
+  - Charts over time (`charts.tsx`, `LineChart`) follow the dataviz rules: one axis, a legend for
+    two series or more, a crosshair with a readout, and a table of the figures. The player's realm
+    keeps monthly accounts for them in `Country.books` (`BOOK_MONTHS`).
+  - The encyclopedia (`src/ui/encyclopedia/`): `rules.tsx` sets out each mechanic, reading its
+    numbers from the code's constants where they are kept (a new or changed rule needs its article
+    changed too); `data.tsx` builds entries from the data. Link to an entry with `<Term to>`,
+    `<MoreAbout to>` or `more` on a `BreakdownList`; a test renders every entry and checks that
+    every link, there and across `src/ui`, leads somewhere.
+  - The council's counsel (`advice.ts`) is built on the AI's own judgements, drawn out of
+    `sim/ai.ts` as pure functions (`councilPlan`, `claimCandidates`, `buildingOptions`,
+    `bestAlly` and others) that the AI calls too. Keep a judgement in one place; changing one
+    changes the AI, so check long runs.
+  - Hints (`hints.tsx`) show once each (seen ones kept with the preferences, `hints`) and a setting
+    turns them off. The e2e tests turn them off in `beforeEach` through the settings, the desktop
+    test in its settings file; the hints' own test keeps them.
 - **`src/game/`:** loading the static world (`world.ts`) and map modes.
 - **`src/sim/`:** the simulation. Pure TypeScript with no DOM access, and deterministic:
   - Randomness only through `rng.ts`, whose state lives in `GameState.rng`. Never `Math.random`
@@ -182,7 +200,8 @@ when a milestone lands.
   and bumps the store's `tick` at most every 120 ms. Panels with live numbers subscribe to `tick`.
   It remembers what each day of the month costs and leaves a heavy day for a fresh frame, and
   autosaves at the interval in the settings (an ironman campaign even when they are off).
-- **Help, tour and sound:** `dialogs/Help.tsx` is How to play (`H`); `tour.tsx` is the guided tour
+- **Help, tour and sound:** `dialogs/Help.tsx` is How to play (`H`), with the encyclopedia (`B`) a
+  click away; `tour.tsx` is the guided tour
   of the player's first campaign (remembered with the preferences; the e2e tests mark it seen in
   `beforeEach`, the desktop test in the settings file), pointing at `data-tour` anchors and HUD
   classes. `audio.ts` makes all sound with Web Audio (no files): effects from `actions.run` and
