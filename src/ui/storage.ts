@@ -1,14 +1,33 @@
 /**
  * Saved games in the browser: gzipped into IndexedDB (falling back to localStorage), plus export to
- * and import from a file. Everything is wrapped so a browser that refuses storage just says so.
+ * and import from a file. What the save browser shows of each save is kept apart from the save
+ * itself, so listing them reads no game. Everything is wrapped so a browser that refuses storage
+ * just says so.
  */
 const DB = 'crowns-and-centuries';
+const DB_VERSION = 2;
+/** The gzipped saves, by slot. */
 const STORE = 'saves';
+/** What the save browser shows of each save, by slot (from version 2). */
+const META = 'meta';
+
+export type SaveKind = 'manual' | 'auto' | 'ironman';
 
 export interface SaveMeta {
   slot: string;
+  /** the name the player gave it, or the realm and date of an autosave */
   label: string;
+  /** when it was saved, as an ISO date */
   saved: string;
+  kind?: SaveKind;
+  /** the campaign it belongs to */
+  campaign?: string;
+  /** the player's realm, and its emblem as SVG */
+  realm?: string;
+  emblem?: string;
+  /** the day in the game, and the seconds of play so far */
+  day?: number;
+  played?: number;
 }
 
 async function gzip(text: string): Promise<ArrayBuffer> {
@@ -21,25 +40,49 @@ async function gunzip(data: ArrayBuffer): Promise<string> {
   return new Response(stream).text();
 }
 
+let opened: Promise<IDBDatabase> | null = null;
+
 function openDb(): Promise<IDBDatabase> {
-  return new Promise((resolve, reject) => {
-    const req = indexedDB.open(DB, 1);
-    req.onupgradeneeded = () => req.result.createObjectStore(STORE);
+  opened ??= new Promise<IDBDatabase>((resolve, reject) => {
+    const req = indexedDB.open(DB, DB_VERSION);
+    req.onupgradeneeded = (e) => {
+      const db = req.result;
+      if (!db.objectStoreNames.contains(STORE)) db.createObjectStore(STORE);
+      if (!db.objectStoreNames.contains(META)) {
+        const metas = db.createObjectStore(META);
+        // Saves from before version 2 kept their meta inside: copy it out.
+        if (e.oldVersion >= 1)
+          req.transaction!.objectStore(STORE).openCursor().onsuccess = (ev) => {
+            const cursor = (ev.target as IDBRequest<IDBCursorWithValue | null>).result;
+            if (!cursor) return;
+            const meta = (cursor.value as Partial<Stored>).meta;
+            if (meta) metas.put(meta, cursor.key);
+            cursor.continue();
+          };
+      }
+    };
     req.onsuccess = () => resolve(req.result);
     req.onerror = () => reject(req.error ?? new Error('Storage is not available'));
+  }).catch((e: unknown) => {
+    opened = null;
+    throw e;
   });
+  return opened;
 }
 
-function tx<T>(mode: IDBTransactionMode, fn: (store: IDBObjectStore) => IDBRequest<T>): Promise<T> {
-  return openDb().then(
-    (db) =>
-      new Promise<T>((resolve, reject) => {
-        const t = db.transaction(STORE, mode);
-        const req = fn(t.objectStore(STORE));
-        req.onsuccess = () => resolve(req.result);
-        req.onerror = () => reject(req.error ?? new Error('Storage failed'));
-      }),
-  );
+/** Runs requests over both stores in one transaction, resolving when it has committed. */
+async function inTransaction<T>(
+  mode: IDBTransactionMode,
+  fn: (saves: IDBObjectStore, metas: IDBObjectStore) => IDBRequest<T> | void,
+): Promise<T | undefined> {
+  const db = await openDb();
+  return new Promise<T | undefined>((resolve, reject) => {
+    const t = db.transaction([STORE, META], mode);
+    const req = fn(t.objectStore(STORE), t.objectStore(META));
+    t.oncomplete = () => resolve(req ? req.result : undefined);
+    t.onerror = () => reject(t.error ?? new Error('Storage failed'));
+    t.onabort = () => reject(t.error ?? new Error('Storage failed'));
+  });
 }
 
 interface Stored {
@@ -47,11 +90,15 @@ interface Stored {
   data: ArrayBuffer;
 }
 
-export async function saveGame(slot: string, label: string, json: string): Promise<void> {
-  const meta: SaveMeta = { slot, label, saved: new Date().toISOString() };
+/** Saves a game in a slot, replacing what was there, and returns what the save browser will show. */
+export async function saveGame(slot: string, info: Omit<SaveMeta, 'slot' | 'saved'>, json: string): Promise<SaveMeta> {
+  const meta: SaveMeta = { ...info, slot, saved: new Date().toISOString() };
   const data = await gzip(json);
   try {
-    await tx('readwrite', (s) => s.put({ meta, data } satisfies Stored, slot));
+    await inTransaction('readwrite', (saves, metas) => {
+      saves.put({ meta, data } satisfies Stored, slot);
+      metas.put(meta, slot);
+    });
   } catch {
     // localStorage fallback: base64 of the gzipped bytes
     const bytes = new Uint8Array(data);
@@ -59,11 +106,12 @@ export async function saveGame(slot: string, label: string, json: string): Promi
     for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
     localStorage.setItem(`${DB}:${slot}`, JSON.stringify({ meta, data: btoa(bin) }));
   }
+  return meta;
 }
 
 export async function loadGame(slot: string): Promise<string | null> {
   try {
-    const stored = await tx<Stored | undefined>('readonly', (s) => s.get(slot));
+    const stored = await inTransaction<Stored | undefined>('readonly', (saves) => saves.get(slot));
     if (stored) return gunzip(stored.data);
   } catch {
     /* fall through to localStorage */
@@ -81,6 +129,22 @@ export async function loadGame(slot: string): Promise<string | null> {
   }
 }
 
+export async function deleteSave(slot: string): Promise<void> {
+  try {
+    await inTransaction('readwrite', (saves, metas) => {
+      saves.delete(slot);
+      metas.delete(slot);
+    });
+  } catch {
+    /* nothing kept there */
+  }
+  try {
+    localStorage.removeItem(`${DB}:${slot}`);
+  } catch {
+    /* nothing kept there */
+  }
+}
+
 /** The meta of a save kept in localStorage, or null for anything else stored under the game's name. */
 function savedMeta(raw: string | null): SaveMeta | null {
   try {
@@ -93,11 +157,12 @@ function savedMeta(raw: string | null): SaveMeta | null {
   }
 }
 
+/** Every save, newest first. */
 export async function listSaves(): Promise<SaveMeta[]> {
   const out: SaveMeta[] = [];
   try {
-    const all = await tx<Stored[]>('readonly', (s) => s.getAll());
-    for (const s of all) out.push(s.meta);
+    const all = await inTransaction<SaveMeta[]>('readonly', (_, metas) => metas.getAll());
+    for (const m of all ?? []) out.push(m);
   } catch {
     /* ignore */
   }

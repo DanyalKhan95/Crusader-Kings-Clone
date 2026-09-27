@@ -9,6 +9,7 @@ import { Help } from './dialogs/Help';
 import { Ledger } from './dialogs/Ledger';
 import { Fallen, GameMenu } from './dialogs/GameMenu';
 import { Offer, Peace } from './dialogs/Peace';
+import { LoadGame } from './dialogs/Saves';
 import { Settings } from './dialogs/Settings';
 import { TechScreen } from './dialogs/TechScreen';
 import { useGame } from './game';
@@ -96,6 +97,7 @@ export function GameRoot() {
       {modal === 'credits' && <Credits />}
       {modal === 'help' && <Help />}
       {modal === 'settings' && <Settings />}
+      {modal === 'load' && <LoadGame />}
       {phase === 'playing' && modal === 'menu' && <GameMenu />}
       {phase === 'playing' && modal === 'declare' && <DeclareWar />}
       {phase === 'playing' && modal === 'peace' && <Peace />}

@@ -3379,3 +3379,89 @@ kbd.unbound {
   animation-iteration-count: 1 !important;
   transition-duration: 0.01ms !important;
 }
+
+/* ── Saved games (milestone 9) ───────────────────────────────── */
+
+.modal.game-menu,
+.modal.saves {
+  width: min(680px, 100%);
+}
+.save-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+}
+.save-form input {
+  width: 100%;
+  padding: 8px 10px;
+  font: inherit;
+  color: var(--text);
+  background: var(--panel-inset);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+}
+.save-list {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  max-height: min(calc(44vh / var(--ui-scale, 1)), 420px);
+  overflow-y: auto;
+}
+.save-row {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  padding: 6px 8px;
+  border: 1px solid var(--line-soft);
+  border-radius: var(--radius);
+}
+.save-row:hover {
+  background: rgba(255, 220, 160, 0.04);
+}
+.save-arms {
+  display: block;
+  width: 28px;
+  height: 34px;
+}
+.save-text {
+  display: grid;
+  min-width: 0;
+}
+.save-name {
+  overflow: hidden;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.save-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.badge {
+  margin-left: 8px;
+  padding: 0 7px;
+  font-family: var(--font-caps);
+  font-size: calc(11px * var(--text-scale, 1));
+  font-weight: normal;
+  letter-spacing: 0.06em;
+  vertical-align: 1px;
+  color: var(--gold);
+  border: 1px solid var(--gold-dim);
+  border-radius: 999px;
+}
+.menu-continue {
+  flex-wrap: wrap;
+  row-gap: 0;
+}
+.menu-continue-sub {
+  flex-basis: 100%;
+  font-family: var(--font-body);
+  font-size: calc(12.5px * var(--text-scale, 1));
+  letter-spacing: 0;
+  opacity: 0.85;
+}

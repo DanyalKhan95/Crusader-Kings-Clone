@@ -146,8 +146,16 @@ export function startChoosing(game: Game) {
   });
 }
 
-/** Takes control of a country. The HUD frames its realm once its panels are on screen. */
+/**
+ * Takes control of a country. The HUD frames its realm once its panels are on screen. A fresh world
+ * begins a new campaign; playing on as another realm after a fall continues the same one.
+ */
 export function startAs(game: Game, index: number) {
+  if (!game.state.player) {
+    game.campaign = '';
+    game.played = 0;
+    game.ironman = false;
+  }
   game.state.player = index;
   game.runner?.reset();
   game.ui.set({

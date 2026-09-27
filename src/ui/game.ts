@@ -27,7 +27,8 @@ export type Modal =
   | 'ledger'
   | 'end'
   | 'help'
-  | 'settings';
+  | 'settings'
+  | 'load';
 
 export interface UIState {
   phase: Phase;
@@ -76,6 +77,12 @@ export interface Game {
   tooltipEl: HTMLElement | null;
   /** Last pointer position over the map (client px), for re-placing the tooltip. */
   pointer: { x: number; y: number };
+  /** The campaign's id, the same in every save of it. */
+  campaign: string;
+  /** Seconds of play in this campaign. */
+  played: number;
+  /** One save the game keeps itself, and no other. */
+  ironman: boolean;
 }
 
 export function createGame(world: StaticWorld, scenario: ScenarioData, state: GameState, bundle: MeshBundle): Game {
@@ -101,7 +108,20 @@ export function createGame(world: StaticWorld, scenario: ScenarioData, state: Ga
     notice: '',
     tour: 0,
   });
-  return { world, scenario, state, bundle, ui, map: null, runner: null, tooltipEl: null, pointer: { x: 0, y: 0 } };
+  return {
+    world,
+    scenario,
+    state,
+    bundle,
+    ui,
+    map: null,
+    runner: null,
+    tooltipEl: null,
+    pointer: { x: 0, y: 0 },
+    campaign: '',
+    played: 0,
+    ironman: false,
+  };
 }
 
 export const GameContext = createContext<Game | null>(null);

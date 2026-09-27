@@ -7,18 +7,29 @@ import type { SimWorld } from './world';
 
 export const SAVE_VERSION = 8;
 
-export interface SaveFile {
+/** What a save keeps about the campaign beside its state: not part of the world, so no migration. */
+export interface SaveExtras {
+  /** the campaign the save belongs to, the same for every save of one game */
+  campaign?: string;
+  /** seconds of play so far */
+  played?: number;
+  /** a campaign whose one save the game keeps itself */
+  ironman?: boolean;
+}
+
+export interface SaveFile extends SaveExtras {
   format: 'crowns-and-centuries';
   version: number;
   saved: string;
   state: GameState;
 }
 
-export function serialize(state: GameState): string {
+export function serialize(state: GameState, extras: SaveExtras = {}): string {
   const file: SaveFile = {
     format: 'crowns-and-centuries',
     version: SAVE_VERSION,
     saved: new Date().toISOString(),
+    ...extras,
     state,
   };
   return JSON.stringify(file);
@@ -29,6 +40,11 @@ export function serialize(state: GameState): string {
  * it; without it they catch up at the next month.
  */
 export function deserialize(json: string, world?: SimWorld): GameState {
+  return readSave(json, world).state;
+}
+
+/** Reads a save with what it keeps about the campaign. */
+export function readSave(json: string, world?: SimWorld): SaveExtras & { state: GameState } {
   const file = JSON.parse(json) as Partial<SaveFile>;
   if (file.format !== 'crowns-and-centuries' || !file.state) throw new Error('This is not a Crowns & Centuries save.');
   if (!file.version || file.version > SAVE_VERSION)
@@ -43,7 +59,12 @@ export function deserialize(json: string, world?: SimWorld): GameState {
   if (file.version < 6) migrateToNavies(s, world);
   if (file.version < 7) migrateToEvents(s);
   if (file.version < 8) migrateToLedger(s);
-  return s;
+  return {
+    state: s,
+    campaign: typeof file.campaign === 'string' ? file.campaign : undefined,
+    played: typeof file.played === 'number' && file.played >= 0 ? file.played : undefined,
+    ironman: file.ironman === true || undefined,
+  };
 }
 
 /**

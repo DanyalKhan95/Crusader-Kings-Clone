@@ -1,10 +1,32 @@
+import { useEffect, useState } from 'react';
 import { canContinue, resume, startChoosing } from '../actions';
+import { loadChosen } from '../dialogs/Saves';
 import { useGame } from '../game';
 import { Icon } from '../Icon';
+import { listSaves } from '../saves';
+import type { SaveMeta } from '../storage';
 
 export function MainMenu() {
   const game = useGame();
   const realms = game.state.countries.length - 1;
+  const inMemory = canContinue(game);
+  // With no campaign open, Continue picks up the latest save.
+  const [latest, setLatest] = useState<SaveMeta | null>(null);
+  const [anySaves, setAnySaves] = useState(false);
+  useEffect(() => {
+    let live = true;
+    listSaves()
+      .then((saves) => {
+        if (!live) return;
+        setLatest(saves[0] ?? null);
+        setAnySaves(saves.length > 0);
+      })
+      .catch(() => undefined);
+    return () => {
+      live = false;
+    };
+  }, []);
+  const cont = inMemory || !!latest;
   return (
     <div className="menu-screen">
       <div className="menu-vignette" aria-hidden="true" />
@@ -19,18 +41,24 @@ export function MainMenu() {
           <span>2066</span>
         </p>
         <div className="menu-actions">
-          {canContinue(game) && (
-            <button className="btn primary big" onClick={() => resume(game)} autoFocus>
+          {cont && (
+            <button
+              className="btn primary big menu-continue"
+              onClick={() => (inMemory ? resume(game) : latest && void loadChosen(game, latest))}
+              autoFocus
+            >
               <Icon name="play-button" /> Continue
+              {!inMemory && latest && <span className="menu-continue-sub">{latest.label}</span>}
             </button>
           )}
-          <button
-            className={`btn big ${canContinue(game) ? '' : 'primary'}`}
-            onClick={() => startChoosing(game)}
-            autoFocus={!canContinue(game)}
-          >
+          <button className={`btn big ${cont ? '' : 'primary'}`} onClick={() => startChoosing(game)} autoFocus={!cont}>
             <Icon name="crown" /> New Campaign
           </button>
+          {(anySaves || inMemory) && (
+            <button className="btn" onClick={() => game.ui.set({ modal: 'load' })}>
+              <Icon name="load" /> Load Game
+            </button>
+          )}
           <button className="btn" onClick={() => game.ui.set({ modal: 'help' })}>
             <Icon name="scroll-quill" /> How to Play
           </button>

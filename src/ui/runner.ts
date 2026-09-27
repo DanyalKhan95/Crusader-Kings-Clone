@@ -4,13 +4,11 @@
  */
 import { toDate } from '../sim/calendar';
 import { playerEvent } from '../sim/events';
-import { serialize } from '../sim/save';
 import { advanceDay } from '../sim/tick';
 import { sound } from './audio';
-import { formatDate } from './format';
-import { saveGame } from './storage';
-import { settings } from './settings';
 import type { Game } from './game';
+import { autosave } from './saves';
+import { settings } from './settings';
 
 /**
  * Days per second at speeds 1–5 (0 = paused). The top speed is a setting: 120 days a second by
@@ -27,15 +25,6 @@ const MAX_TOASTS = 5;
 export function daysPerSecond(speed: number): number {
   if (speed < SPEEDS.length - 1) return SPEEDS[speed] ?? 0;
   return settings.get().topSpeed || Infinity;
-}
-
-/** Saves the running game to the autosave slot, quietly; a browser that refuses storage is ignored. */
-function autosave(game: Game) {
-  const state = game.state;
-  const c = state.countries[state.player];
-  if (!c) return;
-  const label = `Autosave: ${c.name}, ${formatDate(toDate(state.day))}`;
-  saveGame('autosave', label, serialize(state)).catch(() => undefined);
 }
 
 export function attachRunner(game: Game) {
@@ -96,7 +85,7 @@ export function attachRunner(game: Game) {
       patch.player = state.player;
       patch.selectedCountry = state.player;
     }
-    if (state.player && !state.countries[state.player]?.alive && ui.modal !== 'fallen') {
+    if (state.player && !state.countries[state.player]?.alive && ui.modal !== 'fallen' && ui.modal !== 'load') {
       patch.speed = 0;
       patch.modal = 'fallen';
     }
@@ -119,6 +108,7 @@ export function attachRunner(game: Game) {
 
   const frame = (dt: number) => {
     const ui = game.ui.get();
+    if (ui.phase === 'playing') game.played += dt;
     if (ui.phase !== 'playing' || ui.speed === 0 || ui.modal !== 'none') {
       backlog = 0;
       return;
@@ -150,7 +140,8 @@ export function attachRunner(game: Game) {
     const every = settings.get().autosaveMinutes * 60_000;
     if (days && every && performance.now() - lastSave > every && game.state.player) {
       lastSave = performance.now();
-      setTimeout(() => autosave(game), 0);
+      // A browser that refuses storage is ignored: the game plays on.
+      setTimeout(() => void autosave(game).catch(() => undefined), 0);
     }
   };
 

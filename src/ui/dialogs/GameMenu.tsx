@@ -1,83 +1,63 @@
-import { useEffect, useRef, useState } from 'react';
+import { useState } from 'react';
 import { toDate } from '../../sim/calendar';
-import { deserialize, serialize } from '../../sim/save';
-import { notice, replaceState, resume, startChoosing, toMenu } from '../actions';
-import { formatDate } from '../format';
-import { useGame, type Game } from '../game';
+import { notice, startChoosing, toMenu } from '../actions';
+import { useGame } from '../game';
 import { Icon } from '../Icon';
-import { exportSave, listSaves, loadGame, readSaveFile, saveGame, type SaveMeta } from '../storage';
+import { defaultSaveName, saveIronman, saveNamed, serializeGame } from '../saves';
+import { exportSave } from '../storage';
 import { Modal } from './Modal';
-
-function label(game: Game): string {
-  const c = game.state.countries[game.state.player];
-  return `${c?.name ?? 'Unknown realm'}, ${formatDate(toDate(game.state.day))}`;
-}
-
-function afterLoad(game: Game, json: string) {
-  const state = deserialize(json, game.world);
-  replaceState(game, state);
-  resume(game);
-  notice(game, `Loaded: ${label(game)}`);
-}
+import { LoadFileButton, loadChosen, SaveList, useSaves } from './Saves';
 
 export function GameMenu() {
   const game = useGame();
-  const [saves, setSaves] = useState<SaveMeta[] | null>(null);
+  const [saves, refresh] = useSaves();
+  const [name, setName] = useState(() => defaultSaveName(game));
   const [busy, setBusy] = useState('');
-  const fileRef = useRef<HTMLInputElement>(null);
-  useEffect(() => {
-    listSaves().then(setSaves, () => setSaves([]));
-  }, []);
+  const [overwrite, setOverwrite] = useState(false);
   const close = () => game.ui.set({ modal: 'none' });
-  const save = async (slot: string) => {
+  const trimmed = name.trim();
+  const exists = !!saves?.some((m) => (m.kind ?? 'manual') === 'manual' && m.label === trimmed);
+
+  const save = async () => {
+    if (!trimmed || busy) return;
+    // Saving over another save asks first.
+    if (exists && !overwrite) {
+      setOverwrite(true);
+      return;
+    }
     setBusy('Saving…');
     try {
-      await saveGame(slot, label(game), serialize(game.state));
-      setSaves(await listSaves());
+      await saveNamed(game, trimmed, saves ?? undefined);
+      await refresh();
       notice(game, 'Game saved.');
     } catch {
       notice(game, 'This browser would not let the game save.');
     }
+    setOverwrite(false);
     setBusy('');
   };
-  const load = async (slot: string) => {
-    setBusy('Loading…');
+  const saveAndQuit = async () => {
+    setBusy('Saving…');
     try {
-      const json = await loadGame(slot);
-      if (json) afterLoad(game, json);
-      else notice(game, 'That save could not be found.');
-    } catch (e) {
-      notice(game, e instanceof Error ? e.message : 'That save could not be read.');
+      await saveIronman(game);
+      toMenu(game);
+    } catch {
+      notice(game, 'This browser would not let the game save.');
     }
     setBusy('');
   };
   const doExport = () => {
     const d = toDate(game.state.day);
     const tag = game.state.countries[game.state.player]?.tag ?? 'game';
-    const ok = exportSave(serialize(game.state), `crowns-and-centuries-${tag}-${d.y}.json`);
+    const ok = exportSave(serializeGame(game), `crowns-and-centuries-${tag}-${d.y}.json`);
     notice(game, ok ? 'Save file downloaded.' : 'This viewer does not allow downloads. Use Save instead.');
   };
-  const doImport = async (file: File) => {
-    try {
-      afterLoad(game, await readSaveFile(file));
-    } catch (e) {
-      notice(game, e instanceof Error ? e.message : 'That file could not be read.');
-    }
-  };
+
   return (
-    <Modal title="The scriptorium" kicker="Game menu">
+    <Modal title="The scriptorium" kicker="Game menu" className="game-menu">
       <div className="menu-list">
         <button className="btn primary" onClick={close}>
           <Icon name="play-button" /> Resume
-        </button>
-        <button className="btn" disabled={!!busy} onClick={() => save('quick')}>
-          <Icon name="save" /> Save game
-        </button>
-        <button className="btn" disabled={!!busy} onClick={doExport}>
-          <Icon name="cloud-download" /> Export save file
-        </button>
-        <button className="btn" onClick={() => fileRef.current?.click()}>
-          <Icon name="cloud-upload" /> Load a save file
         </button>
         <button className="btn" onClick={() => game.ui.set({ modal: 'settings' })}>
           <Icon name="settings-knobs" /> Settings
@@ -85,41 +65,70 @@ export function GameMenu() {
         <button className="btn" onClick={() => game.ui.set({ modal: 'help' })}>
           <Icon name="scroll-quill" /> How to play
         </button>
-        <input
-          ref={fileRef}
-          type="file"
-          accept=".json,application/json"
-          hidden
-          onChange={(e) => {
-            const f = e.target.files?.[0];
-            if (f) void doImport(f);
-            e.target.value = '';
-          }}
-        />
       </div>
+      {game.ironman ? (
+        <section className="sp-section">
+          <h3 className="section-title">Ironman</h3>
+          <p className="dim small">This campaign has one save, and the game keeps it itself as you play.</p>
+          <div className="btn-row">
+            <button className="btn" disabled={!!busy} onClick={saveAndQuit}>
+              <Icon name="save" /> Save and go to the title screen
+            </button>
+          </div>
+        </section>
+      ) : (
+        <section className="sp-section">
+          <h3 className="section-title">Save the game</h3>
+          <form
+            className="save-form"
+            onSubmit={(e) => {
+              e.preventDefault();
+              void save();
+            }}
+          >
+            <label className="field">
+              <span className="sr-only">Name of the save</span>
+              <input
+                value={name}
+                maxLength={60}
+                spellCheck={false}
+                onChange={(e) => {
+                  setName(e.target.value);
+                  setOverwrite(false);
+                }}
+              />
+            </label>
+            <button className="btn primary" type="submit" disabled={!!busy || !trimmed}>
+              <Icon name="save" /> {overwrite ? 'Overwrite' : 'Save game'}
+            </button>
+          </form>
+          {overwrite && (
+            <p className="alert" role="status">
+              A save called “{trimmed}” exists. Save again to overwrite it, or change the name.
+            </p>
+          )}
+        </section>
+      )}
       <section className="sp-section">
         <h3 className="section-title">Saved games</h3>
-        {saves === null ? (
-          <p className="dim small">Looking…</p>
-        ) : saves.length ? (
-          <ul className="ranked">
-            {saves.map((s) => (
-              <li key={s.slot} className="ranked-row static">
-                <span>
-                  {s.label}
-                  <span className="dim small"> · saved {new Date(s.saved).toLocaleString()}</span>
-                </span>
-                <button className="btn small" disabled={!!busy} onClick={() => load(s.slot)}>
-                  Load
-                </button>
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p className="dim small">No saves in this browser yet.</p>
-        )}
+        <SaveList
+          saves={saves}
+          busy={!!busy}
+          onChanged={() => void refresh()}
+          onLoad={async (meta) => {
+            setBusy('Loading…');
+            await loadChosen(game, meta);
+            setBusy('');
+          }}
+        />
         {busy && <p className="dim small">{busy}</p>}
       </section>
+      <div className="btn-row">
+        <button className="btn" disabled={!!busy} onClick={doExport}>
+          <Icon name="cloud-download" /> Export save file
+        </button>
+        <LoadFileButton game={game} />
+      </div>
       <div className="modal-actions">
         <button className="btn ghost" onClick={() => startChoosing(game)}>
           New campaign
@@ -146,6 +155,9 @@ export function Fallen() {
       <div className="modal-actions">
         <button className="btn" onClick={() => toMenu(game)}>
           Title screen
+        </button>
+        <button className="btn" onClick={() => game.ui.set({ modal: 'load' })}>
+          Load a saved game
         </button>
         <button className="btn primary" onClick={playOn}>
           Play on as another realm

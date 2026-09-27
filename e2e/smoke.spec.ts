@@ -69,10 +69,61 @@ test('plays England: armies, time and a saved game', async ({ page }) => {
   await page.getByRole('button', { name: 'Game menu' }).click();
   await page.getByRole('button', { name: 'Save game' }).click();
   await expect(page.locator('.notice')).toHaveText('Game saved.');
-  await expect(page.locator('.modal .ranked-row')).toContainText('Kingdom of England');
+  await expect(page.locator('.modal .save-row')).toContainText('Kingdom of England');
   await page.getByRole('button', { name: 'Resume', exact: true }).click();
   await expect(page.locator('.modal')).toHaveCount(0);
 
+  expect(errors).toEqual([]);
+});
+
+test('keeps its archive: named saves, overwriting, deleting, and Continue after a reload', async ({ page }) => {
+  const errors = watchErrors(page);
+  await page.goto('/?debug');
+  await page.getByRole('button', { name: 'New Campaign' }).click({ timeout: 120_000 });
+  await page.getByRole('button', { name: 'Play as England' }).click();
+  await expect(page.locator('.date-long')).toHaveText('15th of September, 1066 AD');
+  const menu = page.getByRole('dialog', { name: 'The scriptorium' });
+  const name = menu.getByRole('textbox', { name: 'Name of the save' });
+
+  // A save under the offered name, and one under a name of our own.
+  await page.getByRole('button', { name: 'Game menu' }).click();
+  await expect(name).toHaveValue('England, 15 Sep 1066');
+  await menu.getByRole('button', { name: 'Save game' }).click();
+  await expect(menu.locator('.save-row')).toHaveCount(1);
+  await name.fill('Before the storm');
+  await menu.getByRole('button', { name: 'Save game' }).click();
+  await expect(menu.locator('.save-row')).toHaveCount(2);
+  await expect(menu.locator('.save-row').first()).toContainText('Before the storm');
+  await expect(menu.locator('.save-row').first()).toContainText('Kingdom of England · 15th of September, 1066 AD');
+
+  // The same name again asks first, then overwrites.
+  await menu.getByRole('button', { name: 'Save game' }).click();
+  await expect(menu.getByRole('status')).toContainText('A save called “Before the storm” exists');
+  await menu.getByRole('button', { name: 'Overwrite' }).click();
+  await expect(page.locator('.notice')).toHaveText('Game saved.');
+  await expect(menu.locator('.save-row')).toHaveCount(2);
+
+  // Deleting asks too.
+  await menu.getByRole('button', { name: 'Delete England, 15 Sep 1066' }).click();
+  await menu.getByRole('button', { name: 'Delete', exact: true }).click();
+  await expect(menu.locator('.save-row')).toHaveCount(1);
+
+  // A few days on, then a fresh page: Continue takes up the latest save, which knows its date.
+  await page.getByRole('button', { name: 'Resume', exact: true }).click();
+  await page.keyboard.press('5');
+  await expect(page.locator('.date-long')).not.toHaveText('15th of September, 1066 AD', { timeout: 30_000 });
+  await page.reload();
+  const cont = page.getByRole('button', { name: /Continue/ });
+  await expect(cont).toContainText('Before the storm', { timeout: 120_000 });
+  await cont.click();
+  await expect(page.locator('.date-long')).toHaveText('15th of September, 1066 AD');
+  await expect(page.locator('.nation-name')).toHaveText('Kingdom of England');
+
+  // The archive is on the title screen too.
+  await page.getByRole('button', { name: 'Game menu' }).click();
+  await page.getByRole('button', { name: 'Title screen' }).click();
+  await page.getByRole('button', { name: 'Load Game' }).click();
+  await expect(page.getByRole('dialog', { name: 'Load a game' }).locator('.save-row')).toHaveCount(1);
   expect(errors).toEqual([]);
 });
 
