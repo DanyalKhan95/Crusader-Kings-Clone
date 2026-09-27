@@ -103,7 +103,7 @@ function TrackColumn({ c, track }: { c: Country; track: TechTrack }) {
             Level {level} of {TECHS[track].length}
           </span>
         </span>
-        <WithTip tip={<BreakdownList title="Research a month" b={points} />}>
+        <WithTip tip={<BreakdownList title="Research a month" b={points} more="rule:technology" />}>
           <span className="num tech-rate">+{points.total.toFixed(1)}</span>
         </WithTip>
       </header>
@@ -121,7 +121,7 @@ function TrackColumn({ c, track }: { c: Country; track: TechTrack }) {
             {next.name} <span className="dim num">({next.year})</span>
           </span>
           <span className="small">{techSummary(next)}</span>
-          <WithTip tip={<BreakdownList title="Cost" b={cost} digits={0} />}>
+          <WithTip tip={<BreakdownList title="Cost" b={cost} digits={0} more="rule:technology" />}>
             <span className="bar tech-bar">
               <span style={{ width: `${Math.min(100, (c.research[track] / cost.total) * 100)}%` }} />
             </span>

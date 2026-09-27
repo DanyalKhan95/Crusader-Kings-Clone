@@ -29,6 +29,7 @@ import { formatDate } from '../format';
 import { useGame } from '../game';
 import { Icon } from '../Icon';
 import { OpinionValue } from './DiplomacyPanel';
+import { Term } from '../encyclopedia/Term';
 import { BreakdownList, WithTip } from './Tip';
 
 /** Laws, legitimacy and the estates of the player's realm. */
@@ -46,7 +47,7 @@ export function LawsTab({ c }: { c: Country }) {
           <WithTip
             tip={
               <>
-                <BreakdownList title="Legitimacy is heading for" b={target} digits={0} />
+                <BreakdownList title="Legitimacy is heading for" b={target} digits={0} more="rule:legitimacy" />
                 <p className="tip-text">
                   It moves a point or two a month. Loyal nobles and clergy, obedient vassals and a steady realm all
                   follow from it; below 30 stability sinks, and below 35 the nobles may rise for a pretender.
@@ -118,7 +119,11 @@ export function LawsTab({ c }: { c: Country }) {
                     <CoatOfArms country={v} size={22} />
                     <span className="diplo-row-name">{v.name}</span>
                   </button>
-                  <OpinionValue b={loyalty(state, game.world, m)} title={`Loyalty of ${v.short}`} />
+                  <OpinionValue
+                    b={loyalty(state, game.world, m)}
+                    title={`Loyalty of ${v.short}`}
+                    more="rule:subjects"
+                  />
                 </li>
               );
             })}
@@ -184,7 +189,9 @@ function SuccessionLaw({ c }: { c: Country }) {
   return (
     <div className="law">
       <div className="law-head">
-        <span className="law-name">Succession</span>
+        <span className="law-name">
+          <Term to="law:succession">Succession</Term>
+        </span>
         <span className="dim small">{SUCCESSION_INFO[c.laws.succession].blurb}</span>
       </div>
       {options.length > 1 && (
@@ -210,7 +217,9 @@ function LevelLawRow({ c, law }: { c: Country; law: LevelLaw }) {
   return (
     <div className="law">
       <div className="law-head">
-        <span className="law-name">{info.name}</span>
+        <span className="law-name">
+          <Term to={`law:${law}`}>{info.name}</Term>
+        </span>
         <span className="dim small">{info.effects[c.laws[law]]}</span>
       </div>
       <div className="law-levels" role="radiogroup" aria-label={info.name}>
@@ -289,12 +298,13 @@ function EstateRow({ c, e }: { c: Country; e: EstateId }) {
                 parts: influence.parts[e].map((p) => ({ label: p.label, value: p.value / 100 })),
               }}
               percent
+              more="rule:estates"
             />
           }
         >
           <span className="num dim small">{Math.round(influence.share[e] * 100)}% of the power</span>
         </WithTip>
-        <OpinionValue b={loyal} title={`Loyalty of the ${estateName(c, e).toLowerCase()}`} />
+        <OpinionValue b={loyal} title={`Loyalty of the ${estateName(c, e).toLowerCase()}`} more="rule:estates" />
       </div>
       <p className="dim small estate-blurb">{info.blurb}</p>
       {risk > 0 && <p className="small bad">On the brink: about {Math.round(risk * 100)}% a month that they rise.</p>}

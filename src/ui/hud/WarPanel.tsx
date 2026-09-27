@@ -73,6 +73,7 @@ export function WarView({ id }: { id: number }) {
             : score
         }
         digits={0}
+        more="rule:war-score"
       />
       <div className="war-sides">
         <Side title="Attackers" members={war.attackers} lead={war.attacker} />

@@ -19,6 +19,7 @@ export type KeyAction =
   | 'log'
   | 'outliner'
   | 'help'
+  | 'encyclopedia'
   | 'perfOverlay'
   | `mode:${MapMode}`
   | 'capital'
@@ -72,6 +73,7 @@ export const KEY_ACTIONS: KeyActionInfo[] = [
   { id: 'log', label: 'The log of news', group: 'Screens', keys: ['N'] },
   { id: 'outliner', label: 'Show or fold the outliner', group: 'Screens', keys: ['O'] },
   { id: 'help', label: 'How to play', group: 'Screens', keys: ['H', 'F1'] },
+  { id: 'encyclopedia', label: 'The encyclopedia', group: 'Screens', keys: ['B'] },
   { id: 'perfOverlay', label: 'Performance overlay', group: 'Screens', keys: ['F3'] },
   ...MAP_MODES.map((m): KeyActionInfo => ({
     id: `mode:${m.id}`,

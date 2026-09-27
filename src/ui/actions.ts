@@ -124,6 +124,38 @@ export function setMapMode(game: Game, mode: MapMode) {
   game.ui.set({ mapMode: mode, screen: null });
 }
 
+/**
+ * Opens the encyclopedia at a page: an entry's id, `cat:` and a category, or '' for its contents.
+ * Closing it goes back to whatever it was opened from; time stops while it is open.
+ */
+export function openEncyclopedia(game: Game, page = '') {
+  const s = game.ui.get();
+  const open = s.modal === 'encyclopedia';
+  game.ui.set({
+    modal: 'encyclopedia',
+    encyclopedia: page,
+    encyclopediaTrail: open
+      ? s.encyclopedia === page
+        ? s.encyclopediaTrail
+        : [...s.encyclopediaTrail, s.encyclopedia].slice(-40)
+      : [],
+    encyclopediaBack: open ? s.encyclopediaBack : s.modal,
+    speed: 0,
+    contextMenu: null,
+  });
+}
+
+/** The page read before this one. */
+export function encyclopediaBack(game: Game) {
+  const trail = game.ui.get().encyclopediaTrail;
+  if (trail.length) game.ui.set({ encyclopedia: trail[trail.length - 1], encyclopediaTrail: trail.slice(0, -1) });
+}
+
+/** Closes the encyclopedia. */
+export function closeEncyclopedia(game: Game) {
+  game.ui.set({ modal: game.ui.get().encyclopediaBack });
+}
+
 /** Opens the settings at a section; closing them goes back to the screen they were opened from. */
 export function openSettings(game: Game, section: SettingsSection = 'interface') {
   game.ui.set({ modal: 'settings', settingsSection: section, settingsBack: game.ui.get().modal });

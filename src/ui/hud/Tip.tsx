@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import type { Breakdown } from '../../sim/economy';
+import { MoreAbout } from '../encyclopedia/Term';
 
 /** Hover or focus to show a small panel explaining a number. */
 export function WithTip({
@@ -33,12 +34,15 @@ export function BreakdownList({
   digits = 1,
   unit = '',
   percent = false,
+  more,
 }: {
   title: string;
   b: Breakdown;
   digits?: number;
   unit?: string;
   percent?: boolean;
+  /** an encyclopedia entry that explains it */
+  more?: string;
 }) {
   const fmt = (v: number) => (percent ? `${fmtSigned(v * 100, 0)}%` : `${fmtSigned(v, digits)}${unit}`);
   return (
@@ -56,6 +60,7 @@ export function BreakdownList({
         <span>Total</span>
         <span className="num">{percent ? `${Math.round(b.total * 100)}%` : `${b.total.toFixed(digits)}${unit}`}</span>
       </div>
+      {more && <MoreAbout to={more} />}
     </div>
   );
 }

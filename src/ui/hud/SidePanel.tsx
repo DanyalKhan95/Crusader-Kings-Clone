@@ -35,6 +35,7 @@ import { ColonySection, FleetsHere, FleetView, Shipyard, UnknownView } from './N
 import { knows } from '../../sim/exploration';
 import { blockades, isOpenOcean } from '../../sim/naval';
 import { WithTip } from './Tip';
+import { MoreAbout } from '../encyclopedia/Term';
 import { CountryView } from './CountryPanel';
 import { faithIcon } from './FaithPanel';
 import { WarView } from './WarPanel';
@@ -186,10 +187,13 @@ function LandView({ r }: { r: RegionData }) {
             {owner ? (
               <WithTip
                 tip={
-                  <p className="tip-text">
-                    It grows towards {devCap(game.world, owner, r.id)}: what the land allows, raised by the economic
-                    technology of its ruler. Farms, workshops and a steward who develops the land make it grow faster.
-                  </p>
+                  <>
+                    <p className="tip-text">
+                      It grows towards {devCap(game.world, owner, r.id)}: what the land allows, raised by the economic
+                      technology of its ruler. Farms, workshops and a steward who develops the land make it grow faster.
+                    </p>
+                    <MoreAbout to="rule:development" />
+                  </>
                 }
               >
                 {p.dev} <span className="dim">of {devCap(game.world, owner, r.id)}</span>

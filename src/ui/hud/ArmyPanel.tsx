@@ -13,6 +13,7 @@ import { CoatOfArms } from '../CoatOfArms';
 import { useGame } from '../game';
 import { Icon } from '../Icon';
 import { Portrait, Skills } from '../people';
+import { Term } from '../encyclopedia/Term';
 
 export function ArmyView({ id }: { id: number }) {
   const game = useGame();
@@ -61,13 +62,17 @@ export function ArmyView({ id }: { id: number }) {
           <span className="num big">{formatMen(size)}</span>
         </div>
         <div>
-          <span className="caps">Morale</span>
+          <span className="caps">
+            <Term to="rule:morale">Morale</Term>
+          </span>
           <span className="bar morale">
             <span style={{ width: `${army.morale * 100}%` }} />
           </span>
         </div>
         <div>
-          <span className="caps">Supply</span>
+          <span className="caps">
+            <Term to="rule:supply">Supply</Term>
+          </span>
           <span className={`num ${size > supply ? 'bad' : ''}`}>{formatMen(supply)}</span>
         </div>
       </div>

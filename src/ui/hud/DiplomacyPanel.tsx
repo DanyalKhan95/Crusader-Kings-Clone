@@ -38,10 +38,10 @@ import { goToProvince } from './SidePanel';
 import { BreakdownList, fmtSigned, WithTip } from './Tip';
 
 /** A number coloured by whether it is friendly, with its reasons on hover. */
-export function OpinionValue({ b, title }: { b: Breakdown; title: string }) {
+export function OpinionValue({ b, title, more = 'rule:opinion' }: { b: Breakdown; title: string; more?: string }) {
   const v = Math.round(b.total);
   return (
-    <WithTip tip={<BreakdownList title={title} b={b} digits={0} />} className="opinion">
+    <WithTip tip={<BreakdownList title={title} b={b} digits={0} more={more} />} className="opinion">
       <span className={`num ${v < 0 ? 'bad' : v > 0 ? 'good' : ''}`}>{fmtSigned(v, 0)}</span>
     </WithTip>
   );
@@ -88,7 +88,7 @@ function PactButton({ kind, target, label }: { kind: PactKind; target: number; l
       <p className="tip-text">{PACT_INFO[kind].blurb}</p>
       {will && (
         <>
-          <BreakdownList title="How they weigh it" b={will} digits={0} />
+          <BreakdownList title="How they weigh it" b={will} digits={0} more="rule:treaties" />
           <p className={`tip-text ${yes ? 'good' : 'bad'}`}>{yes ? 'They would accept.' : 'They would refuse.'}</p>
         </>
       )}
@@ -185,7 +185,7 @@ export function ForeignDiplomacy({ c }: { c: Country }) {
         {(isVassal || isTributary) && (
           <div>
             <span className="caps">Loyalty</span>
-            <OpinionValue b={loyalty(state, world, c.index)} title="Loyalty to us" />
+            <OpinionValue b={loyalty(state, world, c.index)} title="Loyalty to us" more="rule:subjects" />
           </div>
         )}
       </div>
@@ -439,7 +439,7 @@ export function DiplomacyTab({ c }: { c: Country }) {
           <h3 className="section-title">{c.liege ? 'Our liege' : 'Our overlord'}</h3>
           <ul className="diplo-list">
             <Row c={state.countries[lord]}>
-              <OpinionValue b={loyalty(state, world, c.index)} title="Our loyalty to them" />
+              <OpinionValue b={loyalty(state, world, c.index)} title="Our loyalty to them" more="rule:subjects" />
             </Row>
           </ul>
           <p className="dim small">
@@ -480,7 +480,7 @@ export function DiplomacyTab({ c }: { c: Country }) {
               return (
                 <Row key={s.index} c={s}>
                   <span className="diplo-row-what small dim">{s.liege ? 'Vassal' : 'Tributary'}</span>
-                  <OpinionValue b={l} title={`Loyalty of ${s.short}`} />
+                  <OpinionValue b={l} title={`Loyalty of ${s.short}`} more="rule:subjects" />
                 </Row>
               );
             })}

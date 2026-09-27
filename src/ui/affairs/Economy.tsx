@@ -87,8 +87,8 @@ export function EconomyScreen({ c }: { c: Country }) {
         />
       </section>
       <div className="affairs-flow">
-        <BreakdownList title="Income a month" b={inc} />
-        <BreakdownList title="Expenses a month" b={exp} />
+        <BreakdownList title="Income a month" b={inc} more="rule:taxes" />
+        <BreakdownList title="Expenses a month" b={exp} more="rule:expenses" />
         <section className="sp-section">
           <h3 className="section-title">Loans · {c.loans.length}</h3>
           {c.loans.length ? (

@@ -166,7 +166,7 @@ export function IntrigueSection({ c }: { c: Country }) {
         <div className="network-work small">
           <span>
             Your spymaster is at work:{' '}
-            <WithTip tip={<BreakdownList title="Growth a month" b={growth} />}>
+            <WithTip tip={<BreakdownList title="Growth a month" b={growth} more="rule:espionage" />}>
               <span className="num good">{fmtSigned(growth.total)} a month</span>
             </WithTip>
           </span>
@@ -212,7 +212,7 @@ function Plot({ target, plot }: { target: Country; plot: PlotId }) {
         <span className="small plot-terms">
           <span>network {def.network}</span>
           <span>{plotGold(state, me, plot)} gold</span>
-          <WithTip tip={<BreakdownList title="Chance of success" b={odds} digits={0} unit="%" />}>
+          <WithTip tip={<BreakdownList title="Chance of success" b={odds} digits={0} unit="%" more="rule:espionage" />}>
             <span className="num">{Math.round(odds.total)}% success</span>
           </WithTip>
           <span>{Math.round(exposure)}% traced</span>

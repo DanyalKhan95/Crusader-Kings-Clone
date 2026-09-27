@@ -145,7 +145,9 @@ function Nations() {
                 </td>
                 <td className="num">{Math.round(r.c.score).toLocaleString('en-US')}</td>
                 <td className="num">
-                  <WithTip tip={<BreakdownList title="At the next New Year" b={standing(state, r.c)} />}>
+                  <WithTip
+                    tip={<BreakdownList title="At the next New Year" b={standing(state, r.c)} more="rule:standing" />}
+                  >
                     +{Math.round(r.year)}
                   </WithTip>
                 </td>

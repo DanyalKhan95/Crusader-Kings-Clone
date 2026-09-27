@@ -194,7 +194,7 @@ export function goldOf(state: GameState, c: Country, effects: EventEffects): num
   return g;
 }
 
-const SPECIAL_TEXT: Record<SpecialId, string> = {
+export const SPECIAL_TEXT: Record<SpecialId, string> = {
   embrace_reform:
     'The realm takes up the reformed faith and seizes the church’s lands; the clergy are furious (−25) and stability falls by 1',
   anglican: 'The crown heads its own church and dissolves the monasteries; the clergy −20, legitimacy +5',

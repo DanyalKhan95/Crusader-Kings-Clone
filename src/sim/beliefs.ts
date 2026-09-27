@@ -55,6 +55,11 @@ export function isFaith(id: string): boolean {
   return !!faiths[id];
 }
 
+/** Every faith of the world, the heresies included. */
+export function faithIds(): string[] {
+  return Object.keys(faiths);
+}
+
 export function cultureGroup(id: string | null | undefined): string {
   return (id && groups[id]) || '';
 }

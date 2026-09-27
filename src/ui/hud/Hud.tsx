@@ -8,10 +8,11 @@ import { ERAS } from '../../data/eras';
 import { TECH_TRACKS, TECHS, TRACK_INFO } from '../../data/techs';
 import { eraOf } from '../../sim/tech';
 import { armiesOf, menIn } from '../../sim/queries';
-import { flyToRealm, openScreen, setSpeed, togglePause } from '../actions';
+import { flyToRealm, openEncyclopedia, openScreen, setSpeed, togglePause } from '../actions';
 import { Affairs } from '../affairs/Affairs';
 import { sound } from '../audio';
 import { CoatOfArms } from '../CoatOfArms';
+import { MoreAbout } from '../encyclopedia/Term';
 import { formatDate, shortDate } from '../format';
 import { useGame } from '../game';
 import { Icon } from '../Icon';
@@ -118,6 +119,7 @@ function NationPlate() {
             <>
               <BreakdownList title="Monthly income" b={inc} />
               <BreakdownList title="Monthly expenses" b={exp} />
+              <MoreAbout to="rule:taxes" />
             </>
           }
         />
@@ -126,7 +128,12 @@ function NationPlate() {
           label="Levies"
           value={formatMen(c.manpower)}
           sub={`/ ${formatMen(maxMp.total)}`}
-          tip={<BreakdownList title="Levies when fully rested" b={maxMp} digits={0} unit=" men" />}
+          tip={
+            <>
+              <BreakdownList title="Levies when fully rested" b={maxMp} digits={0} unit=" men" />
+              <MoreAbout to="rule:levies" />
+            </>
+          }
         />
         <Resource
           icon="pikeman"
@@ -145,6 +152,7 @@ function NationPlate() {
                   <span className="num">{formatMen(reserveMen(c))}</span>
                 </li>
               </ul>
+              <MoreAbout to="rule:men-at-arms" />
             </div>
           }
         />
@@ -156,7 +164,8 @@ function NationPlate() {
           tip={
             <>
               <BreakdownList title="Legitimacy is heading for" b={legitimacyTarget(state, c)} digits={0} />
-              <p className="tip-text">The ruler’s right to rule. See the Laws tab.</p>
+              <p className="tip-text">The ruler’s right to rule.</p>
+              <MoreAbout to="rule:legitimacy" />
             </>
           }
         />
@@ -166,10 +175,13 @@ function NationPlate() {
           value={fmtSigned(c.stability, 0)}
           tone={c.stability < 0 ? 'bad' : c.stability > 1 ? 'good' : undefined}
           tip={
-            <p className="tip-text">
-              Stability runs from −3 to +3. Each point changes taxes by 5% and levies by 3%. It drifts back towards +1;
-              unjust wars, lost wars and the death of a ruler lower it.
-            </p>
+            <>
+              <p className="tip-text">
+                Stability runs from −3 to +3. Each point changes taxes by 5% and levies by 3%. It drifts back towards
+                +1; unjust wars, lost wars and the death of a ruler lower it.
+              </p>
+              <MoreAbout to="rule:stability" />
+            </>
           }
         />
         <EraButton />
@@ -180,9 +192,13 @@ function NationPlate() {
             value={c.warExhaustion.toFixed(1)}
             tone="bad"
             tip={
-              <p className="tip-text">
-                War weariness cuts taxes by 1% a point and makes enemies bolder at the table. It fades in peace.
-              </p>
+              <>
+                <p className="tip-text">
+                  War weariness cuts taxes by 1% a point, angers the commons and the burghers, and makes the realm
+                  readier to make peace. It fades in peace.
+                </p>
+                <MoreAbout to="rule:war-weariness" />
+              </>
             }
           />
         )}
@@ -223,6 +239,7 @@ function EraButton() {
             ))}
           </ul>
           <p className="tip-text">{withKey('Open the technology screen', 'screen:technology')}.</p>
+          <MoreAbout to="rule:technology" />
         </div>
       }
     >
@@ -279,6 +296,15 @@ function TimeControls() {
         title={withKey('The log of news', 'log')}
       >
         <Icon name="quill-ink" />
+      </button>
+      <button
+        className="btn ghost icon-btn"
+        data-tour="encyclopedia"
+        onClick={() => openEncyclopedia(game)}
+        aria-label={withKey('The encyclopedia', 'encyclopedia')}
+        title={withKey('The encyclopedia', 'encyclopedia')}
+      >
+        <Icon name="open-book" />
       </button>
       <button
         className="btn ghost icon-btn"

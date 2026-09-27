@@ -40,7 +40,9 @@ export function MilitaryScreen({ c }: { c: Country }) {
         <ul className="stat-tiles">
           <li>
             <span className="caps">Levies ready</span>
-            <WithTip tip={<BreakdownList title="Levies when fully rested" b={max} digits={0} unit=" men" />}>
+            <WithTip
+              tip={<BreakdownList title="Levies when fully rested" b={max} digits={0} unit=" men" more="rule:levies" />}
+            >
               <span className="num tile-value">
                 {formatMen(c.manpower)} <span className="dim small">of {formatMen(max.total)}</span>
               </span>

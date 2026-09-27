@@ -31,7 +31,8 @@ export type Modal =
   | 'help'
   | 'settings'
   | 'load'
-  | 'demoEnd';
+  | 'demoEnd'
+  | 'encyclopedia';
 export type SettingsSection = 'interface' | 'graphics' | 'game' | 'news' | 'sound' | 'keys';
 
 /** A menu of what can be done with a place, opened by a right-click or a long press. */
@@ -82,6 +83,11 @@ export interface UIState {
   /** the section the settings open at, and the screen they go back to when closed */
   settingsSection: SettingsSection;
   settingsBack: Modal;
+  /** the encyclopedia's page on show (an entry, `cat:` a category, '' its contents), and what it goes back to */
+  encyclopedia: string;
+  encyclopediaBack: Modal;
+  /** the pages read before this one, for Back */
+  encyclopediaTrail: string[];
   contextMenu: ContextMenuAt | null;
 }
 
@@ -131,6 +137,9 @@ export function createGame(world: StaticWorld, scenario: ScenarioData, state: Ga
     hiddenAlerts: [],
     settingsSection: 'interface',
     settingsBack: 'none',
+    encyclopedia: '',
+    encyclopediaBack: 'none',
+    encyclopediaTrail: [],
     contextMenu: null,
   });
   return {

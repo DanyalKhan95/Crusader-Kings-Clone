@@ -2,7 +2,7 @@
 import { useState, type ReactNode } from 'react';
 import type { IconName } from '../../assets/icons';
 import { MAP_MODES } from '../../game/mapModes';
-import { openSettings } from '../actions';
+import { openEncyclopedia, openSettings } from '../actions';
 import { useGame } from '../game';
 import { Icon } from '../Icon';
 import { SCREEN_KEYS, shortcut, type KeyAction } from '../keys';
@@ -35,8 +35,17 @@ const TOPICS: Topic[] = [
           age ends with a final ranking. You may play on after it.
         </p>
         <p>
+          Your realm’s affairs have screens of their own, over the map, while time runs on: the realm, the court, the
+          economy, the military, diplomacy, faith, government and technology. Open them with the arms at the top left or
+          their keys (<Key action="screen:realm" /> <Key action="screen:court" /> <Key action="screen:economy" />{' '}
+          <Key action="screen:military" /> <Key action="screen:diplomacy" /> <Key action="screen:faith" />{' '}
+          <Key action="screen:government" /> <Key action="screen:technology" />
+          ); the side panel shows provinces, armies, fleets and other realms.
+        </p>
+        <p>
           Every figure in the game can be explained: hover over a number to see the parts it is made of, and the reasons
-          a button is closed to you.
+          a button is closed to you. The encyclopedia (<Key action="encyclopedia" />) sets out every rule with its
+          numbers, and underlined words in tooltips lead to it.
         </p>
       </>
     ),
@@ -111,9 +120,10 @@ const TOPICS: Topic[] = [
         </p>
         <p>
           Levies come from your provinces and return home at peace; men-at-arms are paid soldiers kept in reserve. Raise
-          your army from the Army tab, select it on the map and <strong>right-click</strong> where it should march (on a
-          touch screen, tap March and then the place). Battles turn on numbers, the kinds of soldiers, the terrain,
-          rivers and the commander; castles must be besieged. Armies need supply, and starve in barren or crowded lands.
+          your army from the military screen, select it on the map and <strong>right-click</strong> where it should
+          march (on a touch screen, tap March and then the place). Battles turn on numbers, the kinds of soldiers, the
+          terrain, rivers and the commander; castles must be besieged. Armies need supply, and starve in barren or
+          crowded lands.
         </p>
         <p>
           Victories, occupied land and the goal of the war fill the war score. Negotiate peace from the war’s panel:
@@ -155,7 +165,7 @@ const TOPICS: Topic[] = [
         <p>
           Four estates (the nobles, the clergy, the burghers and the commons) share the power of the realm. Loyal
           estates help; disloyal ones hinder, and a powerful estate pushed too far rises in revolt. The council of five
-          (chancellor, marshal, steward, spymaster and chaplain) each takes a task on the Court tab.
+          (chancellor, marshal, steward, spymaster and chaplain) each takes a task on the court screen.
         </p>
       </>
     ),
@@ -264,6 +274,7 @@ function keyRows(): [string, string][] {
     [keys(['log']), 'The log of news'],
     [keys(['outliner']), 'Show or fold the outliner'],
     [keys(['help']), 'How to play'],
+    [keys(['encyclopedia']), 'The encyclopedia'],
     ['Esc', 'Close a window or panel; the game menu'],
     [keys(['capital']), 'Go to the capital'],
     [keys(['nextArmy', 'nextFleet']), 'The next army, the next fleet; with Shift, the one before'],
@@ -334,13 +345,16 @@ export function Help() {
           )}
         </article>
       </div>
-      {phase === 'playing' && (
-        <div className="modal-actions">
+      <div className="modal-actions">
+        <button className="btn" onClick={() => openEncyclopedia(game)}>
+          <Icon name="open-book" /> The encyclopedia
+        </button>
+        {phase === 'playing' && (
           <button className="btn" onClick={() => startTour(game)}>
             <Icon name="compass" /> Show me around
           </button>
-        </div>
-      )}
+        )}
+      </div>
     </Modal>
   );
 }

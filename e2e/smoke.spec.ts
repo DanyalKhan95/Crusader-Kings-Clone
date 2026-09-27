@@ -691,6 +691,42 @@ test('meets events: a choice, a modifier, a nation to proclaim and spies abroad'
   expect(errors).toEqual([]);
 });
 
+test('looks things up: the encyclopedia, its search and the words that lead to it', async ({ page }) => {
+  const errors = watchErrors(page);
+  await page.goto('/');
+  await page.getByRole('button', { name: 'New Campaign' }).click({ timeout: 120_000 });
+  await page.getByRole('button', { name: 'Play as England' }).click();
+  await expect(page.locator('.date-long')).toHaveText('15th of September, 1066 AD');
+
+  // From a tooltip: the treasury's figures lead to the rules of taxes, with the realm's own rate.
+  const gold = page.locator('.stat', { hasText: 'Gold' }).first();
+  await gold.hover();
+  await gold.getByRole('button', { name: 'More in the encyclopedia' }).click();
+  const book = page.getByRole('dialog', { name: 'Encyclopedia' });
+  await expect(book.getByRole('heading', { name: 'Taxes and income' })).toBeVisible();
+  await expect(book.getByRole('region', { name: 'In your realm now' })).toContainText('Your tax rate');
+
+  // A word in the article goes to its own entry, and Back returns.
+  await book.locator('.enc-body').getByRole('button', { name: 'crown authority' }).click();
+  await expect(book.getByRole('heading', { name: 'Crown authority' })).toBeVisible();
+  await book.getByRole('button', { name: 'Back' }).click();
+  await expect(book.getByRole('heading', { name: 'Taxes and income' })).toBeVisible();
+
+  // Search, from the data as much as the rules.
+  await book.getByRole('searchbox').fill('knights');
+  await book.locator('.enc-item', { hasText: 'Knights' }).first().click();
+  await expect(book.getByRole('heading', { name: 'Knights' })).toBeVisible();
+  await expect(book).toContainText('Main battle tanks');
+
+  // Esc closes it; its key opens it at its contents.
+  await page.keyboard.press('Escape');
+  await expect(book).toHaveCount(0);
+  await page.keyboard.press('b');
+  await expect(book.getByRole('region', { name: 'Contents' })).toContainText('Start here');
+  await page.keyboard.press('Escape');
+  expect(errors).toEqual([]);
+});
+
 test('shows a new ruler around with the guided tour, and explains the game', async ({ page }) => {
   const errors = watchErrors(page);
   await page.goto('/');

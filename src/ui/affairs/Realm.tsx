@@ -32,7 +32,7 @@ export function RealmScreen({ c }: { c: Country }) {
       </section>
       <section className="affairs-card">
         <h3 className="section-title">Standing among the nations</h3>
-        <BreakdownList title="At the next New Year" b={standing(state, c)} />
+        <BreakdownList title="At the next New Year" b={standing(state, c)} more="rule:standing" />
         <p className="dim small">
           Each New Year the realm adds this to its score. On 1 January 2066 the highest score ranks first; the ledger of
           nations keeps the tally.

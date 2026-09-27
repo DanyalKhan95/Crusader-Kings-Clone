@@ -6,6 +6,7 @@ import {
   cycleFleets,
   goToCapital,
   closeScreen,
+  openEncyclopedia,
   openScreen,
   setMapMode,
   setSpeed,
@@ -16,6 +17,7 @@ import { sound } from './audio';
 import { DeclareWar } from './dialogs/DeclareWar';
 import { DemoEnd } from './dialogs/DemoEnd';
 import { EndOfAge } from './dialogs/EndOfAge';
+import { Encyclopedia } from './encyclopedia/Encyclopedia';
 import { EventDialog } from './dialogs/EventDialog';
 import { Help } from './dialogs/Help';
 import { Ledger } from './dialogs/Ledger';
@@ -73,6 +75,7 @@ export function GameRoot() {
         if (s.modal === 'offer' || s.modal === 'fallen' || s.modal === 'event' || s.modal === 'end') return;
         // The settings go back to the screen they were opened from.
         if (s.modal === 'settings') game.ui.set({ modal: s.settingsBack });
+        else if (s.modal === 'encyclopedia') game.ui.set({ modal: s.encyclopediaBack });
         else if (s.modal !== 'none') game.ui.set({ modal: 'none' });
         else if (s.screen) closeScreen(game);
         else if (s.orderMode) game.ui.set({ orderMode: false });
@@ -103,6 +106,7 @@ export function GameRoot() {
       else if (action === 'log') game.ui.set({ modal: 'log', speed: 0 });
       else if (action === 'outliner') toggleOutliner();
       else if (action === 'help') game.ui.set({ modal: 'help', speed: 0 });
+      else if (action === 'encyclopedia') openEncyclopedia(game);
       else if (action === 'perfOverlay') settings.set({ perfOverlay: !settings.get().perfOverlay });
       else if (action === 'capital') goToCapital(game);
       else if (action === 'nextArmy') cycleArmies(game, shift ? -1 : 1);
@@ -123,6 +127,7 @@ export function GameRoot() {
       {phase !== 'menu' && <HoverTooltip />}
       {modal === 'credits' && <Credits />}
       {modal === 'help' && <Help />}
+      {modal === 'encyclopedia' && <Encyclopedia />}
       {modal === 'settings' && <Settings />}
       {modal === 'load' && <LoadGame />}
       {phase === 'playing' && modal === 'menu' && <GameMenu />}
