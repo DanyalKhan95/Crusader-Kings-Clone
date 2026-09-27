@@ -697,7 +697,11 @@ test('shows a new ruler around with the guided tour, and explains the game', asy
   await page.getByRole('button', { name: 'Play as England' }).click();
   const tour = page.getByRole('dialog', { name: 'A thousand years to rule' });
   await expect(tour).toContainText('the Kingdom of England is yours to rule');
-  for (let i = 0; i < 7; i++) await page.getByRole('button', { name: 'Next' }).click();
+  for (let i = 0; i < 4; i++) await page.getByRole('button', { name: 'Next' }).click();
+  // The outliner and the alerts have a card of their own, lit on the right of the screen.
+  await expect(page.getByRole('dialog', { name: 'What you have in hand' })).toContainText('The outliner lists');
+  await expect(page.locator('.tour-spot')).toBeVisible();
+  for (let i = 0; i < 4; i++) await page.getByRole('button', { name: 'Next' }).click();
   await expect(page.getByRole('dialog', { name: 'The game menu' })).toBeVisible();
   await page.getByRole('button', { name: 'Begin' }).click();
   await expect(page.locator('.tour')).toHaveCount(0);

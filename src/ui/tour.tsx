@@ -28,8 +28,11 @@ export function endTour(game: Game) {
   writePref('tour', 'done');
 }
 
+/** The tabs of the realm's panel, in their order, for their keys. */
+const TABS = ['realm', 'treasury', 'military', 'court', 'laws', 'faith', 'diplomacy'] as const;
+
 interface Step {
-  /** the element to point at; none for a card in the middle of the screen */
+  /** the elements to point at, together; none for a card in the middle of the screen */
   target?: string;
   title: string;
   text: (game: Game) => ReactNode;
@@ -65,18 +68,31 @@ const STEPS: Step[] = [
     text: () => (
       <>
         Its affairs tab by tab: the treasury, the army, the court and council, the laws, the faith and your dealings
-        with other realms. Click any province or realm on the map to see it here instead; Esc closes it.
+        with other realms, each on a key of its own ({TABS.map((t) => shortcut(`tab:${t}`)).join(' ')}). Click any
+        province or realm on the map to see it here instead; Esc closes it.
       </>
     ),
   },
   {
     target: '.dateplate',
-    title: 'Time',
+    title: 'Time and news',
     text: () => (
       <>
         The world waits for you. Press {shortcut('pause')} or the play button to let the days run, and{' '}
         {shortcut('speed1')} to {shortcut('speed5')} for the speed. Anything that needs your answer, a declaration of
-        war, an offer, an event, stops the clock.
+        war, an offer, an event, stops the clock. News comes at the top of the screen, and the quill keeps all of it (
+        {shortcut('log')}); the settings say what each kind of news does.
+      </>
+    ),
+  },
+  {
+    target: '.hud-right > *',
+    title: 'What you have in hand',
+    text: () => (
+      <>
+        The outliner lists your armies and fleets, sieges, wars, buildings going up, colonies, missions and spies: click
+        one to go there, or go through your armies and fleets with {shortcut('nextArmy')} and {shortcut('nextFleet')}.
+        Above it, alerts show what needs your hand: hover for the reason, click to put it right, right-click to hide it.
       </>
     ),
   },
@@ -86,16 +102,18 @@ const STEPS: Step[] = [
     text: () => (
       <>
         See the world by realm or country, terrain, development, people, faith or, as your realm sees it, friends and
-        foes. The keys are {MAP_MODES.map((m) => shortcut(`mode:${m.id}`)).join(' ')}.
+        foes. The keys are {MAP_MODES.map((m) => shortcut(`mode:${m.id}`)).join(' ')}. The banner at the end chooses
+        whose armies and fleets the map shows.
       </>
     ),
   },
   {
-    title: 'Armies and war',
+    title: 'Armies, war, and the right hand',
     text: () => (
       <>
-        Raise your army from the Army tab, select it on the map and right-click where it should march. To make war, open
-        another realm and declare it: win battles and sieges, then negotiate peace from the war’s panel.
+        Raise your army from the Army tab, select it on the map and right-click where it should march. With no army
+        selected, right-click a province (or hold a finger on it) for what you can do there: build and recruit at home;
+        forge a claim, send a gift or declare war abroad. Win battles and sieges, then make peace from the war’s panel.
       </>
     ),
   },
@@ -123,6 +141,24 @@ const STEPS: Step[] = [
 
 const GAP = 14;
 const EDGE = 16;
+
+/** The box around every element shown of a list, or null when none is. */
+function around(els: NodeListOf<Element>): DOMRect | null {
+  let box: { l: number; t: number; r: number; b: number } | null = null;
+  for (const el of els) {
+    const r = el.getBoundingClientRect();
+    if (!r.width || !r.height) continue;
+    box = box
+      ? {
+          l: Math.min(box.l, r.left),
+          t: Math.min(box.t, r.top),
+          r: Math.max(box.r, r.right),
+          b: Math.max(box.b, r.bottom),
+        }
+      : { l: r.left, t: r.top, r: r.right, b: r.bottom };
+  }
+  return box && new DOMRect(box.l, box.t, box.r - box.l, box.b - box.t);
+}
 
 /** Where the card goes: beside a tall target if there is room, else below or above it, always on screen. */
 function place(target: DOMRect | null, w: number, h: number): { left: number; top: number } {
@@ -154,8 +190,7 @@ export function Tour() {
     if (!def) return;
     // Panels move and open; follow the target while the card is up.
     const measure = () => {
-      const el = def.target ? document.querySelector(def.target) : null;
-      const rect = el ? el.getBoundingClientRect() : null;
+      const rect = def.target ? around(document.querySelectorAll(def.target)) : null;
       setTarget(rect);
       const box = card.current?.getBoundingClientRect();
       setPos(place(rect, box?.width ?? 360, box?.height ?? 220));

@@ -65,6 +65,12 @@ const TOPICS: Topic[] = [
           are at war with you. Every key can be changed in the settings.
         </p>
         <p>
+          On the right, the outliner lists what your realm has in hand: armies and fleets, sieges, wars, buildings going
+          up, colonies, missions and spies; a click goes there, and <Key action="nextArmy" /> and{' '}
+          <Key action="nextFleet" /> go through your armies and fleets. Above it, alerts show what needs your hand and
+          why: a click leads to the remedy, a right-click hides the alert until something changes.
+        </p>
+        <p>
           Beyond the lands your people know lies unknown country, drawn as bare parchment. Armies and fleets reveal what
           they reach, allies share their maps, and by the industrial age the whole world is known.
         </p>

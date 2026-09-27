@@ -387,7 +387,7 @@ after the content they show has settled.
 - [x] Saves from milestone 8 load: a save written by the M8 build (England in 1126) loads and plays
       on, headless and from the title screen of a fresh browser, which now always offers Load Game.
 
-### M10: The new HUD
+### M10: The new HUD (done)
 
 - [x] An outliner on the right, collapsible, listing:
   - [x] armies, fleets and sieges
@@ -421,7 +421,10 @@ after the content they show has settled.
         on screen share one banner with their total, and a click selects the largest
   - [x] foreign fleets in port hidden unless they are at war with you (a layer shows them all)
 - [x] Realm names fade at close zoom instead of covering the provinces.
-- [ ] The guided tour and How to play updated for the new HUD.
+- [x] The guided tour and How to play updated for the new HUD: a card for the outliner and the
+      alerts, and the log, the menu of a place, the layers and the new keys in both.
+- [x] Saves from milestone 9 load as they were: the campaign's state did not change shape, only the
+      number of messages it keeps.
 
 ### M11: Realm screens and learning the game
 
