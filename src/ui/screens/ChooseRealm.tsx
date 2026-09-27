@@ -27,7 +27,7 @@ export function ChooseRealm() {
 
   const listRef = useRef<HTMLElement>(null);
   const detailRef = useRef<HTMLElement>(null);
-  useMapInsets([listRef, detailRef]);
+  useMapInsets('choose', [listRef, detailRef]);
 
   // Frame the opening realm once the panels are measured.
   useEffect(() => {

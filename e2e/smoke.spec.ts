@@ -166,6 +166,45 @@ test('carries a campaign to another browser: a save file out, and in from the ti
   expect(freshErrors).toEqual([]);
 });
 
+test('keeps watch: the outliner, and alerts that lead to the fix', async ({ page }) => {
+  const errors = watchErrors(page);
+  await page.goto('/?debug');
+  await page.getByRole('button', { name: 'New Campaign' }).click({ timeout: 120_000 });
+  await page.getByRole('button', { name: 'Play as England' }).click();
+  await expect(page.locator('.date-long')).toHaveText('15th of September, 1066 AD');
+
+  // The outliner lists what the realm has in hand; a click selects it.
+  const outliner = page.getByRole('complementary', { name: 'Outliner' });
+  await outliner.getByRole('button', { name: /Royal Army of England/ }).click();
+  await expect(page.locator('.side-panel')).toContainText('Encamped at London');
+  await outliner.getByRole('button', { name: /Norwegian Claim on England/ }).click();
+  await expect(page.locator('.side-panel .sp-title')).toHaveText('Norwegian Claim on England');
+
+  // Its parts fold away, and so does the whole of it, and it remembers.
+  await outliner.getByRole('button', { name: /^Fleets/ }).click();
+  await expect(outliner).not.toContainText('First Fleet of England');
+  await outliner.getByRole('button', { name: 'Fold the outliner away' }).click();
+  await expect(outliner).toHaveCount(0);
+  const kept = await page.evaluate(() => JSON.parse(localStorage.getItem('crowns-and-centuries:outliner')!));
+  expect(kept).toEqual({ open: false, closed: ['fleets'] });
+  await page.getByRole('button', { name: 'Outliner' }).click();
+  await expect(outliner).toContainText('Royal Army of England');
+
+  // An empty treasury raises an alert; a click opens the treasury, a right-click hides it.
+  await page.evaluate(() => {
+    type G = { state: { player: number; countries: { gold: number }[] }; runner: { sync(): void } };
+    const g = (window as unknown as { game: G }).game;
+    g.state.countries[g.state.player].gold = -50;
+    g.runner.sync();
+  });
+  const sign = page.getByRole('button', { name: 'The treasury runs dry' });
+  await sign.click();
+  await expect(page.getByRole('tab', { name: 'Treasury' })).toHaveAttribute('aria-selected', 'true');
+  await sign.click({ button: 'right' });
+  await expect(sign).toHaveCount(0);
+  expect(errors).toEqual([]);
+});
+
 test('makes friends: an alliance, the diplomacy map and a forged claim', async ({ page }) => {
   const errors = watchErrors(page);
   await page.goto('/?debug');
@@ -368,7 +407,7 @@ test('sails: a fleet, the unknown lands and a colony', async ({ page }) => {
   await page.locator('.nation-coa').click();
   await page.getByRole('tab', { name: 'Army' }).click();
   await expect(page.locator('.side-panel')).toContainText('cogs as transports');
-  await page.getByRole('button', { name: /First Fleet of England/ }).click();
+  await page.locator('.side-panel').getByRole('button', { name: /First Fleet of England/ }).click();
   await expect(page.locator('.side-panel .sp-title')).toHaveText('First Fleet of England');
   await expect(page.locator('.side-panel')).toContainText('War cogs');
   await page.getByRole('button', { name: 'Explore' }).click();

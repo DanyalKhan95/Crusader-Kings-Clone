@@ -5,8 +5,9 @@ import type { Insets } from './MapController';
 /**
  * Tells the map which screen edges are covered by these panels, so camera moves frame their
  * target in the part of the map that is still visible. A panel hugging a side counts for that side.
+ * Each caller reports under its own name, and the map keeps clear of them all.
  */
-export function useMapInsets(refs: RefObject<HTMLElement | null>[]) {
+export function useMapInsets(source: string, refs: RefObject<HTMLElement | null>[]) {
   const game = useGame();
   useLayoutEffect(() => {
     const measure = () => {
@@ -24,7 +25,7 @@ export function useMapInsets(refs: RefObject<HTMLElement | null>[]) {
         else if (r.left < vw * 0.25) ins.left = Math.max(ins.left, r.right);
         else if (r.right > vw * 0.75) ins.right = Math.max(ins.right, vw - r.left);
       }
-      game.map?.setInsets(ins);
+      game.map?.setInsets(source, ins);
     };
     measure();
     const ro = new ResizeObserver(measure);
@@ -33,8 +34,8 @@ export function useMapInsets(refs: RefObject<HTMLElement | null>[]) {
     return () => {
       ro.disconnect();
       window.removeEventListener('resize', measure);
-      game.map?.setInsets({ top: 0, right: 0, bottom: 0, left: 0 });
+      game.map?.setInsets(source, null);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- refs are stable objects
-  }, [game]);
+  }, [game, source]);
 }

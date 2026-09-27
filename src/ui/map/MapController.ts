@@ -102,6 +102,7 @@ export class MapController {
   private ro: ResizeObserver;
   private disposed = false;
   private insets: Insets = { top: 0, right: 0, bottom: 0, left: 0 };
+  private insetSources = new Map<string, Insets>();
   /** Slow eastward drift for the title screen, in map units per second. */
   drift = 0;
   showProvinceNames = true;
@@ -291,8 +292,18 @@ export class MapController {
     this.zoomTarget = 0;
   }
 
-  setInsets(insets: Insets) {
-    this.insets = insets;
+  /** How far each panel covers the screen's edges; camera moves frame their targets clear of all. */
+  setInsets(source: string, insets: Insets | null) {
+    if (insets) this.insetSources.set(source, insets);
+    else this.insetSources.delete(source);
+    const all: Insets = { top: 0, right: 0, bottom: 0, left: 0 };
+    for (const i of this.insetSources.values()) {
+      all.top = Math.max(all.top, i.top);
+      all.right = Math.max(all.right, i.right);
+      all.bottom = Math.max(all.bottom, i.bottom);
+      all.left = Math.max(all.left, i.left);
+    }
+    this.insets = all;
   }
 
   /** Camera position and zoom that frame a set of provinces in the uncovered part of the screen. */

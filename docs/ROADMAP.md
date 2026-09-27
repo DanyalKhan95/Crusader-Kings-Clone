@@ -389,17 +389,19 @@ after the content they show has settled.
 
 ### M10: The new HUD
 
-- [ ] An outliner on the right, collapsible, listing:
-  - [ ] armies, fleets and sieges
-  - [ ] wars, buildings under way and colonies
-  - [ ] missions and spy networks
-  - [ ] a click selects the item and flies there
-- [ ] An alerts bar: icons for what needs the player, each with its reason and a click to the fix:
-  - [ ] idle council tasks, an empty treasury or rising debt
-  - [ ] armies over the supply limit
-  - [ ] rebels and factions
-  - [ ] peace offers, or a war that can be won at the table
-  - [ ] claims ready, and laws that may change again
+- [x] An outliner on the right, collapsible, listing:
+  - [x] armies, fleets and sieges
+  - [x] wars, buildings under way and colonies
+  - [x] missions and spy networks
+  - [x] a click selects the item and flies there. The outliner and each of its parts fold away and
+        stay as they were left; the news moved to the top of the screen to make room.
+- [x] An alerts bar: icons for what needs the player, each with its reason and a click to the fix:
+  - [x] idle council tasks, an empty treasury or rising debt
+  - [x] armies over the supply limit
+  - [x] rebels and factions
+  - [x] peace offers, or a war that can be won at the table
+  - [x] claims ready, and laws that may change again
+  - [x] a right-click hides an alert until what it is about changes
 - [ ] A message log:
   - [ ] the campaign's news kept, searchable and filtered by kind
   - [ ] for each kind, a setting: a pop-up, a pause, the log only, or nothing. This replaces the

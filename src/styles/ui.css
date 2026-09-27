@@ -1118,15 +1118,218 @@ button.holder:hover {
   opacity: 0.45;
 }
 
-/* News */
-.toasts {
+/* The right of the screen, under the date: the alerts and the outliner. */
+.hud-right {
   position: absolute;
   top: calc(64px + env(safe-area-inset-top, 0px));
   right: 12px;
+  bottom: calc(var(--mapmodes-h, 56px) + 20px + env(safe-area-inset-bottom, 0px));
+  z-index: 11;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+  width: calc(290px * var(--text-scale, 1));
+  max-width: calc(100% - 24px);
+  pointer-events: none;
+}
+.hud-right > * {
+  pointer-events: auto;
+}
+.outliner {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  min-height: 0;
+  max-height: 100%;
+}
+.outliner-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 5px 5px 10px;
+  border-bottom: 1px solid var(--line-soft);
+}
+.outliner-head > .caps {
+  flex: 1;
+  font-size: calc(13px * var(--text-scale, 1));
+  letter-spacing: 0.12em;
+  color: var(--gold-bright);
+}
+.outliner-body {
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 2px 0 6px;
+}
+.outliner-empty {
+  margin: 0;
+  padding: 10px 12px;
+}
+.outliner-closed {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  color: var(--text);
+  cursor: pointer;
+}
+.outliner-closed .icon,
+.ol-title .icon {
+  width: 16px;
+  height: 16px;
+  color: var(--gold);
+}
+.outliner-closed .caps {
+  font-size: calc(13px * var(--text-scale, 1));
+  letter-spacing: 0.12em;
+}
+.ol-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 6px 10px 4px;
+  border: 0;
+  background: none;
+  color: var(--text);
+  cursor: pointer;
+}
+.ol-title > .caps {
+  flex: 1;
+  text-align: left;
+  font-size: calc(12.5px * var(--text-scale, 1));
+  letter-spacing: 0.1em;
+}
+.ol-count {
+  font-size: calc(12.5px * var(--text-scale, 1));
+  color: var(--text-dim);
+}
+.ol-chevron {
+  width: 0;
+  height: 0;
+  border-top: 4px solid transparent;
+  border-bottom: 4px solid transparent;
+  border-left: 5px solid var(--text-dim);
+  transition: transform 0.12s;
+}
+.ol-chevron.open {
+  transform: rotate(90deg);
+}
+.ol-list {
+  margin: 0;
+  padding: 0 0 4px;
+  list-style: none;
+}
+.ol-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  column-gap: 8px;
+  width: 100%;
+  padding: 3px 10px 3px 32px;
+  border: 0;
+  border-left: 2px solid transparent;
+  background: none;
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+}
+.ol-row:hover {
+  background: rgba(255, 230, 170, 0.06);
+}
+.ol-row.active {
+  border-left-color: var(--gold);
+  background: rgba(255, 230, 170, 0.09);
+}
+.ol-name {
+  overflow: hidden;
+  font-size: calc(14px * var(--text-scale, 1));
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.ol-value {
+  font-size: calc(13px * var(--text-scale, 1));
+  color: var(--text-dim);
+}
+.ol-value.good {
+  color: var(--good);
+}
+.ol-value.bad {
+  color: var(--bad);
+}
+.ol-status {
+  grid-column: 1 / -1;
+  overflow: hidden;
+  font-size: calc(12px * var(--text-scale, 1));
+  color: var(--text-faint);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+/* Alerts: signs for what needs the player, over the outliner. */
+.alerts {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.alert-tip > .tip {
+  left: auto;
+  right: 0;
+  transform: none;
+}
+.alert-sign {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  background: var(--panel-texture), var(--panel);
+  box-shadow: var(--shadow);
+  color: var(--gold);
+  cursor: pointer;
+  transition: transform 0.12s;
+  animation: alert-in 0.3s ease-out;
+}
+.alert-sign .icon {
+  width: 20px;
+  height: 20px;
+}
+.alert-sign.bad {
+  border-color: var(--bad);
+  color: var(--bad);
+  box-shadow:
+    inset 0 0 0 1px rgba(210, 70, 50, 0.35),
+    var(--shadow);
+}
+.alert-sign.good {
+  border-color: var(--good);
+  color: var(--good);
+}
+.alert-sign:hover {
+  transform: translateY(-1px);
+}
+@keyframes alert-in {
+  from {
+    transform: scale(0.6);
+    opacity: 0;
+  }
+}
+
+/* News: at the top, between the realm and the date. */
+.toasts {
+  position: absolute;
+  top: calc(84px + env(safe-area-inset-top, 0px));
+  left: 50%;
+  transform: translateX(-50%);
   z-index: 12;
   display: grid;
   gap: 6px;
-  width: min(360px, calc(100% - 24px));
+  width: min(400px, calc(100% - 24px));
   margin: 0;
   padding: 0;
   list-style: none;
@@ -1180,7 +1383,7 @@ button.holder:hover {
 }
 @keyframes toast-in {
   from {
-    transform: translateX(16px);
+    transform: translateY(-8px);
     opacity: 0;
   }
 }
@@ -2516,8 +2719,19 @@ p.tight {
   }
   .toasts {
     top: calc(106px + env(safe-area-inset-top, 0px));
+    left: 8px;
     right: 8px;
-    width: calc(100% - 16px);
+    width: auto;
+    transform: none;
+  }
+  .hud-right {
+    top: calc(106px + env(safe-area-inset-top, 0px));
+    right: 8px;
+    bottom: calc(var(--mapmodes-h, 48px) + 16px + env(safe-area-inset-bottom, 0px));
+  }
+  .shell:has(.side-panel) .hud-right,
+  .shell:has(.toast) .hud-right {
+    display: none;
   }
   .toast:not(:last-child) {
     display: none;
@@ -3515,7 +3729,7 @@ kbd.unbound {
 
 .perf {
   position: absolute;
-  top: 104px;
+  bottom: calc(124px + env(safe-area-inset-bottom, 0px));
   left: 50%;
   z-index: 35;
   transform: translateX(-50%);

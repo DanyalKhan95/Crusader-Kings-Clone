@@ -65,7 +65,7 @@ export function SidePanel() {
 function PanelFrame({ label, children }: { label: string; children: ReactNode }) {
   const game = useGame();
   const ref = useRef<HTMLElement>(null);
-  useMapInsets([ref]);
+  useMapInsets('side panel', [ref]);
   return (
     <aside ref={ref} className="panel side-panel" aria-label={label}>
       <button className="btn ghost close" onClick={() => closePanel(game)} aria-label="Close panel">

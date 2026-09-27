@@ -1,3 +1,4 @@
+import { useLayoutEffect, useRef } from 'react';
 import type { IconName } from '../../assets/icons';
 import { CLAIM_COLOR, MAP_MODES, RELATION_INFO, TERRAIN_INFO, type MapMode, type Relation } from '../../game/mapModes';
 import { faithColor, faithName } from '../../sim/beliefs';
@@ -24,8 +25,21 @@ export function MapModeBar() {
   const phase = useStore(game.ui, (s) => s.phase);
   useSettings((s) => s.keys);
   const current = MAP_MODES.find((m) => m.id === mode)!;
+  // Its height, with the legend, for the outliner above it to keep clear of.
+  const ref = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const root = document.documentElement;
+    const ro = new ResizeObserver(() => root.style.setProperty('--mapmodes-h', `${el.offsetHeight}px`));
+    ro.observe(el);
+    return () => {
+      ro.disconnect();
+      root.style.removeProperty('--mapmodes-h');
+    };
+  }, []);
   return (
-    <div className={`mapmodes-wrap phase-${phase}`}>
+    <div ref={ref} className={`mapmodes-wrap phase-${phase}`}>
       <Legend mode={mode} />
       <nav className="panel mapmodes" aria-label="Map modes">
         <span className="mapmodes-caption caps">{current.label}</span>

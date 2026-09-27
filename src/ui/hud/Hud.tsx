@@ -18,6 +18,8 @@ import { formatMen } from '../../render/units';
 import { withKey } from '../keys';
 import { useSettings } from '../settings';
 import { useStore } from '../store';
+import { Alerts } from './Alerts';
+import { Outliner } from './Outliner';
 import { PerfOverlay } from './PerfOverlay';
 import { SidePanel } from './SidePanel';
 import { BreakdownList, fmtSigned, WithTip } from './Tip';
@@ -35,6 +37,10 @@ export function Hud() {
     <>
       <NationPlate />
       <TimeControls />
+      <div className="hud-right">
+        <Alerts />
+        <Outliner />
+      </div>
       <Toasts />
       <SidePanel />
       <NoticeBar />

@@ -64,6 +64,8 @@ export interface UIState {
   notice: string;
   /** the step of the guided tour on screen (0 = none) */
   tour: number;
+  /** alerts the player hid, until what they are about changes */
+  hiddenAlerts: string[];
 }
 
 export interface Game {
@@ -108,6 +110,7 @@ export function createGame(world: StaticWorld, scenario: ScenarioData, state: Ga
     toasts: [],
     notice: '',
     tour: 0,
+    hiddenAlerts: [],
   });
   return {
     world,
