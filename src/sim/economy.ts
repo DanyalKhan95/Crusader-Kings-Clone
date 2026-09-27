@@ -153,40 +153,74 @@ interface Yield {
 function yieldOf(state: GameState, c: Country): Yield {
   const y: Yield = { tax: 0, taxPaid: 0, taxLost: 0, levy: 0, levyPaid: 0 };
   const blocked = blockades(state);
+  const taxPer = PER_LEVEL.tax,
+    levyPer = PER_LEVEL.levy;
   for (const id of provincesOf(state, c.index)) {
     const p = state.provinces[id];
     if (p.controller !== c.index) continue;
     const m = provinceMultiplier(c, p);
-    const t = provinceTax(p);
+    // provinceTax and provinceLevy, with one pass over the buildings for both
+    let bTax = 0,
+      bLevy = 0;
+    for (let i = 0; i < BUILDING_ORDER.length; i++) {
+      const level = p.buildings[BUILDING_ORDER[i]];
+      if (level) {
+        bTax += taxPer[i] * level;
+        bLevy += levyPer[i] * level;
+      }
+    }
+    const t = p.dev * TAX_PER_DEV * (1 + bTax);
     const due = t * m;
     y.tax += t;
     y.taxPaid += due;
     if (blocked.has(id)) y.taxLost += due * BLOCKADE_TAX;
-    const l = provinceLevy(p);
+    const l = p.dev * LEVY_PER_DEV * (1 + bLevy);
     y.levy += l;
     y.levyPaid += l * m;
   }
   return y;
 }
 
-/** Where the yields of realms come from: worked out afresh, or once for the whole month's accounts. */
-type Yields = (c: Country) => Yield;
+interface Taxes {
+  taxes: number;
+  withheld: number;
+  blockaded: number;
+}
 
 /** Taxes of the realm's own provinces: what they pay, and what other faiths and peoples withhold. */
-function taxesOf(state: GameState, c: Country, y: Yield): { taxes: number; withheld: number; blockaded: number } {
+function taxesOf(state: GameState, c: Country, y: Yield): Taxes {
   const mult = Math.max(0.3, taxMultiplier(state, c).total);
   return { taxes: (y.taxPaid - y.taxLost) * mult, withheld: (y.tax - y.taxPaid) * mult, blockaded: y.taxLost * mult };
 }
 
-export function income(state: GameState, c: Country, yields: Yields = (x) => yieldOf(state, x)): Breakdown {
-  const { taxes, withheld, blockaded } = taxesOf(state, c, yields(c));
+/**
+ * What a realm's accounts need to know of the others: yields, taxes and who owes tribute. Worked out
+ * afresh for one realm's figures, or once for the whole month's accounts (`monthlyEconomy`).
+ */
+interface Accounts {
+  yields(c: Country): Yield;
+  taxes(c: Country): Taxes;
+  vassals(index: number): Country[];
+  tributaries(index: number): Country[];
+}
+
+function freshAccounts(state: GameState): Accounts {
+  return {
+    yields: (c) => yieldOf(state, c),
+    taxes: (c) => taxesOf(state, c, yieldOf(state, c)),
+    vassals: (index) => vassalsOf(state, index),
+    tributaries: (index) => tributariesOf(state, index),
+  };
+}
+
+export function income(state: GameState, c: Country, accounts: Accounts = freshAccounts(state)): Breakdown {
+  const { taxes, withheld, blockaded } = accounts.taxes(c);
   let fromVassals = 0,
     fromTributaries = 0;
-  for (const v of vassalsOf(state, c.index))
-    if (!atWar(state, v.index, c.index))
-      fromVassals += taxesOf(state, v, yields(v)).taxes * CROWN_TRIBUTE[c.laws.crown];
-  for (const t of tributariesOf(state, c.index))
-    if (!atWar(state, t.index, c.index)) fromTributaries += taxesOf(state, t, yields(t)).taxes * TRIBUTARY_TRIBUTE;
+  for (const v of accounts.vassals(c.index))
+    if (!atWar(state, v.index, c.index)) fromVassals += accounts.taxes(v).taxes * CROWN_TRIBUTE[c.laws.crown];
+  for (const t of accounts.tributaries(c.index))
+    if (!atWar(state, t.index, c.index)) fromTributaries += accounts.taxes(t).taxes * TRIBUTARY_TRIBUTE;
   const paysLiege = c.liege && !atWar(state, c.index, c.liege);
   const paysOverlord = c.overlord && !atWar(state, c.index, c.overlord);
   return breakdown([
@@ -374,21 +408,44 @@ export function develop(state: GameState, world: SimWorld, country: number, id: 
 // ── The monthly tick ──────────────────────────────────────────────
 
 export function monthlyEconomy(state: GameState) {
-  // Each realm's provinces are counted once, for its own accounts and its liege's tribute alike.
-  const counted: Yield[] = [];
-  const yields: Yields = (c) => (counted[c.index] ??= yieldOf(state, c));
+  // Each realm's provinces and taxes are counted once, for its own accounts and its lord's tribute
+  // alike, and who owes tribute to whom is found once: nothing in the month's accounts changes it.
+  const yields: Yield[] = [];
+  const taxes: (Taxes | undefined)[] = [];
+  const vassals = new Map<number, Country[]>();
+  const tributaries = new Map<number, Country[]>();
+  const add = (subjects: Map<number, Country[]>, lord: number, c: Country) => {
+    const list = subjects.get(lord);
+    if (list) list.push(c);
+    else subjects.set(lord, [c]);
+  };
   for (const c of state.countries) {
     if (!c?.alive) continue;
-    const inc = income(state, c, yields).total;
+    if (c.liege) add(vassals, c.liege, c);
+    if (c.overlord) add(tributaries, c.overlord, c);
+  }
+  const accounts: Accounts = {
+    yields: (c) => (yields[c.index] ??= yieldOf(state, c)),
+    taxes: (c) => (taxes[c.index] ??= taxesOf(state, c, accounts.yields(c))),
+    vassals: (index) => vassals.get(index) ?? [],
+    tributaries: (index) => tributaries.get(index) ?? [],
+  };
+  for (const c of state.countries) {
+    if (!c?.alive) continue;
+    const inc = income(state, c, accounts).total;
     const balance = inc - expenses(state, c, inc).total;
     c.gold += balance;
     c.lastBalance = balance;
-    const max = maxManpower(state, c, yields(c)).total;
+    const max = maxManpower(state, c, accounts.yields(c)).total;
     // Levies recover a tenth of the full pool a month, faster when the commons are content.
     const recovery = 0.1 * (1 + 0.2 * estateEffect(state, c, 'commons'));
     if (c.manpower < max) c.manpower = Math.min(max, c.manpower + max * recovery);
     else c.manpower = Math.max(max, c.manpower - max * 0.05);
-    if (c.gold < 0) handleDebt(state, c);
+    if (c.gold < 0) {
+      handleDebt(state, c);
+      // Bankruptcy costs stability, and so taxes: its lord's tribute is counted anew.
+      taxes[c.index] = undefined;
+    }
   }
 }
 

@@ -23,7 +23,11 @@ when a milestone lands.
   Node claims `--debug`). `npm run app:dist` packages it for this system into `release/`.
 - `npm run mapgen -- <steps>` and `npm run mapgen:validate`: the map pipeline and its checks.
 - `npm run simulate -- --years N [--seed S]`: runs the whole world under AI in Node and prints a
-  summary (wars, conquests, debts, speed). Use it for balance changes.
+  summary (wars, conquests, debts, speed). Use it for balance changes. `--load` starts from a save,
+  `--save` writes the world at the end, and `--profile` adds where the time went and the worst days.
+- `npm run daycost -- --load save.json`: the performance budget's measure, each day's fastest time
+  over three runs (see M9 in the roadmap). A change meant only for speed should leave the state
+  after some years of play identical: hash `JSON.stringify(state)` before and after.
 - `npm run artifact`: after a build, writes `dist/artifact.html` and `dist/artifact-files.json` for
   publishing to claude.ai.
 - `npm run assets` (`-- --check` to only check): builds `public/art` from `art/manifest.json`.
@@ -148,6 +152,14 @@ when a milestone lands.
   - Dead characters leave `state.characters` a year after death (`pruneCharacters`, each New
     Year), except the past rulers of living realms that regnal numbers count. Code that keeps a
     character id elsewhere must expect `character()` to return nothing for it.
+  - Nothing walks all the characters in a hot path: regnal numbers and the pruning read
+    `indexRecords` (past rulers by realm, and the dead), built when a save is read. Record a death
+    with `die` or `markDead`, and tell the index when characters change realm (`mergeReigns`,
+    `movedRealm`).
+  - The month's accounts share each realm's yields, taxes and subjects (`Accounts` in
+    `economy.ts`); `income(state, c)` alone works them out afresh.
+  - Messages write numbers with `grouped` (`log.ts`), never `toLocaleString`: the first use of
+    Intl in a session costs more than a whole day of the world.
 - **`src/ui/runner.ts`:** runs the simulation from `MapController.onFrame` within a time budget,
   and bumps the store's `tick` at most every 120 ms. Panels with live numbers subscribe to `tick`.
   It remembers what each day of the month costs and leaves a heavy day for a fresh frame, and

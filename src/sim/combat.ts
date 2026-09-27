@@ -7,7 +7,7 @@ import { UNITS, UNIT_ORDER, unitDef } from '../data/units';
 import { ADJ_RIVER, ADJ_STRAIT } from '../shared/dataTypes';
 import { character, die, skill } from './characters';
 import { mayEnter } from './diplomacy';
-import { log } from './log';
+import { grouped, log } from './log';
 import { isPassable, stepDays } from './movement';
 import { armySize, atWar, menIn, sideOf } from './queries';
 import { chance, jitter } from './rng';
@@ -299,8 +299,7 @@ function endBattle(state: GameState, world: SimWorld, battle: Battle, winner: 'a
   const place = world.region(battle.province).name;
   const wc = state.countries[W.country],
     lc = state.countries[L.country];
-  const fmt = (n: number) => Math.round(n).toLocaleString('en-US');
-  const text = `Battle of ${place}: ${wc.adj} victory over ${lc?.adj ?? 'enemy'} forces. Losses: ${fmt(W.losses)} against ${fmt(L.losses)}.`;
+  const text = `Battle of ${place}: ${wc.adj} victory over ${lc?.adj ?? 'enemy'} forces. Losses: ${grouped(W.losses)} against ${grouped(L.losses)}.`;
   log(state, [...winners.map((a) => a.owner), ...losers.map((a) => a.owner)], 'battle', text, {
     province: battle.province,
     important: losers.some((a) => a.owner === state.player),

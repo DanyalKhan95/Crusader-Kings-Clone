@@ -5,7 +5,7 @@
  */
 import { CROWN_VASSALS, IDEOLOGY_CLASH, ideologyOf } from '../data/politics';
 import { cultureGroup, faithFamily } from './beliefs';
-import { rulerSkill, seatSkill } from './characters';
+import { movedRealm, rulerSkill, seatSkill } from './characters';
 import { knowsId } from './tech';
 import type { Breakdown, Part } from './economy';
 import { headOf, sitesHeldByUnbelievers } from './faith';
@@ -419,6 +419,7 @@ export function monthlyIntegration(state: GameState) {
       const ch = state.characters[id];
       if (ch && ch.died === undefined) {
         ch.country = l.index;
+        movedRealm(state, ch);
         l.courtiers.push(id);
       }
     }

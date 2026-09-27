@@ -43,7 +43,7 @@ import { callHolyWar, canCallHolyWar, greatHolyWarOf } from './holywars';
 import { canReform, reform, setFocus } from './tech';
 import type { TechTrack } from '../data/techs';
 import type { Government } from '../shared/dataTypes';
-import { log } from './log';
+import { grouped, log } from './log';
 import { canReach, disband, inBattle, mergeInto, orderMove, raiseArmy, recruit, split } from './military';
 import { armyById, armySize, lordOf, sideOf } from './queries';
 import { abandonColony, startColony } from './colonies';
@@ -119,7 +119,7 @@ export function moveArmy(state: GameState, world: SimWorld, armyId: number, to: 
     const afloat = freeTransport(state, world, army.owner);
     if (afloat < armySize(army) && canReach(state, world, army.owner, army.location, to, true))
       return no(
-        `Not enough transports to carry ${formatNumber(armySize(army))} men over the sea: room for ${formatNumber(Math.max(0, afloat))}`,
+        `Not enough transports to carry ${grouped(armySize(army))} men over the sea: room for ${grouped(Math.max(0, afloat))}`,
       );
     return no('No route there: the way is barred by realms that give you no access');
   }
@@ -128,8 +128,6 @@ export function moveArmy(state: GameState, world: SimWorld, armyId: number, to: 
 }
 
 // ── The navy ──────────────────────────────────────────────────────
-
-const formatNumber = (n: number) => Math.round(n).toLocaleString('en-US');
 
 export function moveFleet(state: GameState, world: SimWorld, fleetId: number, to: number): Result {
   const fleet = fleetById(state, fleetId);

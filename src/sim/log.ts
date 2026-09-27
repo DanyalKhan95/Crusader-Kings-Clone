@@ -3,6 +3,14 @@ import type { GameState, MessageKind } from './types';
 
 const MAX_MESSAGES = 120;
 
+/**
+ * A whole number as the messages write it, "12,345". Written out rather than with Intl, whose first
+ * use in a session costs more than a whole day of the world.
+ */
+export function grouped(n: number): string {
+  return String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+}
+
 export interface LogOptions {
   province?: number;
   important?: boolean;

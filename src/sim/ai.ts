@@ -303,8 +303,10 @@ function economy(state: GameState, world: SimWorld, c: Country) {
   const projects = 1 + Math.floor(own.length / 20);
   // Learning pays less with every school already built.
   const schools = own.reduce((n, id) => n + (state.provinces[id].buildings.university ?? 0), 0);
-  for (let n = 0; n < projects && c.gold >= reserve + 50; n++) {
-    let best: { id: number; type: (typeof BUILDING_ORDER)[number]; value: number } | null = null;
+  // What could be built and what each is worth, worked out once: each project changes only the gold
+  // left and the province where it goes up.
+  const options: { id: number; type: (typeof BUILDING_ORDER)[number]; value: number; cost: number }[] = [];
+  if (c.gold >= reserve + 50)
     for (const id of own) {
       const p = state.provinces[id];
       for (const type of BUILDING_ORDER) {
@@ -315,11 +317,19 @@ function economy(state: GameState, world: SimWorld, c: Country) {
         if (e.research) value += (e.research * 10) / Math.sqrt(1 + schools) + p.dev * 0.05;
         if (e.fort) value = id === c.capital || p.dev >= 10 ? 1.5 + p.dev * 0.1 : 0.3;
         value /= check.cost;
-        if (!best || value > best.value) best = { id, type, value };
+        options.push({ id, type, value, cost: check.cost });
       }
+    }
+  const building = new Set<number>();
+  for (let n = 0; n < projects && c.gold >= reserve + 50; n++) {
+    let best: (typeof options)[number] | null = null;
+    for (const o of options) {
+      if (building.has(o.id) || c.gold - o.cost < reserve) continue;
+      if (!best || o.value > best.value) best = o;
     }
     if (!best) break;
     startBuilding(state, world, c.index, best.id, best.type);
+    building.add(best.id);
   }
   c.ai.nextBuild = state.day + 45;
   // The most productive provinces first.
@@ -329,21 +339,32 @@ function economy(state: GameState, world: SimWorld, c: Country) {
 /** Puts spare gold into developing the realm's own provinces, a few points a month. */
 function invest(state: GameState, world: SimWorld, c: Country, own: number[], floor: number) {
   const points = 1 + Math.floor(own.length / 8);
+  // Each province's worth and cost, worked out once and again only where a point went.
+  const option = (id: number) => {
+    const check = canDevelop(state, world, c.index, id);
+    if (!check.ok) return { id, value: 0, cost: Infinity };
+    const p = state.provinces[id];
+    return {
+      id,
+      value: (1 + buildingEffect(p, 'tax') + buildingEffect(p, 'levy') * 0.5) / check.cost,
+      cost: check.cost,
+    };
+  };
+  const options = own.map(option);
   for (let n = 0; n < points; n++) {
-    let best = 0,
+    let best = -1,
       value = 0;
-    for (const id of own) {
-      const check = canDevelop(state, world, c.index, id);
-      if (!check.ok || c.gold - check.cost < floor) continue;
-      const p = state.provinces[id];
-      const v = (1 + buildingEffect(p, 'tax') + buildingEffect(p, 'levy') * 0.5) / check.cost;
-      if (v > value) {
-        value = v;
-        best = id;
+    for (let i = 0; i < options.length; i++) {
+      const o = options[i];
+      if (c.gold - o.cost < floor) continue;
+      if (o.value > value) {
+        value = o.value;
+        best = i;
       }
     }
-    if (!best) return;
-    develop(state, world, c.index, best);
+    if (best < 0) return;
+    develop(state, world, c.index, options[best].id);
+    options[best] = option(options[best].id);
   }
 }
 

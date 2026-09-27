@@ -70,9 +70,12 @@ export function knowsId(c: Country, id: string): boolean {
   return !!t && knows(c, t);
 }
 
+/** The first level of society that brings nationalism: asked of every foreign province each month. */
+const NATIONALISM = Math.min(...TECHS.society.filter((t) => t.nationalism).map((t) => t.level));
+
 /** Does the realm think of itself as a nation, with all that follows for peoples who do not belong? */
 export function nationalist(c: Country): boolean {
-  return TECHS.society.some((t) => t.nationalism && knows(c, t));
+  return c.tech.society >= NATIONALISM;
 }
 
 // ── Buildings ─────────────────────────────────────────────────────

@@ -329,7 +329,7 @@ after the content they show has settled.
 
 ### M9: Foundations for a release
 
-- [ ] Desktop app: an Electron shell around the same build, for Windows, macOS and Linux:
+- [x] Desktop app: an Electron shell around the same build, for Windows, macOS and Linux:
   - [x] windowed or fullscreen, remembered between sessions with the window's size and place, and
         switched from the settings, `F11` or `Alt+Enter`. Fullscreen is borderless, as Chromium
         draws it, so a third, exclusive mode would look the same.
@@ -337,8 +337,8 @@ after the content they show has settled.
         button to open the saves folder. Closing the window saves the campaign first.
   - [x] a Quit button on the title screen and in the game menu, one instance at a time, and an
         offer to start again if the game stops
-  - [ ] unsigned test builds from CI: an installer and a zip for Windows, a disk image for macOS,
-        and an AppImage for Linux (signing comes with Early Access)
+  - [x] unsigned test builds from CI: an installer and a zip for Windows, a disk image and a zip for
+        macOS, an AppImage and a tarball for Linux (signing comes with Early Access)
 - [ ] The web build becomes the free demo:
   - [ ] a build flag for the demo's limits (to be decided, e.g. the first century)
   - [ ] code-drawn fallbacks for everything the app ships as files
@@ -351,12 +351,23 @@ after the content they show has settled.
   - [x] named saves, and several autosaves in rotation
   - [x] a save browser with the realm, its arms, the date and the time played
   - [x] ironman-ready: a save the game keeps and overwrites itself, even with autosaves off
-- [ ] Performance:
-  - [ ] a budget on a mid-range reference machine: 60 frames a second, with speed 5 holding its
-        pace in the 1900s
+- [x] Performance:
+  - [x] a budget on a mid-range reference machine: 60 frames a second, with speed 5 holding its
+        pace in the 1900s. Measured with `npm run daycost` (each day's fastest time over three runs
+        of three years, so that the collector and the engine's warming fall away) from worlds of
+        1340, 1915 and 2030, on one core of the development container (a 2.1 GHz Xeon, about a
+        mid-range desktop of a few years ago): no day above 12 ms, so that the runner can give any
+        day a frame of its own, and 99% of days under 8 ms.
   - [x] a performance overlay: frame time, simulation time per day, and the heaviest systems
-  - [ ] find and fix the hot spots. Move the simulation into a worker only if the main thread cannot
-        meet the budget, because the UI reads the state directly.
+  - [x] find and fix the hot spots, with the simulation's results unchanged to the last bit (the
+        state after 30 years is the same). The worst day went from 12.9 ms to 11.1, and the 99th
+        percentile from 7.5 to 6.1, in 1915; from 13.4 to 8.1 and 6.6 to 5.1 in 2030:
+    - regnal numbers and the yearly pruning read an index of the records instead of walking
+      thousands of characters (New Year's Day and months of many deaths)
+    - each realm's taxes and subjects counted once in the month's accounts
+    - the AI's building and development choices worked out once, not once per project
+    - no Intl in the simulation: its first use cost 14 ms in the middle of a battle
+    - the simulation stays on the main thread, since it meets the budget there.
   - [x] load time: fonts and data as files in the app and on Pages, inlined only for the artifact
 - [x] A content registry, to prepare for mods:
   - [x] typed data files with schemas, checked by the tests and loaded in one place
@@ -643,9 +654,11 @@ after the content they show has settled.
   takes about 1.5 ms (2 ms late in the game); the first of the month about 7 ms early and 11 ms
   late, down from 19 ms before the month's work was spread over its first week. Estate and faith
   figures are cached per day, and routes an army or fleet cannot take are ruled out by cached
-  reachability checks before any search. A web worker for the simulation would take the rest
-  off the main thread, but the UI reads the state directly. M9 sets a budget first and moves the
-  simulation only if it must.
+  reachability checks before any search. Since M9 there is a budget (see M9), which the main
+  thread meets. The heaviest days left are the 3rd of the month in wartime (revolts, factions and
+  the AI of the realms whose day it is, about 11 ms in 1918), New Year's Day and the economy on
+  each 1st (about 8 ms). The collector still pauses for up to 5 ms now and then, and once in a
+  while for longer.
 - **Size:** fonts are files in the app and on Pages, so the stylesheet is 70 KB and the title
   screen fetches 9 of the 38 font files; only the artifact inlines them (1.1 MB). The desktop app
   is about 130 MB to download, nearly all of it Electron.

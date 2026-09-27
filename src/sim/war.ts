@@ -4,6 +4,7 @@
  * independence wars free a vassal or tributary; coalition wars punish an aggressor.
  */
 import { years } from './calendar';
+import { markDead, mergeReigns } from './characters';
 import {
   addAggression,
   AE_FACTOR,
@@ -917,10 +918,11 @@ export function endWar(
 /** The claimant's ruler takes the crown: the claimant's lands, vassals and armies join the target. */
 export function inheritThrone(state: GameState, claimant: Country, target: Country) {
   const oldRuler = state.characters[target.ruler];
-  if (oldRuler && oldRuler.died === undefined) oldRuler.died = state.day;
+  if (oldRuler && oldRuler.died === undefined) markDead(state, oldRuler);
   const oldHeir = state.characters[target.heir];
-  if (oldHeir && oldHeir.died === undefined) oldHeir.died = state.day;
+  if (oldHeir && oldHeir.died === undefined) markDead(state, oldHeir);
   for (const c of Object.values(state.characters)) if (c.country === claimant.index) c.country = target.index;
+  mergeReigns(state, claimant.index, target.index);
   target.ruler = claimant.ruler;
   target.rulerSince = state.day;
   target.heir = claimant.heir;

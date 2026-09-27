@@ -147,12 +147,69 @@ function roman(n: number): string {
   return s;
 }
 
+/**
+ * What is asked of the records of thousands of characters, kept beside them so that no one walks
+ * them all: everyone who has reigned, by realm and in order of id (what regnal numbers count), and
+ * the dead still in the records (what the yearly pruning looks at). Gathered in one pass when a game
+ * is read (or first asked), then kept up at each crowning, death and move to another realm. A list
+ * may still name someone who has since left or been pruned; whoever asks skips them.
+ */
+interface RecordsIndex {
+  reigns: Map<number, number[]>;
+  dead: Set<Character>;
+}
+
+const indexes = new WeakMap<GameState, RecordsIndex>();
+
+export function indexRecords(state: GameState): RecordsIndex {
+  let ix = indexes.get(state);
+  if (!ix) {
+    ix = { reigns: new Map(), dead: new Set() };
+    for (const c of Object.values(state.characters)) {
+      if (c.traits.includes('_reigned')) insertId(ix.reigns, c.country, c.id);
+      if (c.died !== undefined) ix.dead.add(c);
+    }
+    indexes.set(state, ix);
+  }
+  return ix;
+}
+
+/** Everyone of one realm now belongs to another (a throne won in war), and so do their reigns. */
+export function mergeReigns(state: GameState, from: number, to: number) {
+  const ix = indexes.get(state);
+  if (ix) for (const id of ix.reigns.get(from) ?? []) insertId(ix.reigns, to, id);
+}
+
+/** A character has moved to another realm. */
+export function movedRealm(state: GameState, c: Character) {
+  const ix = indexes.get(state);
+  if (ix && c.traits.includes('_reigned')) insertId(ix.reigns, c.country, c.id);
+}
+
+/** Adds an id to a list kept in ascending order, once. */
+function insertId(lists: Map<number, number[]>, key: number, id: number) {
+  const list = lists.get(key);
+  if (!list) {
+    lists.set(key, [id]);
+    return;
+  }
+  let lo = 0,
+    hi = list.length;
+  while (lo < hi) {
+    const mid = (lo + hi) >> 1;
+    if (list[mid] < id) lo = mid + 1;
+    else hi = mid;
+  }
+  if (list[lo] !== id) list.splice(lo, 0, id);
+}
+
 /** Name for a new ruler: "Harold" becomes "Harold III" if two Harolds reigned before. */
 export function regnalName(state: GameState, country: Country, given: string): string {
   const base = given.replace(/ of .*$/, '');
   let count = 0;
-  for (const c of Object.values(state.characters)) {
-    if (c.country !== country.index || !c.traits.includes('_reigned')) continue;
+  for (const id of indexRecords(state).reigns.get(country.index) ?? []) {
+    const c = state.characters[id];
+    if (!c || c.country !== country.index || !c.traits.includes('_reigned')) continue;
     const m = /^(.*?)(?: ([IVX]+))?$/.exec(c.name.replace(/ the .*$/, ''));
     if (m && m[1] === base) count = Math.max(count + 1, m[2] ? romanValue(m[2]) : 1);
   }
@@ -238,11 +295,19 @@ export function pruneCharacters(state: GameState) {
   for (const a of state.armies) keep.add(a.commander);
   for (const f of state.fleets) keep.add(f.admiral);
   const before = state.day - years(1);
-  for (const ch of Object.values(state.characters)) {
+  const { dead } = indexRecords(state);
+  for (const ch of dead) {
     if (ch.died === undefined || ch.died > before || keep.has(ch.id)) continue;
     if (ch.traits.includes('_reigned') && state.countries[ch.country]?.alive) continue;
     delete state.characters[ch.id];
+    dead.delete(ch);
   }
+}
+
+/** Records a death, without the succession and the news that `die` brings. */
+export function markDead(state: GameState, c: Character) {
+  c.died = state.day;
+  indexes.get(state)?.dead.add(c);
 }
 
 // ── Mortality and succession ──────────────────────────────────────
@@ -275,7 +340,7 @@ export function monthlyMortality(state: GameState, world: SimWorld) {
 
 export function die(state: GameState, world: SimWorld, c: Character) {
   if (c.died !== undefined) return;
-  c.died = state.day;
+  markDead(state, c);
   const country = state.countries[c.country];
   if (!country) return;
   for (const seat of COUNCIL_SEATS) if (country.council[seat] === c.id) country.council[seat] = 0;
@@ -342,6 +407,8 @@ export function succeed(state: GameState, world: SimWorld, country: Country) {
   if (law !== 'republic') {
     next.name = regnalName(state, country, next.name);
     next.traits = [...next.traits.filter((t) => t !== '_reigned'), '_reigned'];
+    const ix = indexes.get(state);
+    if (ix) insertId(ix.reigns, next.country, next.id);
   }
   country.ruler = nextId;
   country.rulerSince = state.day;

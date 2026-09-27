@@ -29,6 +29,7 @@
     "artifact": "node --import tsx tools/artifact/prepare.ts",
     "icons": "node --import tsx tools/icons/extract.ts && node --import tsx tools/icons/app-icon.ts",
     "simulate": "node --import tsx tools/simulate.ts",
+    "daycost": "node --import tsx tools/daycost.ts",
     "assets": "node --import tsx tools/assets/build.ts",
     "app": "npm run build && electron .",
     "app:dist": "npm run build && electron-builder --publish never"

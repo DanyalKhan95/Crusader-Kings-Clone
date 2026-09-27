@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { GREAT_HOLY_WARS } from '../src/data/faiths';
 import { toDay } from '../src/sim/calendar';
-import { character, die, pruneCharacters, staffCourt } from '../src/sim/characters';
+import { character, die, pruneCharacters, regnalName, staffCourt } from '../src/sim/characters';
 import { agree, theName, TheName } from '../src/sim/chronicle';
 import * as cmd from '../src/sim/commands';
 import {
@@ -23,8 +23,8 @@ import { deserialize, serialize } from '../src/sim/save';
 import { END_DAY, ranking, rankOf, standing, yearlyScore } from '../src/sim/score';
 import { createGameState } from '../src/sim/setup';
 import { advanceDay } from '../src/sim/tick';
-import type { GameState } from '../src/sim/types';
-import { destroyCountry } from '../src/sim/war';
+import type { Country, GameState } from '../src/sim/types';
+import { destroyCountry, inheritThrone } from '../src/sim/war';
 import { makeSimWorld } from '../src/sim/world';
 import { loadData } from './helpers';
 
@@ -248,6 +248,50 @@ describe('the records of a thousand years', () => {
     expect(s.characters[king.id]).toBeDefined();
     expect(character(s, eng.ruler)?.died).toBeUndefined();
     for (const id of eng.courtiers) expect(character(s, id)).toBeDefined();
+  });
+
+  it('number rulers as the whole records would, through many reigns and a throne won in war', () => {
+    const s = fresh();
+    // Regnal numbers as they were counted before the records kept an index: every character, by id.
+    const numeral = (n: number) =>
+      'X'.repeat(Math.floor(n / 10)) + ['', 'I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX'][n % 10];
+    const value = (r: string) => {
+      const v: Record<string, number> = { I: 1, V: 5, X: 10 };
+      let n = 0;
+      for (let i = 0; i < r.length; i++) n += v[r[i]] < (v[r[i + 1]] ?? 0) ? -v[r[i]] : v[r[i]];
+      return n;
+    };
+    const counted = (c: Country, given: string) => {
+      const base = given.replace(/ of .*$/, '');
+      let count = 0;
+      for (const ch of Object.values(s.characters)) {
+        if (ch.country !== c.index || !ch.traits.includes('_reigned')) continue;
+        const m = /^(.*?)(?: ([IVX]+))?$/.exec(ch.name.replace(/ the .*$/, ''));
+        if (m && m[1] === base) count = Math.max(count + 1, m[2] ? value(m[2]) : 1);
+      }
+      return count ? `${base} ${numeral(count + 1)}` : base;
+    };
+    const eng = tag(s, 'ENG'),
+      nor = tag(s, 'NRW');
+    const check = (c: Country) => {
+      const names = new Set(['Harold', 'William', 'Harald', 'Olaf']);
+      for (const ch of Object.values(s.characters))
+        if (ch.country === c.index) names.add(ch.name.replace(/ (?:[IVX]+|the .*)$/, ''));
+      for (const name of names) expect(regnalName(s, c, name)).toBe(counted(c, name));
+    };
+    for (let i = 0; i < 10; i++) {
+      for (const c of [eng, nor]) {
+        check(c);
+        die(s, world, character(s, c.ruler)!);
+      }
+      s.day += 400;
+      pruneCharacters(s);
+    }
+    // Norway's line takes the English crown: its past kings are counted in England now.
+    inheritThrone(s, nor, eng);
+    check(eng);
+    die(s, world, character(s, eng.ruler)!);
+    check(eng);
   });
 });
 

@@ -1,9 +1,10 @@
 /**
  * Runs the world headless with every country under AI control and reports what happened.
- *   npm run simulate -- --years 50 [--seed 7] [--load save.json] [--profile]
- * --load starts from a save (every realm under AI); --profile reports where each day's time goes.
+ *   npm run simulate -- --years 50 [--seed 7] [--load save.json] [--save out.json] [--profile]
+ * --load starts from a save (every realm under AI); --save writes the world at the end as a save;
+ * --profile reports where each day's time goes.
  */
-import { readFileSync } from 'node:fs';
+import { readFileSync, writeFileSync } from 'node:fs';
 import { faithName } from '../src/sim/beliefs.ts';
 import { ERAS } from '../src/data/eras.ts';
 import { eraOf } from '../src/sim/tech.ts';
@@ -16,7 +17,7 @@ import { createGameState } from '../src/sim/setup.ts';
 import { advanceDay } from '../src/sim/tick.ts';
 import { fleetSize } from '../src/sim/naval.ts';
 import { ProfileTotals, setProfileSink } from '../src/sim/profile.ts';
-import { deserialize } from '../src/sim/save.ts';
+import { deserialize, serialize } from '../src/sim/save.ts';
 import { makeSimWorld } from '../src/sim/world.ts';
 import { ranking as scoreRanking } from '../src/sim/score.ts';
 import type { RegionData, ScenarioData, WorldData } from '../src/shared/dataTypes.ts';
@@ -33,7 +34,25 @@ const years = arg('years', 20);
 const seed = arg('seed', 0);
 const every = arg('every', 5);
 const load = text('load');
+const saveTo = text('save');
 const profile = process.argv.includes('--profile') ? new ProfileTotals() : null;
+
+/** With --profile: each day's cost, where the costliest days went, and the collector's pauses. */
+const days_: { day: number; start: number; ms: number; parts: Map<string, number> }[] = [];
+let today = new Map<string, number>();
+const pauses: { start: number; ms: number }[] = [];
+if (profile) {
+  const totals = profile;
+  setProfileSink({
+    add(system, ms) {
+      totals.add(system, ms);
+      today.set(system, (today.get(system) ?? 0) + ms);
+    },
+  });
+  new PerformanceObserver((list) => {
+    for (const e of list.getEntries()) pauses.push({ start: e.startTime, ms: e.duration });
+  }).observe({ entryTypes: ['gc'] });
+}
 
 const read = <T>(f: string): T => JSON.parse(readFileSync(`public/data/${f}`, 'utf8')) as T;
 const world = makeSimWorld(read<WorldData>('world.json'), read<RegionData[]>('provinces.json'));
@@ -43,7 +62,6 @@ const state = load
   : createGameState(world, scenario, seed ? { seed } : {});
 // Every realm under AI, the player's too.
 state.player = 0;
-if (profile) setProfileSink(profile);
 
 const fmt = (d: number) => {
   const t = toDate(d);
@@ -64,7 +82,12 @@ const crusades: string[] = [];
 const seenSeaBattles = new Set<number>();
 let seaBattles = 0;
 for (let d = 0; d < years * 365; d++) {
+  const d0 = performance.now();
   advanceDay(state, world);
+  if (profile) {
+    days_.push({ day: state.day, start: d0, ms: performance.now() - d0, parts: today });
+    today = new Map();
+  }
   const ids = new Set(state.wars.map((w) => w.id));
   for (const w of state.wars)
     if (!lastWars.has(w.id)) {
@@ -116,12 +139,41 @@ const ms = performance.now() - t0;
 const days = state.day - start;
 console.log(`\n${days} days in ${(ms / 1000).toFixed(1)} s: ${Math.round((days / ms) * 1000)} days per second`);
 if (profile) {
+  await new Promise((r) => setTimeout(r, 0)); // the collector's last entries
   const total = profile.total();
   console.log(`where the time goes (${(total / days).toFixed(2)} ms a day on average):`);
   for (const c of profile.ranked().slice(0, 24))
     console.log(
       `  ${c.system.padEnd(22)} ${((c.ms / total) * 100).toFixed(1).padStart(5)}%  ${(c.ms / days).toFixed(3).padStart(7)} ms a day  ${(c.ms / c.calls).toFixed(3).padStart(7)} ms a run  max ${c.max.toFixed(1)} ms`,
     );
+  // The collector's pauses, by the day they fell in.
+  const gcOf = (d: (typeof days_)[number]) =>
+    pauses.filter((p) => p.start >= d.start && p.start < d.start + d.ms).reduce((s, p) => s + p.ms, 0);
+  // The first weeks warm the engine up; the rest is what a player meets.
+  const settled = days_.slice(Math.min(60, days_.length >> 2));
+  const sorted = settled.map((d) => d.ms).sort((a, b) => a - b);
+  const at = (q: number) => sorted[Math.min(sorted.length - 1, Math.floor(q * sorted.length))].toFixed(1);
+  const over = (ms: number) => settled.filter((d) => d.ms > ms).length;
+  console.log(
+    `a day, after the first weeks: median ${at(0.5)} ms, 90% ${at(0.9)}, 99% ${at(0.99)}, 99.9% ${at(0.999)}, most ${at(1)}; over 8 ms ${over(8)} days, over 16 ms ${over(16)}`,
+  );
+  const gcTotal = pauses.reduce((s, p) => s + p.ms, 0);
+  const gcMost = pauses.reduce((m, p) => Math.max(m, p.ms), 0);
+  console.log(
+    `the collector: ${pauses.length} pauses, ${gcTotal.toFixed(0)} ms in all, the longest ${gcMost.toFixed(1)} ms`,
+  );
+  console.log('the costliest days:');
+  for (const d of [...settled].sort((a, b) => b.ms - a.ms).slice(0, arg('worst', 10))) {
+    const parts = [...d.parts]
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 3)
+      .map(([k, v]) => `${k} ${v.toFixed(1)}`)
+      .join(', ');
+    const gc = gcOf(d);
+    console.log(
+      `  ${fmt(d.day)} ${d.ms.toFixed(1).padStart(5)} ms: ${parts}${gc ? `; collector ${gc.toFixed(1)} ms` : ''}`,
+    );
+  }
 }
 console.log(`wars started ${wars}, ended ${peaces}: ${[...byCause].map(([k, n]) => `${k} ${n}`).join(', ')}`);
 const changed = state.provinces.filter((p, id) => p && p.owner !== initialOwners[id]).length;
@@ -276,3 +328,7 @@ const ranks = scoreRanking(state).slice(0, 10);
 console.log(`ranking: ${ranks.map((c, i) => `${i + 1}. ${c.name} ${Math.round(c.score)}`).join(', ')}`);
 console.log(`ledger snapshots: ${state.ledger.length}; chronicle entries: ${state.chronicle.length}`);
 for (const e of state.chronicle.slice(-arg('chronicle', 25))) console.log(`  ${fmt(e.day)} ${e.text}`);
+if (saveTo) {
+  writeFileSync(saveTo, serialize(state));
+  console.log(`saved the world of ${fmt(state.day)} to ${saveTo}`);
+}

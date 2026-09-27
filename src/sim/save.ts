@@ -1,4 +1,5 @@
 /** Saving and loading: the state is plain JSON. Older saves are brought up to date on load. */
+import { indexRecords } from './characters';
 import { initialKnowledge } from './exploration';
 import { defaultEstates, defaultTasks, initialLaws } from './politics';
 import { initialTech } from './tech';
@@ -59,6 +60,8 @@ export function readSave(json: string, world?: SimWorld): SaveExtras & { state: 
   if (file.version < 6) migrateToNavies(s, world);
   if (file.version < 7) migrateToEvents(s);
   if (file.version < 8) migrateToLedger(s);
+  // While the game loads rather than on the first New Year: the index of thousands of characters.
+  indexRecords(s);
   return {
     state: s,
     campaign: typeof file.campaign === 'string' ? file.campaign : undefined,
