@@ -1,5 +1,6 @@
 /* Self-hosted web fonts (SIL Open Font License), via @fontsource. Only the Latin, Latin Extended and
- * Vietnamese subsets, woff2 only; Vite inlines them so the build is a single self-contained page. */
+ * Vietnamese subsets, woff2 only. They are files, fetched as the page needs them; tools/artifact
+ * inlines them into the claude.ai artifact's stylesheet, as its host allows no other fonts. */
 /* alegreya-vietnamese-400-normal */
 @font-face {
   font-family: 'Alegreya';

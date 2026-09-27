@@ -26,8 +26,8 @@ export default defineConfig({
   },
   build: {
     target: 'es2022',
-    // Fonts are inlined as data URIs: the artifact host only allows fonts from its own CSS.
-    assetsInlineLimit: (file: string) => (/\.woff2?$/.test(file) ? true : undefined),
+    // Fonts are files, fetched as the page needs them; tools/artifact inlines them for the claude.ai
+    // artifact, whose host only allows fonts from its own CSS.
     chunkSizeWarningLimit: 2500,
   },
 });

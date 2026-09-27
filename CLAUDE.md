@@ -157,8 +157,9 @@ when a milestone lands.
 - **`src/heraldry/flag.ts`:** banners and national flags drawn from the arms, by era and
   government. Draw a country's emblem with `<CoatOfArms>` or `emblemSvg`, never `coaSvg` directly.
 - **Era themes:** `src/ui/themes/medieval.css` defines every variable; `eras.css` overrides them per
-  era under `[data-era]`, which follows the player's era. Fonts are inlined (the artifact host only
-  allows fonts from its own CSS), so add only the weights a theme uses, Latin subset.
+  era under `[data-era]`, which follows the player's era. Fonts ship as files; `npm run artifact`
+  inlines them into the artifact's stylesheet (its host only allows fonts from its own CSS), so add
+  only the weights a theme uses, Latin subset.
 
 ## Map data
 
