@@ -11,7 +11,7 @@ import { armiesOf, menIn } from '../../sim/queries';
 import { flyToRealm, selectCountry, setSpeed, togglePause } from '../actions';
 import { sound } from '../audio';
 import { CoatOfArms } from '../CoatOfArms';
-import { formatDate } from '../format';
+import { formatDate, shortDate } from '../format';
 import { useGame } from '../game';
 import { Icon } from '../Icon';
 import { formatMen } from '../../render/units';
@@ -225,8 +225,6 @@ function EraButton() {
   );
 }
 
-const SHORT_MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-
 function TimeControls() {
   const game = useGame();
   const speed = useStore(game.ui, (s) => s.speed);
@@ -240,9 +238,7 @@ function TimeControls() {
         <Icon name={speed ? 'pause-button' : 'play-button'} />
       </button>
       <span className="date date-long">{formatDate(d)}</span>
-      <span className="date date-short">
-        {d.d} {SHORT_MONTHS[d.m - 1]} {d.y}
-      </span>
+      <span className="date date-short">{shortDate(d)}</span>
       <div className="speeds" role="radiogroup" aria-label="Game speed">
         {[1, 2, 3, 4, 5].map((s) => (
           <button
@@ -264,6 +260,15 @@ function TimeControls() {
         title={withKey('The ledger of nations', 'ledger')}
       >
         <Icon name="scroll-unfurled" />
+      </button>
+      <button
+        className="btn ghost icon-btn"
+        data-tour="log"
+        onClick={() => game.ui.set({ modal: 'log', speed: 0 })}
+        aria-label={withKey('The log of news', 'log')}
+        title={withKey('The log of news', 'log')}
+      >
+        <Icon name="quill-ink" />
       </button>
       <button
         className="btn ghost icon-btn"

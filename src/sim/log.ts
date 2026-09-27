@@ -1,7 +1,7 @@
 /** The message log: what happened, for the notifications feed. */
 import type { GameState, MessageKind } from './types';
 
-const MAX_MESSAGES = 120;
+const MAX_MESSAGES = 1000;
 
 /**
  * A whole number as the messages write it, "12,345". Written out rather than with Intl, whose first

@@ -63,7 +63,9 @@ when a milestone lands.
     research, maps and colonies on the 5th, events and spies on the 6th, growth on the 7th. Each
     AI realm thinks on its own day (`aiDay`, never the 1st). Tests that need a monthly system
     must advance to its day.
-  - Messages for the player go through `log.ts`; `important` ones pause the game.
+  - Messages for the player go through `log.ts`. What each kind does (a pop-up, a pause, the log
+    alone, nothing) is the player's setting, read through `src/ui/messages.ts`; by default
+    `important` ones pause the game.
   - Economy numbers, opinions, loyalty and the AI's willingness come as `Breakdown`s, so the UI
     can show where each part comes from. The AI decides with the same breakdowns the player sees.
   - `diplomacy.ts` holds treaties, opinion and memories, claims, aggressive expansion, coalitions

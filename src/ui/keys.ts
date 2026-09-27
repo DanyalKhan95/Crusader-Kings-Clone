@@ -14,6 +14,7 @@ export type KeyAction =
   | 'speed4'
   | 'speed5'
   | 'ledger'
+  | 'log'
   | 'help'
   | 'perfOverlay'
   | `mode:${MapMode}`
@@ -43,6 +44,7 @@ export const KEY_ACTIONS: KeyActionInfo[] = [
     keys: [String(n)],
   })),
   { id: 'ledger', label: 'The ledger of nations', group: 'Screens', keys: ['L'] },
+  { id: 'log', label: 'The log of news', group: 'Screens', keys: ['N'] },
   { id: 'help', label: 'How to play', group: 'Screens', keys: ['H', 'F1'] },
   { id: 'perfOverlay', label: 'Performance overlay', group: 'Screens', keys: ['F3'] },
   ...MAP_MODES.map((m): KeyActionInfo => ({

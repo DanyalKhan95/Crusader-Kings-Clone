@@ -82,6 +82,7 @@ The plan, what each milestone brought and the known gaps are in [docs/ROADMAP.md
 | Pause, speed      | buttons at the top right                 | `Space`, `1`–`5`            |
 | Map modes         | buttons at the bottom right              | `Q` `W` `E` `R` `T` `Y` `U` |
 | Ledger of nations | scroll at the top right                  | `L`                         |
+| Log of news       | quill at the top right                   | `N`                         |
 | How to play       | game menu                                | `H`                         |
 | Performance       | settings                                 | `F3`                        |
 | Close panel, menu |                                          | `Esc`                       |

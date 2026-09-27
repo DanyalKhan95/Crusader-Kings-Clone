@@ -7,7 +7,7 @@ import { armyById, countryByTag, realmProvinces } from '../sim/queries';
 import { createGameState } from '../sim/setup';
 import type { GameState } from '../sim/types';
 import { sound } from './audio';
-import type { Game } from './game';
+import type { Game, SettingsSection } from './game';
 import { tourSeen } from './tour';
 
 export function selectProvince(game: Game, id: number) {
@@ -41,6 +41,11 @@ export function closePanel(game: Game) {
 
 export function setMapMode(game: Game, mode: MapMode) {
   game.ui.set({ mapMode: mode });
+}
+
+/** Opens the settings at a section; closing them goes back to the screen they were opened from. */
+export function openSettings(game: Game, section: SettingsSection = 'interface') {
+  game.ui.set({ modal: 'settings', settingsSection: section, settingsBack: game.ui.get().modal });
 }
 
 let noticeTimer = 0;

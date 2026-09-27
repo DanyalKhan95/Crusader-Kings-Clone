@@ -205,6 +205,67 @@ test('keeps watch: the outliner, and alerts that lead to the fix', async ({ page
   expect(errors).toEqual([]);
 });
 
+test('keeps the news: the log, its search and kinds, and news that goes to the log alone', async ({ page }) => {
+  const errors = watchErrors(page);
+  await page.goto('/?debug');
+  await page.getByRole('button', { name: 'New Campaign' }).click({ timeout: 120_000 });
+  await page.getByRole('button', { name: 'Play as England' }).click();
+  await expect(page.locator('.date-long')).toHaveText('15th of September, 1066 AD');
+
+  // From the log to the settings for news, and back: battles go to the log alone.
+  await page.keyboard.press('n');
+  const log = page.getByRole('dialog', { name: 'News of the realm' });
+  await log.getByRole('button', { name: 'Settings' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Settings' });
+  await expect(dialog.getByRole('heading', { name: 'News' })).toBeVisible();
+  await dialog.getByRole('radiogroup', { name: 'Battles' }).getByRole('radio', { name: 'Log' }).check();
+  await dialog.getByRole('button', { name: 'Close', exact: true }).click();
+  await expect(log).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(log).toHaveCount(0);
+
+  // A battle and a siege: only the siege pops up, and both are kept.
+  await page.evaluate(() => {
+    type M = { id: number; day: number; kind: string; text: string; province?: number };
+    type S = { day: number; nextId: number; player: number; messages: M[]; countries: { capital: number }[] };
+    const g = (window as unknown as { game: { state: S; runner: { sync(): void } } }).game;
+    const s = g.state;
+    const at = s.countries[s.player].capital;
+    s.messages.push({
+      id: s.nextId++,
+      day: s.day,
+      kind: 'battle',
+      text: 'Battle of Senlac: an English victory.',
+      province: at,
+    });
+    s.messages.push({ id: s.nextId++, day: s.day, kind: 'siege', text: 'The siege of Dover begins.' });
+    g.runner.sync();
+  });
+  await expect(page.locator('.toast', { hasText: 'The siege of Dover begins.' })).toBeVisible();
+  await expect(page.locator('.toast', { hasText: 'Senlac' })).toHaveCount(0);
+
+  await page.getByRole('button', { name: 'The log of news (N)' }).click();
+  await expect(log).toContainText('Battle of Senlac');
+  await expect(log).toContainText('The siege of Dover begins.');
+  await log.getByRole('searchbox').fill('senlac');
+  await expect(log.locator('.log-line')).toHaveCount(1);
+  await log.getByRole('searchbox').fill('');
+  await log
+    .getByRole('group', { name: 'Kinds of news' })
+    .getByRole('button', { name: /Sieges/ })
+    .click();
+  await expect(log.locator('.log-line')).toHaveText([/The siege of Dover begins/]);
+  await log
+    .getByRole('group', { name: 'Kinds of news' })
+    .getByRole('button', { name: /Sieges/ })
+    .click();
+
+  // A line that names a place goes there.
+  await log.getByRole('button', { name: 'Battle of Senlac: an English victory.' }).click();
+  await expect(log).toHaveCount(0);
+  expect(errors).toEqual([]);
+});
+
 test('makes friends: an alliance, the diplomacy map and a forged claim', async ({ page }) => {
   const errors = watchErrors(page);
   await page.goto('/?debug');
@@ -407,7 +468,10 @@ test('sails: a fleet, the unknown lands and a colony', async ({ page }) => {
   await page.locator('.nation-coa').click();
   await page.getByRole('tab', { name: 'Army' }).click();
   await expect(page.locator('.side-panel')).toContainText('cogs as transports');
-  await page.locator('.side-panel').getByRole('button', { name: /First Fleet of England/ }).click();
+  await page
+    .locator('.side-panel')
+    .getByRole('button', { name: /First Fleet of England/ })
+    .click();
   await expect(page.locator('.side-panel .sp-title')).toHaveText('First Fleet of England');
   await expect(page.locator('.side-panel')).toContainText('War cogs');
   await page.getByRole('button', { name: 'Explore' }).click();

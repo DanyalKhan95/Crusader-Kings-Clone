@@ -8,6 +8,7 @@ import { EndOfAge } from './dialogs/EndOfAge';
 import { EventDialog } from './dialogs/EventDialog';
 import { Help } from './dialogs/Help';
 import { Ledger } from './dialogs/Ledger';
+import { MessageLog } from './dialogs/MessageLog';
 import { Fallen, GameMenu } from './dialogs/GameMenu';
 import { Offer, Peace } from './dialogs/Peace';
 import { LoadGame } from './dialogs/Saves';
@@ -54,8 +55,8 @@ export function GameRoot() {
       }
       if (e.key === 'Escape') {
         if (s.modal === 'offer' || s.modal === 'fallen' || s.modal === 'event' || s.modal === 'end') return;
-        // In a campaign the settings open from the game menu, and go back to it.
-        if (s.modal === 'settings' && s.phase === 'playing') game.ui.set({ modal: 'menu' });
+        // The settings go back to the screen they were opened from.
+        if (s.modal === 'settings') game.ui.set({ modal: s.settingsBack });
         else if (s.modal !== 'none') game.ui.set({ modal: 'none' });
         else if (s.orderMode) game.ui.set({ orderMode: false });
         else if (s.phase === 'playing' && s.panel !== 'none') closePanel(game);
@@ -81,6 +82,7 @@ export function GameRoot() {
       if (action === 'pause') togglePause(game);
       else if (action.startsWith('speed')) setSpeed(game, Number(action.slice(5)));
       else if (action === 'ledger') game.ui.set({ modal: 'ledger', speed: 0 });
+      else if (action === 'log') game.ui.set({ modal: 'log', speed: 0 });
       else if (action === 'help') game.ui.set({ modal: 'help', speed: 0 });
       else if (action === 'perfOverlay') settings.set({ perfOverlay: !settings.get().perfOverlay });
       else return false;
@@ -109,6 +111,7 @@ export function GameRoot() {
       {phase === 'playing' && modal === 'tech' && <TechScreen />}
       {phase === 'playing' && modal === 'event' && <EventDialog />}
       {phase === 'playing' && modal === 'ledger' && <Ledger />}
+      {phase === 'playing' && modal === 'log' && <MessageLog />}
       {phase === 'playing' && modal === 'end' && <EndOfAge />}
       {phase === 'playing' && modal === 'demoEnd' && <DemoEnd />}
       {phase === 'playing' && <Tour />}

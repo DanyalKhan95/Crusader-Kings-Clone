@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { canContinue, resume, startChoosing } from '../actions';
+import { canContinue, openSettings, resume, startChoosing } from '../actions';
 import { loadChosen } from '../dialogs/Saves';
 import { useGame } from '../game';
 import { Icon } from '../Icon';
@@ -61,7 +61,7 @@ export function MainMenu() {
           <button className="btn" onClick={() => game.ui.set({ modal: 'help' })}>
             <Icon name="scroll-quill" /> How to Play
           </button>
-          <button className="btn" onClick={() => game.ui.set({ modal: 'settings' })}>
+          <button className="btn" onClick={() => openSettings(game)}>
             <Icon name="settings-knobs" /> Settings
           </button>
           <button className="btn" onClick={() => game.ui.set({ modal: 'credits' })}>

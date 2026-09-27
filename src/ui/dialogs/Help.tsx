@@ -2,6 +2,7 @@
 import { useState, type ReactNode } from 'react';
 import type { IconName } from '../../assets/icons';
 import { MAP_MODES } from '../../game/mapModes';
+import { openSettings } from '../actions';
 import { useGame } from '../game';
 import { Icon } from '../Icon';
 import { shortcut, type KeyAction } from '../keys';
@@ -49,7 +50,9 @@ const TOPICS: Topic[] = [
         <p>
           The game begins paused. Press <Key action="pause" /> or the play button to let the days run, and{' '}
           <Key action="speed1" /> to <Key action="speed5" /> to set the speed. News that needs you, a war declared on
-          you, an offer, an event, pauses the game; lesser news appears at the side and fades.
+          you, an offer, an event, pauses the game; lesser news appears at the top and fades. The log{' '}
+          <Key action="log" /> keeps it all, to search and sift by kind, and the settings say for each kind of news
+          whether it pops up, pauses the game, goes only to the log or is not shown at all.
         </p>
         <p>
           Drag the map to move it and turn the wheel to zoom, or use <Key action="panLeft" /> <Key action="panRight" />{' '}
@@ -244,6 +247,7 @@ function keyRows(): [string, string][] {
       `Map modes: ${MAP_MODES.map((m) => m.label.toLowerCase()).join(', ')}`,
     ],
     [keys(['ledger']), 'The ledger of nations'],
+    [keys(['log']), 'The log of news'],
     [keys(['help']), 'How to play'],
     ['Esc', 'Close a window or panel; the game menu'],
     [keys(['panLeft', 'panRight', 'panUp', 'panDown', 'zoomIn', 'zoomOut']), 'Move and zoom the map'],
@@ -305,7 +309,7 @@ export function Help() {
               </table>
               <p className="dim small">
                 Every key can be changed in the settings.{' '}
-                <button className="link" onClick={() => game.ui.set({ modal: 'settings' })}>
+                <button className="link" onClick={() => openSettings(game, 'keys')}>
                   Open the settings
                 </button>
               </p>

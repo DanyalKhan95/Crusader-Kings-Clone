@@ -10,7 +10,9 @@ import {
   unbindKey,
   withKey,
 } from '../src/ui/keys';
+import { logged, pauses, popsUp, ruleFor } from '../src/ui/messages';
 import { DEFAULT_SETTINGS, fittingScale, sanitizeSettings, settings } from '../src/ui/settings';
+import type { Message } from '../src/sim/types';
 
 describe('settings', () => {
   it('fall back to the defaults for anything missing or damaged', () => {
@@ -25,6 +27,7 @@ describe('settings', () => {
       topSpeed: 0,
       autosaveMinutes: 10,
       keys: { pause: ['P'], ledger: [3], help: ['A', 'B', 'C'] },
+      messages: { battle: 'log', war: 'auto', siege: 'shout', naval: 7, death: 'off' },
     });
     expect(s.uiScale).toBe(1.5);
     expect(s.textScale).toBe(DEFAULT_SETTINGS.textScale);
@@ -35,6 +38,8 @@ describe('settings', () => {
     expect(s.autosaveMinutes).toBe(10);
     // Bindings keep only lists of names, two keys at most.
     expect(s.keys).toEqual({ pause: ['P'], help: ['A', 'B'] });
+    // What news does: only the rules there are, and only where they differ from auto.
+    expect(s.messages).toEqual({ battle: 'log', death: 'off' });
   });
 
   it('grow the interface only as far as the window leaves room for the desktop layout', () => {
@@ -93,5 +98,36 @@ describe('key bindings', () => {
     expect(bindKey('pause', 'Escape')).toBeNull();
     expect(bindKey('pause', 'Tab')).toBeNull();
     expect(bindings('pause')).toEqual(['Space']);
+  });
+});
+
+describe('news', () => {
+  const news = (kind: Message['kind'], important = false): Message => ({ id: 1, day: 0, kind, text: '', important });
+  beforeEach(() => settings.set({ messages: {} }));
+
+  it('pops up as before by default, and pauses for what matters', () => {
+    expect(ruleFor('battle')).toBe('auto');
+    expect(popsUp(news('battle'))).toBe(true);
+    expect(pauses(news('battle'))).toBe(false);
+    expect(pauses(news('war', true))).toBe(true);
+    expect(logged(news('war', true))).toBe(true);
+  });
+
+  it('does for each kind what the player chose', () => {
+    settings.set({ messages: { battle: 'pause', war: 'popup', siege: 'log', death: 'off' } });
+    expect(pauses(news('battle'))).toBe(true);
+    expect([popsUp(news('war', true)), pauses(news('war', true))]).toEqual([true, false]);
+    expect([popsUp(news('siege', true)), pauses(news('siege', true)), logged(news('siege'))]).toEqual([
+      false,
+      false,
+      true,
+    ]);
+    expect([popsUp(news('death', true)), pauses(news('death', true)), logged(news('death'))]).toEqual([
+      false,
+      false,
+      false,
+    ]);
+    // The rest keep to auto.
+    expect(pauses(news('peace', true))).toBe(true);
   });
 });

@@ -1,13 +1,17 @@
 /**
- * The player's settings: the interface, the map's graphics, the pace of the game, autosaves and the
- * key bindings. They are kept between visits (`prefs.ts`), applied at once, and read outside React by
- * the map and the runner. Sound keeps its own settings in `audio.ts`.
+ * The player's settings: the interface, the map's graphics, the pace of the game, autosaves, what each
+ * kind of news does, and the key bindings. They are kept between visits (`prefs.ts`), applied at once,
+ * and read outside React by the map and the runner. Sound keeps its own settings in `audio.ts`.
  */
 import { readPref, writePref } from './prefs';
 import { createStore, useStore } from './store';
 
 /** How sharp the map is drawn: the most device pixels it spends on each CSS pixel. */
 export type MapQuality = 'low' | 'medium' | 'high' | 'native';
+
+/** What a kind of news does (see messages.ts): auto pops up, and pauses when it matters. */
+export type MessageRule = 'auto' | 'pause' | 'popup' | 'log' | 'off';
+export const MESSAGE_RULES: MessageRule[] = ['auto', 'pause', 'popup', 'log', 'off'];
 
 export interface Settings {
   /** size of the whole interface, map lettering and banners included */
@@ -27,6 +31,8 @@ export interface Settings {
   perfOverlay: boolean;
   /** key bindings that differ from the defaults, by action */
   keys: Record<string, string[]>;
+  /** what each kind of news does, where it differs from auto */
+  messages: Record<string, MessageRule>;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -39,6 +45,7 @@ export const DEFAULT_SETTINGS: Settings = {
   autosaveMinutes: 4,
   perfOverlay: false,
   keys: {},
+  messages: {},
 };
 
 export const UI_SCALES = [0.8, 0.9, 1, 1.1, 1.25, 1.5, 1.75, 2];
@@ -58,6 +65,10 @@ export function sanitizeSettings(raw: unknown, d: Settings = DEFAULT_SETTINGS): 
   if (r.keys && typeof r.keys === 'object')
     for (const [action, list] of Object.entries(r.keys as Record<string, unknown>))
       if (Array.isArray(list) && list.every((k) => typeof k === 'string')) keys[action] = list.slice(0, 2);
+  const messages: Record<string, MessageRule> = {};
+  if (r.messages && typeof r.messages === 'object')
+    for (const [kind, rule] of Object.entries(r.messages as Record<string, unknown>))
+      if (MESSAGE_RULES.includes(rule as MessageRule) && rule !== 'auto') messages[kind] = rule as MessageRule;
   return {
     uiScale: pick(r.uiScale, UI_SCALES, d.uiScale),
     textScale: pick(r.textScale, TEXT_SCALES, d.textScale),
@@ -68,6 +79,7 @@ export function sanitizeSettings(raw: unknown, d: Settings = DEFAULT_SETTINGS): 
     autosaveMinutes: pick(r.autosaveMinutes, AUTOSAVE_MINUTES, d.autosaveMinutes),
     perfOverlay: typeof r.perfOverlay === 'boolean' ? r.perfOverlay : d.perfOverlay,
     keys,
+    messages,
   };
 }
 

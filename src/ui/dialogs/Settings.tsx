@@ -1,11 +1,12 @@
 /**
  * The settings: interface, map and graphics (and the window, in the desktop app), the pace of the
- * game, sound and keys. Everything takes effect at once and is kept between visits.
+ * game, news, sound and keys. Everything takes effect at once and is kept between visits.
  */
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import type { IconName } from '../../assets/icons';
+import type { MessageKind } from '../../sim/types';
 import { sound, type AudioSettings } from '../audio';
-import { useGame } from '../game';
+import { useGame, type SettingsSection } from '../game';
 import { Icon } from '../Icon';
 import {
   bindKey,
@@ -15,47 +16,55 @@ import {
   keyOf,
   RESERVED_KEYS,
   resetKeys,
+  shortcut,
   unbindKey,
   withKey,
   type KeyAction,
   type KeyGroup,
 } from '../keys';
+import { MESSAGE_KINDS, RULE_INFO } from '../messages';
 import { native, type WindowMode } from '../platform';
 import {
   appliedScale,
   AUTOSAVE_MINUTES,
   FRAME_CAPS,
+  MESSAGE_RULES,
   settings,
   TEXT_SCALES,
   TOP_SPEEDS,
   UI_SCALES,
   useSettings,
   type MapQuality,
+  type MessageRule,
 } from '../settings';
 import { useStore } from '../store';
 import { Modal } from './Modal';
 import { SavesFolderButton } from './Saves';
 
-type Section = 'interface' | 'graphics' | 'game' | 'sound' | 'keys';
-
-const SECTIONS: { id: Section; title: string; icon: IconName }[] = [
+const SECTIONS: { id: SettingsSection; title: string; icon: IconName }[] = [
   { id: 'interface', title: 'Interface', icon: 'settings-knobs' },
   { id: 'graphics', title: 'Map and graphics', icon: 'mountains' },
   { id: 'game', title: 'Time and saving', icon: 'hourglass' },
+  { id: 'news', title: 'News', icon: 'ringing-bell' },
   { id: 'sound', title: 'Sound', icon: 'speaker' },
   { id: 'keys', title: 'Keys', icon: 'keyboard' },
 ];
 
 export function Settings() {
   const game = useGame();
-  const phase = useStore(game.ui, (s) => s.phase);
-  const [section, setSection] = useState<Section>('interface');
-  // In a campaign the settings open from the game menu, and go back to it.
-  const close = () => game.ui.set({ modal: phase === 'playing' ? 'menu' : 'none' });
+  const [section, setSection] = useState(() => game.ui.get().settingsSection);
+  const nav = useRef<HTMLElement>(null);
+  // Opened at a section: on a phone, where the sections scroll sideways, bring it into view.
+  useEffect(() => {
+    // (Newer browsers return a promise from scrollIntoView, which React would take for a cleanup.)
+    nav.current?.querySelector('.active')?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+  }, []);
+  // Back to the screen the settings were opened from: the game menu, the log, How to play.
+  const close = () => game.ui.set({ modal: game.ui.get().settingsBack });
   return (
     <Modal title="Settings" kicker="Crowns & Centuries" wide className="help settings" onClose={close}>
       <div className="help-layout">
-        <nav className="help-nav" aria-label="Settings">
+        <nav className="help-nav" aria-label="Settings" ref={nav}>
           {SECTIONS.map((s) => (
             <button
               key={s.id}
@@ -72,6 +81,7 @@ export function Settings() {
           {section === 'interface' && <InterfaceSection />}
           {section === 'graphics' && <GraphicsSection />}
           {section === 'game' && <GameSection />}
+          {section === 'news' && <NewsSection />}
           {section === 'sound' && <SoundSection />}
           {section === 'keys' && <KeysSection />}
         </div>
@@ -299,6 +309,76 @@ function GameSection() {
           <SavesFolderButton />
         </Row>
       )}
+    </>
+  );
+}
+
+/** What each kind of news does: a pop-up, a pause, the log alone, or nothing. */
+function NewsSection() {
+  const rules = useSettings((s) => s.messages);
+  const logKey = shortcut('log');
+  const setRule = (kind: MessageKind, rule: MessageRule) => {
+    const next = { ...settings.get().messages };
+    if (rule === 'auto') delete next[kind];
+    else next[kind] = rule;
+    settings.set({ messages: next });
+  };
+  return (
+    <>
+      <h3 className="section-title">News</h3>
+      <p className="dim small">
+        What each kind of news does when it comes. <b>Auto</b> shows it, and pauses the game for news that needs you;{' '}
+        <b>Pause</b> always pauses; <b>Pop-up</b> never does; <b>Log</b> keeps it in the log alone; <b>Off</b> drops it.
+        All but what is off is kept in the log, under the quill beside the date
+        {logKey && (
+          <>
+            {' '}
+            or on <kbd>{logKey}</kbd>
+          </>
+        )}
+        .
+      </p>
+      <div className="news-grid">
+        <div className="news-row news-head" aria-hidden="true">
+          <span />
+          {MESSAGE_RULES.map((r) => (
+            <span key={r} className="caps">
+              {RULE_INFO[r].label}
+            </span>
+          ))}
+        </div>
+        {MESSAGE_KINDS.map((k) => {
+          const value = rules[k.kind] ?? 'auto';
+          return (
+            <div key={k.kind} className="news-row" role="radiogroup" aria-label={k.name}>
+              <span className="news-kind">
+                <Icon name={k.icon} />
+                {k.name}
+              </span>
+              {MESSAGE_RULES.map((r) => (
+                <label key={r} className="news-cell" title={`${k.name}: ${RULE_INFO[r].blurb.toLowerCase()}`}>
+                  <input
+                    type="radio"
+                    name={`news-${k.kind}`}
+                    aria-label={RULE_INFO[r].label}
+                    checked={value === r}
+                    onChange={() => setRule(k.kind, r)}
+                  />
+                </label>
+              ))}
+            </div>
+          );
+        })}
+      </div>
+      <div className="modal-actions">
+        <button
+          className="btn ghost"
+          disabled={!Object.keys(rules).length}
+          onClick={() => settings.set({ messages: {} })}
+        >
+          Restore the defaults
+        </button>
+      </div>
     </>
   );
 }

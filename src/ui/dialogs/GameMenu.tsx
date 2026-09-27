@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { toDate } from '../../sim/calendar';
-import { notice, startChoosing, toMenu } from '../actions';
+import { notice, openSettings, startChoosing, toMenu } from '../actions';
 import { useGame } from '../game';
 import { Icon } from '../Icon';
 import { native, offerFile } from '../platform';
@@ -61,7 +61,7 @@ export function GameMenu() {
         <button className="btn primary" onClick={close}>
           <Icon name="play-button" /> Resume
         </button>
-        <button className="btn" onClick={() => game.ui.set({ modal: 'settings' })}>
+        <button className="btn" onClick={() => openSettings(game)}>
           <Icon name="settings-knobs" /> Settings
         </button>
         <button className="btn" onClick={() => game.ui.set({ modal: 'help' })}>

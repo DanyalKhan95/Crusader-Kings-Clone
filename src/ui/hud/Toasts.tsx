@@ -1,31 +1,11 @@
 import { useEffect } from 'react';
-import type { IconName } from '../../assets/icons';
 import { toDate } from '../../sim/calendar';
-import type { MessageKind } from '../../sim/types';
 import { flyToProvince } from '../actions';
+import { shortDate } from '../format';
 import { useGame } from '../game';
 import { Icon } from '../Icon';
+import { KIND_ICON } from '../messages';
 import { useStore } from '../store';
-
-const KIND_ICON: Record<MessageKind, IconName> = {
-  war: 'crossed-swords',
-  peace: 'peace-dove',
-  battle: 'swords-emblem',
-  siege: 'siege-tower',
-  death: 'hasty-grave',
-  building: 'hammer-nails',
-  economy: 'coins-pile',
-  army: 'knight-banner',
-  event: 'scroll-unfurled',
-  diplomacy: 'shaking-hands',
-  naval: 'anchor',
-  discovery: 'compass',
-  colony: 'wood-cabin',
-  plague: 'plague-doctor-profile',
-  intrigue: 'cloak-dagger',
-};
-
-const SHORT_MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
 /** News of the realm, newest at the bottom. Fades after a while unless it matters. */
 export function Toasts() {
@@ -59,9 +39,7 @@ export function Toasts() {
                 dismiss(m.id);
               }}
             >
-              <span className="toast-date caps">
-                {d.d} {SHORT_MONTHS[d.m - 1]} {d.y}
-              </span>
+              <span className="toast-date caps">{shortDate(d)}</span>
               {m.text}
             </button>
             <button className="toast-close" onClick={() => dismiss(m.id)} aria-label="Dismiss">

@@ -47,6 +47,13 @@ export function formatDate(d: { y: number; m: number; d: number }): string {
   return `${ordinal(d.d)} of ${MONTHS[d.m - 1]}, ${d.y} AD`;
 }
 
+const SHORT_MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+/** A date in few letters: "15 Sep 1066". */
+export function shortDate(d: { y: number; m: number; d: number }): string {
+  return `${d.d} ${SHORT_MONTHS[d.m - 1]} ${d.y}`;
+}
+
 /** Upper-cases the first letter, for names like "the Seljuks" that open a line. */
 export function capitalize(s: string): string {
   return s.charAt(0).toUpperCase() + s.slice(1);

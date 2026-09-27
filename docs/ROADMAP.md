@@ -402,10 +402,11 @@ after the content they show has settled.
   - [x] peace offers, or a war that can be won at the table
   - [x] claims ready, and laws that may change again
   - [x] a right-click hides an alert until what it is about changes
-- [ ] A message log:
-  - [ ] the campaign's news kept, searchable and filtered by kind
-  - [ ] for each kind, a setting: a pop-up, a pause, the log only, or nothing. This replaces the
-        fixed rule that important news pauses.
+- [x] A message log:
+  - [x] the campaign's news kept, searchable and filtered by kind (the last thousand messages,
+        under the quill beside the date, or `N`); a line that names a place goes there
+  - [x] for each kind, a setting: a pop-up, a pause, the log only, or nothing. This replaces the
+        fixed rule that important news pauses; Auto, the default, keeps that rule.
 - [ ] Context menus: right-clicking a province or realm, with no army or fleet selected, lists its
       actions (declare war, forge a claim, send a gift, build, recruit).
 - [ ] Hotkeys, all rebindable: every screen, cycling armies and fleets, the capital, and the common

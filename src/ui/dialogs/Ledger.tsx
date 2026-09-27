@@ -9,6 +9,7 @@ import type { ChronicleEntry, Country } from '../../sim/types';
 import { formatMen } from '../../render/units';
 import { flyToProvince, selectCountry } from '../actions';
 import { CoatOfArms } from '../CoatOfArms';
+import { shortDate } from '../format';
 import { useGame, type Game } from '../game';
 import { Icon } from '../Icon';
 import { useStore } from '../store';
@@ -283,8 +284,6 @@ function Centuries() {
 
 // ── The chronicle ─────────────────────────────────────────────────
 
-const SHORT_MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-
 function centuryName(year: number): string {
   const n = Math.floor(year / 100) + 1;
   const s = n % 100 >= 11 && n % 100 <= 13 ? 'th' : (['th', 'st', 'nd', 'rd'][n % 10] ?? 'th');
@@ -316,9 +315,7 @@ function Chronicle() {
               const d = toDate(e.day);
               return (
                 <li key={`${e.day}-${i}`}>
-                  <span className="num chronicle-date">
-                    {d.d} {SHORT_MONTHS[d.m - 1]} {d.y}
-                  </span>
+                  <span className="num chronicle-date">{shortDate(d)}</span>
                   {e.province ? (
                     <button className="chronicle-text link-like" onClick={() => look(e)}>
                       {e.text} <Icon name="flag-objective" />

@@ -1,12 +1,14 @@
 /**
  * Game time. Runs simulated days inside the map's frame loop, within a time budget, and tells the
- * map and the panels what changed. Important news pauses the game, as in any grand strategy game.
+ * map and the panels what changed. News pops up or pauses the game as the player chose for each kind
+ * of it (messages.ts).
  */
 import { toDate } from '../sim/calendar';
 import { playerEvent } from '../sim/events';
 import { advanceDay } from '../sim/tick';
 import { sound } from './audio';
 import { demoOver } from './demo';
+import { pauses, popsUp } from './messages';
 import { report } from './errors';
 import { formatDate } from './format';
 import type { Game } from './game';
@@ -66,13 +68,16 @@ export function attachRunner(game: Game) {
     }
     const ui = game.ui.get();
     const patch: Partial<typeof ui> = {};
-    // News
+    // News, as the player wants each kind of it: a pop-up, a pause, or the log alone.
     const fresh = state.messages.filter((m) => m.id > lastMessage);
     if (fresh.length) {
-      sound.news(fresh, state.player);
       lastMessage = fresh[fresh.length - 1].id;
-      patch.toasts = [...ui.toasts, ...fresh.map((m) => m.id)].slice(-MAX_TOASTS);
-      if (fresh.some((m) => m.important)) patch.speed = 0;
+      const shown = fresh.filter(popsUp);
+      if (shown.length) {
+        sound.news(shown, state.player);
+        patch.toasts = [...ui.toasts, ...shown.map((m) => m.id)].slice(-MAX_TOASTS);
+      }
+      if (fresh.some(pauses)) patch.speed = 0;
     }
     if (state.offers.some((o) => o.to === state.player) && ui.modal === 'none') {
       patch.speed = 0;
@@ -109,6 +114,13 @@ export function attachRunner(game: Game) {
       patch.tick = ui.tick + 1;
       game.ui.set(patch);
     }
+  };
+
+  /** Has news come since the last look that stops the clock? */
+  const pausingNews = () => {
+    const msgs = game.state.messages;
+    for (let i = msgs.length - 1; i >= 0 && msgs[i].id > lastMessage; i--) if (pauses(msgs[i])) return true;
+    return false;
   };
 
   const frame = (dt: number) => {
@@ -156,8 +168,7 @@ export function attachRunner(game: Game) {
       backlog -= 1;
       days++;
       // Stop at once for news that needs the player.
-      const last = game.state.messages.at(-1);
-      if (last && last.id > lastMessage && last.important) break;
+      if (pausingNews()) break;
       if (game.state.offers.some((o) => o.to === game.state.player)) break;
       if (playerEvent(game.state)) break;
       if (demoOver(game.state.day)) break;

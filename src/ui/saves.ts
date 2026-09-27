@@ -7,7 +7,7 @@ import { toDate } from '../sim/calendar';
 import { readSave, serialize } from '../sim/save';
 import { replaceState, resume } from './actions';
 import { emblemSvg } from './CoatOfArms';
-import { formatDate } from './format';
+import { formatDate, shortDate } from './format';
 import type { Game } from './game';
 import { native } from './platform';
 import { deleteSave, listSaves, loadGame, saveGame, type SaveKind, type SaveMeta } from './storage';
@@ -20,8 +20,6 @@ export const SAVE_FAILED = native
   ? 'The save could not be written to the saves folder.'
   : 'This browser would not let the game save.';
 
-const SHORT_MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-
 /** A fresh id for a new campaign. The simulation never sees it, so it may come from the clock. */
 export function newCampaignId(): string {
   return `${Date.now().toString(36)}${Math.floor(Math.random() * 1e6).toString(36)}`;
@@ -31,7 +29,7 @@ export function newCampaignId(): string {
 export function defaultSaveName(game: Game): string {
   const c = game.state.countries[game.state.player];
   const d = toDate(game.state.day);
-  return `${c ? c.short : 'Campaign'}, ${d.d} ${SHORT_MONTHS[d.m - 1]} ${d.y}`;
+  return `${c ? c.short : 'Campaign'}, ${shortDate(d)}`;
 }
 
 /** The game as a save file, with its campaign, time played and ironman flag. */

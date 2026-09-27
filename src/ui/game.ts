@@ -25,11 +25,13 @@ export type Modal =
   | 'tech'
   | 'event'
   | 'ledger'
+  | 'log'
   | 'end'
   | 'help'
   | 'settings'
   | 'load'
   | 'demoEnd';
+export type SettingsSection = 'interface' | 'graphics' | 'game' | 'news' | 'sound' | 'keys';
 
 export interface UIState {
   phase: Phase;
@@ -66,6 +68,9 @@ export interface UIState {
   tour: number;
   /** alerts the player hid, until what they are about changes */
   hiddenAlerts: string[];
+  /** the section the settings open at, and the screen they go back to when closed */
+  settingsSection: SettingsSection;
+  settingsBack: Modal;
 }
 
 export interface Game {
@@ -111,6 +116,8 @@ export function createGame(world: StaticWorld, scenario: ScenarioData, state: Ga
     notice: '',
     tour: 0,
     hiddenAlerts: [],
+    settingsSection: 'interface',
+    settingsBack: 'none',
   });
   return {
     world,
