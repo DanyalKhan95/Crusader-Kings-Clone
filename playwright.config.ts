@@ -15,6 +15,11 @@ export default defineConfig({
       args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'],
     },
   },
+  // The game in a browser, and in the desktop app (which runs the same dist/ the web server builds).
+  projects: [
+    { name: 'web', testIgnore: /desktop\.spec\.ts/ },
+    { name: 'desktop', testMatch: /desktop\.spec\.ts/ },
+  ],
   webServer: {
     command: 'npm run build && npx vite preview --port 4173 --strictPort',
     url: 'http://localhost:4173',

@@ -7,6 +7,8 @@ import { createGame, GameContext, useGame, type Game } from './game';
 import { GameRoot } from './GameRoot';
 import { LoadingScreen } from './LoadingScreen';
 import { MapCanvas } from './map/MapCanvas';
+import { native } from './platform';
+import { saveOnClose } from './saves';
 import { useStore } from './store';
 
 /** Game data lives next to the page, so the build works from any folder or host. */
@@ -31,6 +33,7 @@ export function App() {
         const g = createGame(world, scenario, createGameState(world, scenario), bundle);
         // Tests and the curious can reach the running game with ?debug in the address.
         if (new URLSearchParams(location.search).has('debug')) (window as unknown as { game: Game }).game = g;
+        saveOnClose(g);
         setGame(g);
       })
       .catch((e: unknown) => {
@@ -82,7 +85,9 @@ function ErrorScreen({ message }: { message: string }) {
         <h1 className="display">The map could not be unrolled</h1>
         <p>{message}</p>
         <p className="dim">
-          Crowns &amp; Centuries needs a browser with WebGL 2: any current Chrome, Edge, Firefox or Safari.
+          {native
+            ? 'Crowns & Centuries needs graphics that can draw WebGL 2. Updating the graphics drivers usually helps.'
+            : 'Crowns & Centuries needs a browser with WebGL 2: any current Chrome, Edge, Firefox or Safari.'}
         </p>
         <button className="btn primary" onClick={() => location.reload()}>
           Try again

@@ -7,7 +7,7 @@ import { toMenu } from './actions';
 import { buildReport, failures, failureText, report, type Failure } from './errors';
 import { useGame, type Game } from './game';
 import { Icon } from './Icon';
-import { exportSave } from './storage';
+import { native, offerFile } from './platform';
 import { useStore } from './store';
 
 /** Guards the interface: a crash in it shows the error panel instead of an empty page. */
@@ -56,15 +56,15 @@ const SOURCE: Record<Failure['source'], string> = {
 function ErrorPanel({ game, failure, onCarryOn }: { game: Game; failure: Failure; onCarryOn: () => void }) {
   const [note, setNote] = useState('');
   const playing = game.ui.get().phase === 'playing';
-  const download = () => {
+  const download = async () => {
     const stamp = failure.time.slice(0, 19).replace(/[:T]/g, '-');
-    let ok: boolean;
     try {
-      ok = exportSave(buildReport(game, failure), `crowns-and-centuries-report-${stamp}.json`);
+      const r = await offerFile(buildReport(game, failure), `crowns-and-centuries-report-${stamp}.json`);
+      if (r.saved) setNote(r.path ? `The report is saved as ${r.path}.` : 'The report is saved among your downloads.');
+      else if (r.blocked) setNote('This viewer does not allow downloads.');
     } catch {
-      ok = false;
+      setNote('The report could not be written.');
     }
-    setNote(ok ? 'The report is saved among your downloads.' : 'This viewer does not allow downloads.');
   };
   const copy = () => {
     navigator.clipboard
@@ -86,8 +86,8 @@ function ErrorPanel({ game, failure, onCarryOn }: { game: Game; failure: Failure
           save, or go back to the title screen.
         </p>
         <div className="btn-row">
-          <button className="btn" onClick={download}>
-            <Icon name="bug-net" /> Download a report
+          <button className="btn" onClick={() => void download()}>
+            <Icon name="bug-net" /> {native ? 'Save a report' : 'Download a report'}
           </button>
           <button className="btn" onClick={copy}>
             Copy the error

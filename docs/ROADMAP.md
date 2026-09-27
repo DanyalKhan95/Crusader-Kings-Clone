@@ -33,8 +33,9 @@ whole world. The player controls a country rather than a dynasty.
 - **Delivery:**
   - GitHub Pages, built by `.github/workflows/deploy.yml` on every push.
   - A private claude.ai artifact, updated after each milestone.
-  - From M9, desktop builds. The store is undecided (Steam, itch.io or both), so nothing may rule
-    either out. Early Access comes first, with no fixed date; its players give the feedback.
+  - From M9, desktop builds, made by `.github/workflows/desktop.yml` on `main`, on version tags or
+    by hand. The store is undecided (Steam, itch.io or both), so nothing may rule either out.
+    Early Access comes first, with no fixed date; its players give the feedback.
   - The web build and the artifact become the free demo. They use the code-drawn fallbacks for
     anything the app ships as files.
 
@@ -329,38 +330,44 @@ after the content they show has settled.
 ### M9: Foundations for a release
 
 - [ ] Desktop app: an Electron shell around the same build, for Windows, macOS and Linux:
-  - [ ] windowed, borderless and fullscreen, remembered between sessions
-  - [ ] saves and settings as files in the player's documents folder
-  - [ ] unsigned test builds from CI (signing and installers come with Early Access)
+  - [x] windowed or fullscreen, remembered between sessions with the window's size and place, and
+        switched from the settings, `F11` or `Alt+Enter`. Fullscreen is borderless, as Chromium
+        draws it, so a third, exclusive mode would look the same.
+  - [x] saves and settings as files in the player's documents folder (`Crowns & Centuries/`), with a
+        button to open the saves folder. Closing the window saves the campaign first.
+  - [x] a Quit button on the title screen and in the game menu, one instance at a time, and an
+        offer to start again if the game stops
+  - [ ] unsigned test builds from CI: an installer and a zip for Windows, a disk image for macOS,
+        and an AppImage for Linux (signing comes with Early Access)
 - [ ] The web build becomes the free demo:
   - [ ] a build flag for the demo's limits (to be decided, e.g. the first century)
   - [ ] code-drawn fallbacks for everything the app ships as files
-- [ ] A settings screen:
-  - [ ] interface scale and text size
-  - [ ] key bindings, every one rebindable, with the keys shown in tooltips and in How to play
-  - [ ] graphics and performance: a quality preset, a frame cap, map effects and the top speed
-  - [ ] sound, as now
-- [ ] Saves:
-  - [ ] named saves, and several autosaves in rotation
-  - [ ] a save browser with the realm, its arms, the date and the time played
-  - [ ] ironman-ready: a save the game keeps and overwrites itself
+- [x] A settings screen:
+  - [x] interface scale and text size
+  - [x] key bindings, every one rebindable, with the keys shown in tooltips and in How to play
+  - [x] graphics and performance: a quality preset, a frame cap, map effects and the top speed
+  - [x] sound, as now
+- [x] Saves:
+  - [x] named saves, and several autosaves in rotation
+  - [x] a save browser with the realm, its arms, the date and the time played
+  - [x] ironman-ready: a save the game keeps and overwrites itself, even with autosaves off
 - [ ] Performance:
   - [ ] a budget on a mid-range reference machine: 60 frames a second, with speed 5 holding its
         pace in the 1900s
-  - [ ] a performance overlay: frame time, simulation time per day, and the heaviest systems
+  - [x] a performance overlay: frame time, simulation time per day, and the heaviest systems
   - [ ] find and fix the hot spots. Move the simulation into a worker only if the main thread cannot
         meet the budget, because the UI reads the state directly.
-  - [ ] load time: fonts and data as files in the app and on Pages, inlined only for the artifact
-- [ ] A content registry, to prepare for mods:
-  - [ ] typed data files with schemas, checked by the tests and loaded in one place
-  - [ ] the featured realms and the modifiers first; other content moves as its system is reworked
+  - [x] load time: fonts and data as files in the app and on Pages, inlined only for the artifact
+- [x] A content registry, to prepare for mods:
+  - [x] typed data files with schemas, checked by the tests and loaded in one place
+  - [x] the featured realms and the modifiers first; other content moves as its system is reworked
         (events with the condition language of M15, since their conditions are code today)
-- [ ] An asset pipeline:
-  - [ ] a manifest of every image and sound, giving its source, licence and author and whether it
+- [x] An asset pipeline:
+  - [x] a manifest of every image and sound, giving its source, licence and author and whether it
         was generated, for the credits and for store disclosures
-  - [ ] packing into atlases and loading by era
-  - [ ] fallbacks from the most specific asset down to the code-drawn one
-- [ ] An error screen that keeps the game running where it can and offers the save and the log for a
+  - [x] packing into atlases and loading by era
+  - [x] fallbacks from the most specific asset down to the code-drawn one
+- [x] An error screen that keeps the game running where it can and offers the save and the log for a
       bug report.
 - [ ] Saves from milestone 8 load.
 
@@ -554,7 +561,8 @@ after the content they show has settled.
 - Commit and push; GitHub Pages redeploys.
 - Rebuild the artifact (`npm run build && npm run artifact`) and republish it to the same claude.ai
   URL.
-- From M9: check that the desktop build starts and loads a save.
+- From M9: run the desktop app's test (`xvfb-run -a npx playwright test --project desktop` on
+  Linux), which starts the app, saves, quits and loads the save again.
 
 ## Known gaps and ideas
 
@@ -638,8 +646,9 @@ after the content they show has settled.
   reachability checks before any search. A web worker for the simulation would take the rest
   off the main thread, but the UI reads the state directly. M9 sets a budget first and moves the
   simulation only if it must.
-- **Size:** the stylesheet is 1.1 MB, most of it the inlined fonts of the six era themes. In M9,
-  fonts become files everywhere except the artifact.
+- **Size:** fonts are files in the app and on Pages, so the stylesheet is 70 KB and the title
+  screen fetches 9 of the 38 font files; only the artifact inlines them (1.1 MB). The desktop app
+  is about 130 MB to download, nearly all of it Electron.
 - **Fleets and armies at sea:** transports are a pool per realm rather than ships in fleets, so
   an escort protects armies only in the sea zone where it sails. Ships are built at once, like
   men-at-arms.

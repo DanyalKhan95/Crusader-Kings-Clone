@@ -159,7 +159,7 @@ export function startAs(game: Game, index: number) {
   game.state.player = index;
   game.runner?.reset();
   game.ui.set({
-    // The first campaign in this browser begins with the guided tour.
+    // The player's first campaign begins with the guided tour.
     tour: tourSeen() ? 0 : 1,
     phase: 'playing',
     player: index,

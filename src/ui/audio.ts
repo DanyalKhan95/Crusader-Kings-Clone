@@ -1,10 +1,11 @@
 /**
  * Sound, made as it plays with the Web Audio API (there are no sound files): short effects for the
  * news of the realm and the player's commands, and quiet music that changes with the era. Nothing
- * sounds before the player first touches the page; both can be turned down or off in the game menu,
- * and the settings are kept in this browser.
+ * sounds before the player first touches the page; both can be turned down or off in the settings,
+ * which are kept between visits (`prefs.ts`).
  */
 import type { Message, MessageKind } from '../sim/types';
+import { readPref, writePref } from './prefs';
 
 export interface AudioSettings {
   effects: boolean;
@@ -13,12 +14,11 @@ export interface AudioSettings {
   musicVolume: number;
 }
 
-const KEY = 'crowns-and-centuries:audio';
 const DEFAULTS: AudioSettings = { effects: true, effectsVolume: 0.6, music: false, musicVolume: 0.5 };
 
 function loadSettings(): AudioSettings {
   try {
-    const raw = localStorage.getItem(KEY);
+    const raw = readPref('audio');
     return raw ? { ...DEFAULTS, ...(JSON.parse(raw) as Partial<AudioSettings>) } : { ...DEFAULTS };
   } catch {
     return { ...DEFAULTS };
@@ -299,11 +299,7 @@ class Sound {
 
   update(patch: Partial<AudioSettings>) {
     this.settings = { ...this.settings, ...patch };
-    try {
-      localStorage.setItem(KEY, JSON.stringify(this.settings));
-    } catch {
-      /* not kept, but still applied */
-    }
+    writePref('audio', JSON.stringify(this.settings));
     this.apply();
   }
 

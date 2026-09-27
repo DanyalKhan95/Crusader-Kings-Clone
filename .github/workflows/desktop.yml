@@ -1,0 +1,54 @@
+name: Desktop app
+
+# The desktop app's smoke test on every push, and unsigned test builds for Windows, macOS and Linux
+# on main, on version tags, or by hand (Actions -> Desktop app -> Run workflow). The builds are kept
+# as workflow artifacts for two weeks.
+on:
+  push:
+    branches: [main, 'claude/**']
+    tags: ['v*']
+  workflow_dispatch:
+
+concurrency:
+  group: desktop-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: xvfb-run -a npx playwright test --project desktop
+
+  package:
+    needs: smoke
+    if: github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, macos-latest, ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run app:dist
+      - uses: actions/upload-artifact@v4
+        with:
+          name: crowns-and-centuries-${{ runner.os }}
+          path: |
+            release/*.exe
+            release/*.dmg
+            release/*.zip
+            release/*.AppImage
+            release/*.tar.gz
+          if-no-files-found: error
+          retention-days: 14

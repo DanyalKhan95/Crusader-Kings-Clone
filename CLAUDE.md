@@ -8,19 +8,27 @@ when a milestone lands.
 
 - `npm run dev`: Vite dev server.
 - `npm run build`: static site in `dist/` with relative paths (`base: './'`).
-- `npm run typecheck`: three projects: the app, `tests/` + `e2e/`, and `tools/`.
+- `npm run typecheck`: four projects: the app, `tests/` + `e2e/`, `tools/`, and `electron/` (plain
+  CommonJS checked through JSDoc).
 - `npm run lint`, `npm run format`: ESLint flat config and Prettier at 120 columns.
 - `npm test`: Vitest, run against the committed data in `public/data`.
 - `npm run e2e`:
   - Playwright 1.56.1, pinned to match the preinstalled Chromium in `/opt/pw-browsers`.
   - Uses SwiftShader WebGL flags.
   - Reuses a server already running on port 4173.
+  - Two projects: `web`, and `desktop` (`e2e/desktop.spec.ts`), which starts the Electron app on
+    the built `dist/`. It needs a display, so it skips itself on Linux without one: run
+    `xvfb-run -a npm run e2e`, or `--project desktop` for it alone.
+- `npm run app`: builds and starts the desktop app (`-- --debug-game` exposes `window.game`, since
+  Node claims `--debug`). `npm run app:dist` packages it for this system into `release/`.
 - `npm run mapgen -- <steps>` and `npm run mapgen:validate`: the map pipeline and its checks.
 - `npm run simulate -- --years N [--seed S]`: runs the whole world under AI in Node and prints a
   summary (wars, conquests, debts, speed). Use it for balance changes.
 - `npm run artifact`: after a build, writes `dist/artifact.html` and `dist/artifact-files.json` for
   publishing to claude.ai.
 - `npm run assets` (`-- --check` to only check): builds `public/art` from `art/manifest.json`.
+- `npm run icons`: extracts the game-icons glyphs into `src/assets/icons.ts` and draws the app's
+  icon, `electron/build/icon.png`.
 
 ## Layout
 
@@ -143,14 +151,27 @@ when a milestone lands.
 - **`src/ui/runner.ts`:** runs the simulation from `MapController.onFrame` within a time budget,
   and bumps the store's `tick` at most every 120 ms. Panels with live numbers subscribe to `tick`.
   It remembers what each day of the month costs and leaves a heavy day for a fresh frame, and
-  autosaves every four minutes of play.
+  autosaves at the interval in the settings (an ironman campaign even when they are off).
 - **Help, tour and sound:** `dialogs/Help.tsx` is How to play (`H`); `tour.tsx` is the guided tour
-  of the first campaign in a browser (remembered in localStorage; the e2e tests mark it seen in
-  `beforeEach`), pointing at `data-tour` anchors and HUD classes. `audio.ts` makes all sound with
-  Web Audio (no files): effects from `actions.run` and the runner's news, and music by era; it
-  starts only after the first touch of the page.
+  of the player's first campaign (remembered with the preferences; the e2e tests mark it seen in
+  `beforeEach`, the desktop test in the settings file), pointing at `data-tour` anchors and HUD
+  classes. `audio.ts` makes all sound with Web Audio (no files): effects from `actions.run` and
+  the runner's news, and music by era; it starts only after the first touch of the page.
 - **`?debug`** in the address exposes the running game as `window.game` (the e2e tests use it to
   open panels without clicking the map).
+- **The desktop app (`electron/`):** `main.cjs` serves `dist/` over `app://game/` (never a file
+  outside it, with a Content-Security-Policy), minds the window, and keeps saves and settings as
+  files; `preload.cjs` is the bridge the page sees as `window.native`.
+  - Anything that differs between the browser and the app asks `native` from `src/ui/platform.ts`,
+    which is null in a browser: `storage.ts` (saves as gzipped `.ccsave` files beside their
+    `.meta.json`), `offerFile` (exports and reports), the window mode and Quit.
+  - Settings, sound and the tour go through `prefs.ts`, never `localStorage` directly: one
+    `settings.json` in the app, the same keys as before in a browser.
+  - Closing the window asks the game to save the campaign it is playing (`saveOnClose`), waiting a
+    few seconds at most.
+  - `CROWNS_HOME` moves the saves, the settings and the app's own files (the test uses a
+    temporary folder); `CROWNS_DEV_URL` loads a dev server instead of `dist/`.
+  - Linux containers need `--no-sandbox` for Electron; production never passes it.
 - **`src/shared/`:** code shared by the game and `tools/`: map format, projection and data types.
   Tools import `src/` with explicit `.ts` extensions and run under `tsx`; `tools/tsconfig.json` uses
   Bundler resolution so that `tools/simulate.ts` can pull in `src/sim` and `src/data` as they are.
@@ -207,6 +228,8 @@ when a milestone lands.
   code and commits.
 - **Delivery:** push to the working branch; GitHub Pages deploys from `deploy.yml`. The claude.ai
   artifact is republished after each milestone from `dist/artifact.html` plus the files listed in
-  `dist/artifact-files.json`.
+  `dist/artifact-files.json`. `desktop.yml` runs the desktop test on every push and packages the
+  app for Windows, macOS and Linux on `main`, on version tags or by hand (unsigned; the macOS
+  build is signed ad hoc so that it opens at all).
 - **Licence:** the repo is GPL-3.0, because of the historical-basemaps data. Keep the credits in
   the README and in `src/ui/screens/Credits.tsx` in sync with the sources.

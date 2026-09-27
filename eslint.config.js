@@ -15,6 +15,7 @@ export default defineConfig(
       'test-results',
       'playwright-report',
       'tools/mapgen/debug',
+      'release',
     ],
   },
   js.configs.recommended,
@@ -31,6 +32,12 @@ export default defineConfig(
   {
     files: ['tools/**/*.ts', 'tests/**/*.ts', 'e2e/**/*.ts', '*.config.{ts,js}'],
     languageOptions: { globals: globals.node },
+  },
+  {
+    // The desktop app's main process and bridge: CommonJS for Node, as Electron loads them.
+    files: ['electron/**/*.cjs'],
+    languageOptions: { sourceType: 'commonjs', globals: globals.node },
+    rules: { '@typescript-eslint/no-require-imports': 'off' },
   },
   {
     rules: {

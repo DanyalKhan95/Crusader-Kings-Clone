@@ -3,10 +3,10 @@ import { toDate } from '../../sim/calendar';
 import { notice, startChoosing, toMenu } from '../actions';
 import { useGame } from '../game';
 import { Icon } from '../Icon';
-import { defaultSaveName, saveIronman, saveNamed, serializeGame } from '../saves';
-import { exportSave } from '../storage';
+import { native, offerFile } from '../platform';
+import { defaultSaveName, SAVE_FAILED, saveIronman, saveNamed, serializeGame } from '../saves';
 import { Modal } from './Modal';
-import { LoadFileButton, loadChosen, SaveList, useSaves } from './Saves';
+import { LoadFileButton, loadChosen, SaveList, SavesFolderButton, useSaves } from './Saves';
 
 export function GameMenu() {
   const game = useGame();
@@ -31,7 +31,7 @@ export function GameMenu() {
       await refresh();
       notice(game, 'Game saved.');
     } catch {
-      notice(game, 'This browser would not let the game save.');
+      notice(game, SAVE_FAILED);
     }
     setOverwrite(false);
     setBusy('');
@@ -42,15 +42,17 @@ export function GameMenu() {
       await saveIronman(game);
       toMenu(game);
     } catch {
-      notice(game, 'This browser would not let the game save.');
+      notice(game, SAVE_FAILED);
     }
     setBusy('');
   };
-  const doExport = () => {
+  const doExport = async () => {
     const d = toDate(game.state.day);
     const tag = game.state.countries[game.state.player]?.tag ?? 'game';
-    const ok = exportSave(serializeGame(game), `crowns-and-centuries-${tag}-${d.y}.json`);
-    notice(game, ok ? 'Save file downloaded.' : 'This viewer does not allow downloads. Use Save instead.');
+    const r = await offerFile(serializeGame(game), `crowns-and-centuries-${tag}-${d.y}.json`).catch(() => null);
+    if (!r) notice(game, 'The save file could not be written.');
+    else if (r.saved) notice(game, r.path ? `Save file written: ${r.path}` : 'Save file downloaded.');
+    else if (r.blocked) notice(game, 'This viewer does not allow downloads. Use Save instead.');
   };
 
   return (
@@ -124,10 +126,11 @@ export function GameMenu() {
         {busy && <p className="dim small">{busy}</p>}
       </section>
       <div className="btn-row">
-        <button className="btn" disabled={!!busy} onClick={doExport}>
+        <button className="btn" disabled={!!busy} onClick={() => void doExport()}>
           <Icon name="cloud-download" /> Export save file
         </button>
         <LoadFileButton game={game} />
+        <SavesFolderButton />
       </div>
       <div className="modal-actions">
         <button className="btn ghost" onClick={() => startChoosing(game)}>
@@ -136,6 +139,11 @@ export function GameMenu() {
         <button className="btn ghost" onClick={() => toMenu(game)}>
           Title screen
         </button>
+        {native && (
+          <button className="btn ghost" title="The campaign is saved first" onClick={() => native?.quit()}>
+            Quit to desktop
+          </button>
+        )}
       </div>
     </Modal>
   );

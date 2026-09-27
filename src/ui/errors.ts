@@ -6,6 +6,7 @@
 import { toDate } from '../sim/calendar';
 import { formatDate } from './format';
 import type { Game } from './game';
+import { native } from './platform';
 import { serializeGame } from './saves';
 import { settings } from './settings';
 import { createStore } from './store';
@@ -94,6 +95,7 @@ export function buildReport(game: Game | null, failure: Failure | null): string 
       format: 'crowns-and-centuries-report',
       build: buildId(),
       made: new Date().toISOString(),
+      app: native ? `desktop (${native.platform})` : 'web',
       browser: typeof navigator !== 'undefined' ? navigator.userAgent : '',
       screen:
         typeof window !== 'undefined'

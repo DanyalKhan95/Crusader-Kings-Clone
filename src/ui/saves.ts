@@ -9,10 +9,16 @@ import { replaceState, resume } from './actions';
 import { emblemSvg } from './CoatOfArms';
 import { formatDate } from './format';
 import type { Game } from './game';
+import { native } from './platform';
 import { deleteSave, listSaves, loadGame, saveGame, type SaveKind, type SaveMeta } from './storage';
 
 /** Autosaves kept at once; the oldest makes way for the next. */
 export const AUTOSAVES = 3;
+
+/** Why a save failed, as far as the game can tell. */
+export const SAVE_FAILED = native
+  ? 'The save could not be written to the saves folder.'
+  : 'This browser would not let the game save.';
 
 const SHORT_MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
@@ -81,6 +87,17 @@ export function saveIronman(game: Game): Promise<SaveMeta> {
   game.campaign ||= newCampaignId();
   const c = game.state.countries[game.state.player];
   return saveGame(`ironman:${game.campaign}`, metaOf(game, 'ironman', c?.name ?? 'Ironman'), serializeGame(game));
+}
+
+/**
+ * In the desktop app, closing the window first saves the campaign being played: an ironman campaign
+ * into its save, any other into an autosave.
+ */
+export function saveOnClose(game: Game) {
+  native?.beforeClose(async () => {
+    if (game.ui.get().phase !== 'playing' || !game.state.countries[game.state.player]?.alive) return;
+    await autosave(game);
+  });
 }
 
 /** Takes a loaded save into the game and resumes it. */

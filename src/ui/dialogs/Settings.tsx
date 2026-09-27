@@ -1,6 +1,6 @@
 /**
- * The settings: interface, map and graphics, the pace of the game, sound and keys. Everything takes
- * effect at once and is kept in this browser.
+ * The settings: interface, map and graphics (and the window, in the desktop app), the pace of the
+ * game, sound and keys. Everything takes effect at once and is kept between visits.
  */
 import { useEffect, useState, type ReactNode } from 'react';
 import type { IconName } from '../../assets/icons';
@@ -20,6 +20,7 @@ import {
   type KeyAction,
   type KeyGroup,
 } from '../keys';
+import { native, type WindowMode } from '../platform';
 import {
   appliedScale,
   AUTOSAVE_MINUTES,
@@ -33,6 +34,7 @@ import {
 } from '../settings';
 import { useStore } from '../store';
 import { Modal } from './Modal';
+import { SavesFolderButton } from './Saves';
 
 type Section = 'interface' | 'graphics' | 'game' | 'sound' | 'keys';
 
@@ -175,11 +177,50 @@ const QUALITY: { value: MapQuality; label: string }[] = [
   { value: 'native', label: 'Sharpest' },
 ];
 
+const WINDOW_MODES: { value: WindowMode; label: string }[] = [
+  { value: 'windowed', label: 'Windowed' },
+  { value: 'fullscreen', label: 'Fullscreen' },
+];
+
+/** In the desktop app: a window, or the whole screen. */
+function WindowRow() {
+  const [mode, setMode] = useState<WindowMode | null>(null);
+  useEffect(() => {
+    if (!native) return;
+    let live = true;
+    void native.window.getMode().then((m) => live && setMode(m));
+    const stop = native.window.onMode(setMode);
+    return () => {
+      live = false;
+      stop();
+    };
+  }, []);
+  if (!native || !mode) return null;
+  const { window: w } = native;
+  return (
+    <Row
+      name="Window"
+      blurb="Fullscreen covers the screen without a border, so other windows are a switch away. F11 or Alt+Enter switches too."
+    >
+      <Segmented
+        label="Window"
+        value={mode}
+        options={WINDOW_MODES}
+        onChange={(m) => {
+          setMode(m);
+          void w.setMode(m);
+        }}
+      />
+    </Row>
+  );
+}
+
 function GraphicsSection() {
   const s = useSettings((x) => x);
   return (
     <>
       <h3 className="section-title">Map and graphics</h3>
+      <WindowRow />
       <Row
         name="Map quality"
         blurb="How sharply the map is drawn on high-resolution screens. Lower is faster on modest graphics."
@@ -239,7 +280,10 @@ function GameSection() {
           onChange={(topSpeed) => settings.set({ topSpeed })}
         />
       </Row>
-      <Row name="Autosave" blurb="Minutes of play between autosaves.">
+      <Row
+        name="Autosave"
+        blurb="Minutes of play between autosaves. An ironman campaign keeps its save even when this is off."
+      >
         <Segmented
           label="Autosave"
           value={s.autosaveMinutes}
@@ -247,11 +291,19 @@ function GameSection() {
           onChange={(autosaveMinutes) => settings.set({ autosaveMinutes })}
         />
       </Row>
+      {native && (
+        <Row
+          name="Saves"
+          blurb="Saves and settings are kept in your documents folder, under Crowns & Centuries. Closing the game saves the campaign first."
+        >
+          <SavesFolderButton />
+        </Row>
+      )}
     </>
   );
 }
 
-/** Sound effects and music, each on or off with its own volume, kept in this browser. */
+/** Sound effects and music, each on or off with its own volume. */
 function SoundSection() {
   const [s, setS] = useState(sound.settings);
   const update = (patch: Partial<AudioSettings>) => {

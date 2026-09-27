@@ -78,6 +78,7 @@ The plan, what each milestone brought and the known gaps are in [docs/ROADMAP.md
 | Ledger of nations | scroll at the top right                  | `L`                         |
 | How to play       | game menu                                | `H`                         |
 | Close panel, menu |                                          | `Esc`                       |
+| Fullscreen (app)  | settings                                 | `F11`, `Alt+Enter`          |
 
 ## Running it
 
@@ -98,6 +99,21 @@ npm run simulate -- --years 50   # the whole world under AI, headless, with a su
 
 The generated map lives in `public/data` and is committed, so none of the above needs the map
 pipeline.
+
+### The desktop app
+
+The same game as an app for Windows, macOS and Linux, built with Electron. It keeps saves and
+settings as files in `Documents/Crowns & Centuries`, saves the campaign when its window closes, and
+plays in a window or fullscreen (`F11` or `Alt+Enter`, or the settings).
+
+```sh
+npm run app        # build, then start the app
+npm run app:dist   # build, then package it for this system into release/
+xvfb-run -a npx playwright test --project desktop   # its end-to-end test (on Linux, with Xvfb)
+```
+
+Unsigned test builds for all three systems come from the **Desktop app** workflow: on `main`, on
+version tags, or run by hand from the Actions tab.
 
 ## The map pipeline
 
@@ -137,7 +153,9 @@ Hand-curated tables live in `tools/mapgen/curated`:
 | `src/heraldry/`  | Coats of arms: blazon model, curated arms, generator, SVG                        |
 | `src/ui/`        | React screens, HUD and era themes                                                |
 | `src/shared/`    | Code used by both the game and the pipeline (map format, projection, types)      |
-| `tools/`         | Map pipeline, icon extraction, artifact packaging                                |
+| `src/content/`   | Content as checked data files (featured realms, modifiers), ready for mods       |
+| `electron/`      | The desktop app: Electron's main process, the bridge to the game, the app icon   |
+| `tools/`         | Map pipeline, icons, art assets, artifact packaging                              |
 | `tests/`, `e2e/` | Vitest unit tests and Playwright end-to-end tests                                |
 
 ## Credits and licences

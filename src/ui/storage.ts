@@ -1,9 +1,11 @@
 /**
- * Saved games in the browser: gzipped into IndexedDB (falling back to localStorage), plus export to
- * and import from a file. What the save browser shows of each save is kept apart from the save
- * itself, so listing them reads no game. Everything is wrapped so a browser that refuses storage
- * just says so.
+ * Saved games, gzipped: in the desktop app as files in the player's documents folder, in a browser in
+ * IndexedDB (falling back to localStorage); and reading a save file the player picks. What the save
+ * browser shows of each save is kept apart from the save itself, so listing them reads no game.
+ * Everything is wrapped so storage that refuses just says so.
  */
+import { native } from './platform';
+
 const DB = 'crowns-and-centuries';
 const DB_VERSION = 2;
 /** The gzipped saves, by slot. */
@@ -35,7 +37,7 @@ async function gzip(text: string): Promise<ArrayBuffer> {
   return new Response(stream).arrayBuffer();
 }
 
-async function gunzip(data: ArrayBuffer): Promise<string> {
+async function gunzip(data: ArrayBuffer | Uint8Array<ArrayBuffer>): Promise<string> {
   const stream = new Blob([data]).stream().pipeThrough(new DecompressionStream('gzip'));
   return new Response(stream).text();
 }
@@ -94,6 +96,10 @@ interface Stored {
 export async function saveGame(slot: string, info: Omit<SaveMeta, 'slot' | 'saved'>, json: string): Promise<SaveMeta> {
   const meta: SaveMeta = { ...info, slot, saved: new Date().toISOString() };
   const data = await gzip(json);
+  if (native) {
+    await native.saves.write(slot, meta, data);
+    return meta;
+  }
   try {
     await inTransaction('readwrite', (saves, metas) => {
       saves.put({ meta, data } satisfies Stored, slot);
@@ -110,6 +116,10 @@ export async function saveGame(slot: string, info: Omit<SaveMeta, 'slot' | 'save
 }
 
 export async function loadGame(slot: string): Promise<string | null> {
+  if (native) {
+    const data = await native.saves.read(slot);
+    return data ? gunzip(data) : null;
+  }
   try {
     const stored = await inTransaction<Stored | undefined>('readonly', (saves) => saves.get(slot));
     if (stored) return gunzip(stored.data);
@@ -130,6 +140,7 @@ export async function loadGame(slot: string): Promise<string | null> {
 }
 
 export async function deleteSave(slot: string): Promise<void> {
+  if (native) return native.saves.remove(slot);
   try {
     await inTransaction('readwrite', (saves, metas) => {
       saves.delete(slot);
@@ -145,20 +156,34 @@ export async function deleteSave(slot: string): Promise<void> {
   }
 }
 
+/** What the save browser shows of a save, if that is what it is. */
+function asMeta(v: unknown): SaveMeta | null {
+  const meta = v as Partial<SaveMeta> | null | undefined;
+  return meta && typeof meta.slot === 'string' && typeof meta.label === 'string' && typeof meta.saved === 'string'
+    ? (meta as SaveMeta)
+    : null;
+}
+
 /** The meta of a save kept in localStorage, or null for anything else stored under the game's name. */
 function savedMeta(raw: string | null): SaveMeta | null {
   try {
-    const meta = (JSON.parse(raw ?? '') as { meta?: Partial<SaveMeta> } | null)?.meta;
-    return meta && typeof meta.slot === 'string' && typeof meta.label === 'string' && typeof meta.saved === 'string'
-      ? (meta as SaveMeta)
-      : null;
+    return asMeta((JSON.parse(raw ?? '') as { meta?: unknown } | null)?.meta);
   } catch {
     return null;
   }
 }
 
+const newestFirst = (a: SaveMeta, b: SaveMeta) => b.saved.localeCompare(a.saved);
+
 /** Every save, newest first. */
 export async function listSaves(): Promise<SaveMeta[]> {
+  if (native) {
+    const all = await native.saves.list().catch(() => []);
+    return all
+      .map(asMeta)
+      .filter((m): m is SaveMeta => m !== null)
+      .sort(newestFirst);
+  }
   const out: SaveMeta[] = [];
   try {
     const all = await inTransaction<SaveMeta[]>('readonly', (_, metas) => metas.getAll());
@@ -177,26 +202,10 @@ export async function listSaves(): Promise<SaveMeta[]> {
   } catch {
     /* ignore */
   }
-  return out.sort((a, b) => b.saved.localeCompare(a.saved));
+  return out.sort(newestFirst);
 }
 
-/** Offers the save as a file download. Some embedded viewers block downloads; returns false then. */
-export function exportSave(json: string, filename: string): boolean {
-  try {
-    const url = URL.createObjectURL(new Blob([json], { type: 'application/json' }));
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    setTimeout(() => URL.revokeObjectURL(url), 2000);
-    return true;
-  } catch {
-    return false;
-  }
-}
-
+/** A save file the player picked: a save as exported (JSON), or gzipped as the desktop app keeps them. */
 export async function readSaveFile(file: File): Promise<string> {
   const buf = await file.arrayBuffer();
   const head = new Uint8Array(buf, 0, 2);

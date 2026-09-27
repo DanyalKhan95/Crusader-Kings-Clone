@@ -1,8 +1,9 @@
 /**
  * The player's settings: the interface, the map's graphics, the pace of the game, autosaves and the
- * key bindings. They are kept in this browser, applied at once, and read outside React by the map
- * and the runner. Sound keeps its own settings in `audio.ts`.
+ * key bindings. They are kept between visits (`prefs.ts`), applied at once, and read outside React by
+ * the map and the runner. Sound keeps its own settings in `audio.ts`.
  */
+import { readPref, writePref } from './prefs';
 import { createStore, useStore } from './store';
 
 /** How sharp the map is drawn: the most device pixels it spends on each CSS pixel. */
@@ -47,8 +48,6 @@ export const FRAME_CAPS = [0, 30, 60, 120];
 export const TOP_SPEEDS = [60, 120, 240, 0];
 export const AUTOSAVE_MINUTES = [0, 2, 4, 10];
 
-const STORAGE_KEY = 'crowns-and-centuries:settings';
-
 const pick = <T>(value: unknown, allowed: readonly T[], fallback: T): T =>
   allowed.includes(value as T) ? (value as T) : fallback;
 
@@ -81,7 +80,7 @@ function load(): Settings {
     /* no window: tests and tools */
   }
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const raw = readPref('settings');
     return sanitizeSettings(raw ? JSON.parse(raw) : {}, defaults);
   } catch {
     return defaults;
@@ -122,11 +121,7 @@ if (typeof window !== 'undefined') window.addEventListener('resize', () => apply
 settings.subscribe(() => {
   const s = settings.get();
   applySettings(s);
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(s));
-  } catch {
-    // A browser that refuses storage keeps the settings for this visit only.
-  }
+  writePref('settings', JSON.stringify(s));
 });
 
 export function useSettings<T>(select: (s: Settings) => T): T {

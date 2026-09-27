@@ -1,6 +1,6 @@
 /**
  * The first game's guided tour: a few cards, each pointing at a part of the screen. It starts by
- * itself on the first campaign in this browser, can be skipped, and is remembered once seen.
+ * itself on the first campaign, can be skipped, and is remembered once seen.
  */
 import { useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { MAP_MODES } from '../game/mapModes';
@@ -9,18 +9,13 @@ import { theName } from '../sim/chronicle';
 import { formatDate } from './format';
 import { useGame, type Game } from './game';
 import { shortcut, withKey } from './keys';
+import { readPref, writePref } from './prefs';
 import { uiScale } from './settings';
 import { useStore } from './store';
 
-const SEEN = 'crowns-and-centuries:tour';
-
-/** True once the tour was finished or skipped in this browser (or storage cannot say otherwise). */
+/** True once the tour was finished or skipped (in this browser, or in the desktop app). */
 export function tourSeen(): boolean {
-  try {
-    return localStorage.getItem(SEEN) === 'done';
-  } catch {
-    return false;
-  }
+  return readPref('tour') === 'done';
 }
 
 export function startTour(game: Game) {
@@ -29,11 +24,8 @@ export function startTour(game: Game) {
 
 export function endTour(game: Game) {
   game.ui.set({ tour: 0 });
-  try {
-    localStorage.setItem(SEEN, 'done');
-  } catch {
-    /* a browser that keeps nothing shows the tour again next time */
-  }
+  // Storage that keeps nothing shows the tour again next time.
+  writePref('tour', 'done');
 }
 
 interface Step {

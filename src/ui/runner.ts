@@ -10,7 +10,7 @@ import { report } from './errors';
 import { formatDate } from './format';
 import type { Game } from './game';
 import { autosave } from './saves';
-import { settings } from './settings';
+import { DEFAULT_SETTINGS, settings } from './settings';
 
 /**
  * Days per second at speeds 1–5 (0 = paused). The top speed is a setting: 120 days a second by
@@ -155,11 +155,13 @@ export function attachRunner(game: Game) {
       if (playerEvent(game.state)) break;
     }
     if (days) sync(false);
-    // Out of the frame: the save serialises the world and compresses it.
-    const every = settings.get().autosaveMinutes * 60_000;
+    // Out of the frame: the save serialises the world and compresses it. An ironman campaign keeps
+    // its save even with autosaves off.
+    const minutes = settings.get().autosaveMinutes || (game.ironman ? DEFAULT_SETTINGS.autosaveMinutes : 0);
+    const every = minutes * 60_000;
     if (days && every && performance.now() - lastSave > every && game.state.player) {
       lastSave = performance.now();
-      // A browser that refuses storage is ignored: the game plays on.
+      // Storage that refuses is ignored: the game plays on.
       setTimeout(() => void autosave(game).catch(() => undefined), 0);
     }
   };

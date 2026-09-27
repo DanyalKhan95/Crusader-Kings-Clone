@@ -61,9 +61,13 @@ export const KEY_ACTIONS: KeyActionInfo[] = [
 
 const INFO = new Map(KEY_ACTIONS.map((a) => [a.id, a]));
 
-/** Keys that cannot be bound: Esc goes back, and the rest move focus or are only modifiers. */
+/**
+ * Keys that cannot be bound: Esc goes back, F11 fills the screen (in browsers and the desktop app),
+ * and the rest move focus or are only modifiers.
+ */
 export const RESERVED_KEYS = new Set([
   'Escape',
+  'F11',
   'Tab',
   'Enter',
   'Shift',

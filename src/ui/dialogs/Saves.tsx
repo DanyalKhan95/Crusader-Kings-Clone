@@ -8,6 +8,7 @@ import { notice } from '../actions';
 import { formatDate } from '../format';
 import { useGame, type Game } from '../game';
 import { Icon } from '../Icon';
+import { native } from '../platform';
 import { applySave, deleteSave, formatPlayed, formatSavedAt, listSaves, loadSlot } from '../saves';
 import type { SaveMeta } from '../storage';
 import { readSaveFile } from '../storage';
@@ -143,7 +144,7 @@ export function LoadFileButton({ game, label = 'Load a save file' }: { game: Gam
       <input
         ref={ref}
         type="file"
-        accept=".json,.gz,application/json,application/gzip"
+        accept=".json,.gz,.ccsave,application/json,application/gzip"
         hidden
         onChange={(e) => {
           const f = e.target.files?.[0];
@@ -152,6 +153,17 @@ export function LoadFileButton({ game, label = 'Load a save file' }: { game: Gam
         }}
       />
     </>
+  );
+}
+
+/** In the desktop app, a button that opens the folder the saves are kept in. */
+export function SavesFolderButton() {
+  if (!native) return null;
+  const { saves } = native;
+  return (
+    <button className="btn" onClick={() => void saves.openFolder()}>
+      <Icon name="open-folder" /> Open the saves folder
+    </button>
   );
 }
 
@@ -173,6 +185,7 @@ export function LoadGame() {
         }}
       />
       <div className="modal-actions">
+        <SavesFolderButton />
         <LoadFileButton game={game} />
       </div>
     </Modal>

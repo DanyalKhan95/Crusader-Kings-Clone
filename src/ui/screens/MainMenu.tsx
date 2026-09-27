@@ -3,6 +3,7 @@ import { canContinue, resume, startChoosing } from '../actions';
 import { loadChosen } from '../dialogs/Saves';
 import { useGame } from '../game';
 import { Icon } from '../Icon';
+import { native } from '../platform';
 import { listSaves } from '../saves';
 import type { SaveMeta } from '../storage';
 
@@ -68,6 +69,11 @@ export function MainMenu() {
           <button className="btn" onClick={() => game.ui.set({ modal: 'credits' })}>
             <Icon name="open-book" /> Sources &amp; Credits
           </button>
+          {native && (
+            <button className="btn" onClick={() => native?.quit()}>
+              <Icon name="exit-door" /> Quit
+            </button>
+          )}
         </div>
         <p className="menu-note">
           The whole world as it stood in September 1066: {realms} realms across three thousand provinces, and a thousand

@@ -1,10 +1,14 @@
 {
   "name": "crowns-and-centuries",
+  "productName": "Crowns & Centuries",
   "private": true,
   "version": "0.1.0",
   "description": "A nation-focused grand strategy game on a map of the whole world, from 1066 to 2066.",
   "license": "GPL-3.0-or-later",
+  "author": "Crowns & Centuries contributors",
   "type": "module",
+  "main": "electron/main.cjs",
+  "desktopName": "crowns-and-centuries.desktop",
   "engines": {
     "node": ">=22"
   },
@@ -12,7 +16,7 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tests/tsconfig.json --noEmit && tsc -p tools/tsconfig.json --noEmit",
+    "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tests/tsconfig.json --noEmit && tsc -p tools/tsconfig.json --noEmit && tsc -p electron/tsconfig.json --noEmit",
     "lint": "eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
@@ -23,9 +27,11 @@
     "mapgen": "node --max-old-space-size=12288 --import tsx tools/mapgen/build.ts",
     "mapgen:validate": "node --import tsx tools/mapgen/validate.ts",
     "artifact": "node --import tsx tools/artifact/prepare.ts",
-    "icons": "node --import tsx tools/icons/extract.ts",
+    "icons": "node --import tsx tools/icons/extract.ts && node --import tsx tools/icons/app-icon.ts",
     "simulate": "node --import tsx tools/simulate.ts",
-    "assets": "node --import tsx tools/assets/build.ts"
+    "assets": "node --import tsx tools/assets/build.ts",
+    "app": "npm run build && electron .",
+    "app:dist": "npm run build && electron-builder --publish never"
   },
   "dependencies": {
     "@fontsource/alegreya": "^5.3.0",
@@ -52,6 +58,8 @@
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
     "@vitejs/plugin-react": "^6.1.1",
+    "electron": "^44.4.5",
+    "electron-builder": "^26.15.3",
     "eslint": "^10.11.0",
     "eslint-plugin-react-hooks": "^7.1.1",
     "globals": "^17.12.0",
@@ -62,5 +70,50 @@
     "typescript-eslint": "^8.70.1",
     "vite": "^8.3.1",
     "vitest": "^5.0.2"
+  },
+  "build": {
+    "appId": "io.github.danyalkhan95.crownsandcenturies",
+    "productName": "Crowns & Centuries",
+    "copyright": "Crowns & Centuries contributors, GPL-3.0-or-later",
+    "artifactName": "crowns-and-centuries-${version}-${os}-${arch}.${ext}",
+    "directories": {
+      "output": "release",
+      "buildResources": "electron/build"
+    },
+    "files": [
+      "dist/**/*",
+      "electron/*.cjs",
+      "electron/build/icon.png",
+      "!node_modules/**/*"
+    ],
+    "win": {
+      "target": [
+        "nsis",
+        "zip"
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    },
+    "mac": {
+      "target": [
+        "dmg",
+        "zip"
+      ],
+      "category": "public.app-category.strategy-games",
+      "identity": "-",
+      "hardenedRuntime": false
+    },
+    "linux": {
+      "target": [
+        "AppImage",
+        "tar.gz"
+      ],
+      "category": "Game",
+      "executableName": "crowns-and-centuries",
+      "syncDesktopName": true
+    },
+    "publish": null
   }
 }
