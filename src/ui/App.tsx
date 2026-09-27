@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { loadWorld, type LoadProgress } from '../game/world';
 import { createGameState } from '../sim/setup';
+import { Guard } from './ErrorPanel';
 import { createGame, GameContext, useGame, type Game } from './game';
 import { GameRoot } from './GameRoot';
 import { LoadingScreen } from './LoadingScreen';
@@ -59,7 +60,11 @@ function ReadyGate() {
   }, [ready]);
   return (
     <>
-      {ready && <GameRoot />}
+      {ready && (
+        <Guard>
+          <GameRoot />
+        </Guard>
+      )}
       {!gone && <LoadingScreen progress={{ stage: 'Unrolling the map', fraction: ready ? 1 : 0.92 }} leaving={ready} />}
     </>
   );

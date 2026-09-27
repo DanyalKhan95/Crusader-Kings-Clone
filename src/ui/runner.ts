@@ -6,6 +6,8 @@ import { toDate } from '../sim/calendar';
 import { playerEvent } from '../sim/events';
 import { advanceDay } from '../sim/tick';
 import { sound } from './audio';
+import { report } from './errors';
+import { formatDate } from './format';
 import type { Game } from './game';
 import { autosave } from './saves';
 import { settings } from './settings';
@@ -125,7 +127,20 @@ export function attachRunner(game: Game) {
       const next = toDate(game.state.day + 1).d;
       const start = performance.now();
       if (start - t0 >= FRAME_BUDGET_MS || (days && start - t0 + cost[next] > FRAME_BUDGET_MS)) break;
-      advanceDay(game.state, game.world);
+      try {
+        advanceDay(game.state, game.world);
+      } catch (e) {
+        // The day broke off half done: stop the clock and say so, rather than fail again every frame.
+        report(e, 'simulation', true, `on ${formatDate(toDate(game.state.day))}`);
+        backlog = 0;
+        game.ui.set({ speed: 0 });
+        try {
+          sync(true);
+        } catch {
+          // a state too broken to show; the error panel says what it can
+        }
+        return;
+      }
       cost[next] = cost[next] * 0.7 + (performance.now() - start) * 0.3;
       backlog -= 1;
       days++;

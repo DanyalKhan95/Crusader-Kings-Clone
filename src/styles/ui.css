@@ -3465,3 +3465,37 @@ kbd.unbound {
   letter-spacing: 0;
   opacity: 0.85;
 }
+
+/* ── When something goes wrong (milestone 9) ─────────────────── */
+
+.failure-backdrop {
+  z-index: 90;
+}
+.modal.failure {
+  width: min(620px, 100%);
+  border-color: var(--seal-bright);
+}
+.failure-message {
+  padding: 8px 10px;
+  font-family: ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
+  font-size: calc(13px * var(--text-scale, 1));
+  overflow-wrap: anywhere;
+  background: var(--panel-inset);
+  border-left: 3px solid var(--seal-bright);
+  border-radius: var(--radius);
+}
+.failure-details summary {
+  cursor: pointer;
+  color: var(--text-dim);
+}
+.failure-details pre {
+  max-height: 180px;
+  margin: 6px 0 0;
+  padding: 8px;
+  overflow: auto;
+  font-size: calc(11.5px * var(--text-scale, 1));
+  white-space: pre-wrap;
+  color: var(--text-dim);
+  background: var(--panel-inset);
+  border-radius: var(--radius);
+}

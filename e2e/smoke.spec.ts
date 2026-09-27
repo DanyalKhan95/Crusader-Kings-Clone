@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { readFileSync } from 'node:fs';
 import { toDay } from '../src/sim/calendar';
 
 // The guided tour greets the first campaign in a browser; every test but the tour's own has seen it.
@@ -475,6 +476,65 @@ test('keeps the ledger of nations and ends the age in 2066', async ({ page }) =>
   await page.locator('.sound-row', { hasText: 'Music' }).locator('input[type=checkbox]').check();
   expect(await page.evaluate(() => localStorage.getItem('crowns-and-centuries:audio'))).toContain('"music":true');
   expect(errors).toEqual([]);
+});
+
+test('weathers a failure: the clock stops, a report is saved, and the game carries on', async ({ page }) => {
+  await page.goto('/?debug');
+  await page.getByRole('button', { name: 'New Campaign' }).click({ timeout: 120_000 });
+  await page.getByRole('button', { name: 'Play as England' }).click();
+  await expect(page.locator('.date-long')).toHaveText('15th of September, 1066 AD');
+  type G = {
+    state: { scheduled: unknown; player: number; countries: ({ tech: unknown } | null)[] };
+    runner: { sync(): void };
+  };
+
+  // The world cannot go on: the clock stops and the panel says why.
+  await page.evaluate(() => {
+    const g = (window as unknown as { game: G; kept: unknown }).game;
+    (window as unknown as { kept: unknown }).kept = g.state.scheduled;
+    g.state.scheduled = null;
+  });
+  await page.keyboard.press('3');
+  const panel = page.getByRole('alertdialog', { name: 'Something went wrong' });
+  await expect(panel).toContainText('The world could not go on to the next day.');
+  await expect(page.locator('.dateplate')).toHaveClass(/paused/);
+
+  // The report holds the error and the campaign's save.
+  const download = page.waitForEvent('download');
+  await panel.getByRole('button', { name: 'Download a report' }).click();
+  const file = await (await download).path();
+  const report = JSON.parse(readFileSync(file, 'utf8'));
+  expect(report.format).toBe('crowns-and-centuries-report');
+  expect(report.failure.source).toBe('simulation');
+  expect(report.campaign.realm).toBe('Kingdom of England');
+  expect(report.save.format).toBe('crowns-and-centuries');
+
+  // Mended, the game carries on.
+  await page.evaluate(() => {
+    const w = window as unknown as { game: G; kept: unknown };
+    w.game.state.scheduled = w.kept;
+  });
+  await panel.getByRole('button', { name: 'Carry on' }).click();
+  await expect(panel).toHaveCount(0);
+  await page.keyboard.press('5');
+  await expect(page.locator('.date-long')).not.toHaveText('15th of September, 1066 AD', { timeout: 30_000 });
+  await page.keyboard.press(' ');
+
+  // A part of the screen that cannot be drawn takes the panel's place, not the whole page.
+  await page.evaluate(() => {
+    const g = (window as unknown as { game: G; kept: unknown }).game;
+    const c = g.state.countries[g.state.player]!;
+    (window as unknown as { kept: unknown }).kept = c.tech;
+    c.tech = null;
+    g.runner.sync();
+  });
+  await expect(panel).toContainText('The interface failed to draw part of the screen.');
+  await page.evaluate(() => {
+    const w = window as unknown as { game: G; kept: unknown };
+    w.game.state.countries[w.game.state.player]!.tech = w.kept;
+  });
+  await panel.getByRole('button', { name: 'Carry on' }).click();
+  await expect(page.locator('.nation-name')).toHaveText('Kingdom of England');
 });
 
 test('settles in: a larger interface, a key of its own and a faster top speed', async ({ page }) => {
