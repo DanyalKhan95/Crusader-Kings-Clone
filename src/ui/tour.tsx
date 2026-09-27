@@ -8,7 +8,7 @@ import { toDate } from '../sim/calendar';
 import { theName } from '../sim/chronicle';
 import { formatDate } from './format';
 import { useGame, type Game } from './game';
-import { shortcut, withKey } from './keys';
+import { SCREEN_KEYS, shortcut, withKey } from './keys';
 import { readPref, writePref } from './prefs';
 import { uiScale } from './settings';
 import { useStore } from './store';
@@ -29,8 +29,6 @@ export function endTour(game: Game) {
 }
 
 /** The tabs of the realm's panel, in their order, for their keys. */
-const TABS = ['realm', 'treasury', 'military', 'court', 'laws', 'faith', 'diplomacy'] as const;
-
 interface Step {
   /** the elements to point at, together; none for a card in the middle of the screen */
   target?: string;
@@ -63,13 +61,14 @@ const STEPS: Step[] = [
     ),
   },
   {
-    target: '.side-panel',
-    title: 'The panel of your realm',
+    target: '[data-tour="affairs"]',
+    title: 'The affairs of your realm',
     text: () => (
       <>
-        Its affairs tab by tab: the treasury, the army, the court and council, the laws, the faith and your dealings
-        with other realms, each on a key of its own ({TABS.map((t) => shortcut(`tab:${t}`)).join(' ')}). Click any
-        province or realm on the map to see it here instead; Esc closes it.
+        Your coat of arms opens the realm’s screens: the court and council, the economy, the military, diplomacy, faith
+        and culture, government and laws, and technology, each on a key of its own (
+        {SCREEN_KEYS.map((k) => shortcut(`screen:${k.screen}`)).join(' ')}). Time runs on behind them. A province, an
+        army or another realm opens in the side panel instead; Esc goes back to the map.
       </>
     ),
   },

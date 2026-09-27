@@ -76,7 +76,7 @@ describe('key bindings', () => {
         expect(taken.get(k), `${k} is bound to ${taken.get(k)} and ${a.id}`).toBeUndefined();
         taken.set(k, a.id);
       }
-    expect(actionsFor('A')).toEqual(['tab:military']);
+    expect(actionsFor('A')).toEqual(['screen:military']);
     expect(actionsFor('Home')).toEqual(['capital']);
   });
 

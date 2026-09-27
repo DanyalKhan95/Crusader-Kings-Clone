@@ -6,7 +6,7 @@ import { MAA_TYPES, unitDef } from '../data/units';
 import { alive, character, makeCharacter, skill } from './characters';
 import { accessSet, mayEnter } from './diplomacy';
 import { buildingEffect } from './economy';
-import { log } from './log';
+import { firstFree, log } from './log';
 import { components, findPath, graph, isWater, stepDays } from './movement';
 import { canShip, embarked, freeTransport } from './naval';
 import { taskSkill } from './politics';
@@ -53,10 +53,11 @@ export function recruit(c: Country, t: UnitType, regiments = 1): boolean {
 
 const ARMY_NAMES = ['Host', 'Army', 'Warband', 'Levy', 'Guard', 'Vanguard'];
 
+/** The first number free among the realm's armies: an army disbanded leaves its name to the next. */
 function armyName(state: GameState, c: Country): string {
-  const n = state.armies.filter((a) => a.owner === c.index).length;
-  const ordinal = ['First', 'Second', 'Third', 'Fourth', 'Fifth', 'Sixth', 'Seventh', 'Eighth'][n] ?? `${n + 1}th`;
-  return `${ordinal} ${ARMY_NAMES[c.gov === 'nomadic' || c.gov === 'tribal' ? 2 : 1]} of ${c.short.replace(/^the /, '')}`;
+  const taken = state.armies.filter((a) => a.owner === c.index).map((a) => a.name);
+  const kind = ARMY_NAMES[c.gov === 'nomadic' || c.gov === 'tribal' ? 2 : 1];
+  return firstFree(taken, (nth) => `${nth} ${kind} of ${c.short.replace(/^the /, '')}`);
 }
 
 export function newArmy(state: GameState, c: Country, location: number, units: Units, commander = 0): Army {

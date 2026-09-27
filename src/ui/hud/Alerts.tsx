@@ -12,8 +12,8 @@ import { armySize, isInRealm, topLiege } from '../../sim/queries';
 import { COUNCIL_SEATS, type Country, type PeaceTerms, type War } from '../../sim/types';
 import { allowedTerms, canDeclare, peaceAcceptance, winnerSide } from '../../sim/war';
 import { formatMen } from '../../render/units';
-import { flyToProvince, openDeclareWar, openRealmTab, selectArmy, selectWar } from '../actions';
-import { useGame, type CountryTab, type Game } from '../game';
+import { flyToProvince, openDeclareWar, openScreen, selectArmy, selectWar } from '../actions';
+import { useGame, type Game, type RealmScreen } from '../game';
 import { Icon } from '../Icon';
 import { useStore } from '../store';
 import { WithTip } from './Tip';
@@ -30,7 +30,7 @@ export interface Alert {
   onClick: () => void;
 }
 
-const openTab = (game: Game, tab: CountryTab) => openRealmTab(game, tab);
+const openTab = (game: Game, screen: RealmScreen) => openScreen(game, screen);
 
 /** The terms that would end a war as it was declared: the goal, and no more. */
 function goalTerms(game: Game, war: War): PeaceTerms | null {
@@ -65,7 +65,7 @@ export function alertsFor(game: Game): Alert[] {
       lines: rebels.map((r) => r!.name),
       tone: 'bad',
       action: 'See the war',
-      onClick: () => (war ? selectWar(game, war.id) : openTab(game, 'laws')),
+      onClick: () => (war ? selectWar(game, war.id) : openTab(game, 'government')),
     });
   }
   const faction = state.factions.find((f) => f.realm === me.index);
@@ -79,7 +79,7 @@ export function alertsFor(game: Game): Alert[] {
       ],
       tone: 'bad',
       action: 'Open the laws and estates',
-      onClick: () => openTab(game, 'laws'),
+      onClick: () => openTab(game, 'government'),
     });
 
   // The treasury.
@@ -105,7 +105,7 @@ export function alertsFor(game: Game): Alert[] {
       lines: treasury,
       tone: 'bad',
       action: 'Open the treasury',
-      onClick: () => openTab(game, 'treasury'),
+      onClick: () => openTab(game, 'economy'),
     });
 
   // Armies too large for the land to feed.
@@ -207,7 +207,7 @@ export function alertsFor(game: Game): Alert[] {
       lines: ['Five years have passed since the laws last changed.'],
       tone: 'good',
       action: 'Open the laws',
-      onClick: () => openTab(game, 'laws'),
+      onClick: () => openTab(game, 'government'),
     });
 
   return out;

@@ -11,6 +11,22 @@ export function grouped(n: number): string {
   return String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
 }
 
+const ORDINALS = ['First', 'Second', 'Third', 'Fourth', 'Fifth', 'Sixth', 'Seventh', 'Eighth', 'Ninth', 'Tenth'];
+
+/** First … Tenth, then 11th, 21st, 22nd, 23rd … (n from 1). */
+export function ordinal(n: number): string {
+  if (ORDINALS[n - 1]) return ORDINALS[n - 1];
+  const teen = n % 100 >= 11 && n % 100 <= 13;
+  const suffix = teen ? 'th' : (['th', 'st', 'nd', 'rd'][n % 10] ?? 'th');
+  return `${n}${suffix}`;
+}
+
+/** The first name of a numbered series ("First Army of …") that nothing in `taken` bears. */
+export function firstFree(taken: Iterable<string>, name: (ordinal: string) => string): string {
+  const used = new Set(taken);
+  for (let n = 1; ; n++) if (!used.has(name(ordinal(n)))) return name(ordinal(n));
+}
+
 export interface LogOptions {
   province?: number;
   important?: boolean;

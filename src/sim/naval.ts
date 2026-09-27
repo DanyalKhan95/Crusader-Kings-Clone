@@ -20,7 +20,7 @@ import { cultureGroup } from './beliefs';
 import { alive, character, die, makeCharacter, skill } from './characters';
 import { accessSet } from './diplomacy';
 import { revealAround } from './exploration';
-import { log } from './log';
+import { firstFree, log } from './log';
 import { findPath, isWater, stepDays } from './movement';
 import { armySize, atWar, provincesOf, sideOf } from './queries';
 import { chance, jitter } from './rng';
@@ -205,10 +205,10 @@ export function buildShips(
 
 // ── Fleets ────────────────────────────────────────────────────────
 
+/** The first number free among the realm's fleets: a fleet lost leaves its name to the next. */
 function fleetName(state: GameState, c: Country): string {
-  const n = state.fleets.filter((f) => f.owner === c.index).length;
-  const ordinal = ['First', 'Second', 'Third', 'Fourth', 'Fifth', 'Sixth', 'Seventh', 'Eighth'][n] ?? `${n + 1}th`;
-  return `${ordinal} Fleet of ${c.short.replace(/^the /, '')}`;
+  const taken = state.fleets.filter((f) => f.owner === c.index).map((f) => f.name);
+  return firstFree(taken, (nth) => `${nth} Fleet of ${c.short.replace(/^the /, '')}`);
 }
 
 /** Characters free to command a fleet, best sailors first: those who lead no army or fleet. */

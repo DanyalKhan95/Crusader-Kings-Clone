@@ -20,7 +20,7 @@ import { alliesOf, guarantorsOf, remember } from './diplomacy';
 import { maxManpower } from './economy';
 import { headOf, sitesHeldByUnbelievers } from './faith';
 import { chronicle, theName } from './chronicle';
-import { log } from './log';
+import { log, ordinal } from './log';
 import { defaultEstates, defaultTasks, initialLaws } from './politics';
 import { armySize, atWar, realmMembers, realmProvinces, strengthOf, topLiege, touchesRealm } from './queries';
 import { chance, randInt } from './rng';
@@ -32,15 +32,6 @@ import { distanceKm, type SimWorld } from './world';
 type Check = { ok: true } | { ok: false; reason: string };
 const yes: Check = { ok: true };
 const no = (reason: string): Check => ({ ok: false, reason });
-
-const ORDINALS = ['First', 'Second', 'Third', 'Fourth', 'Fifth', 'Sixth', 'Seventh', 'Eighth', 'Ninth', 'Tenth'];
-
-/** 11th, 21st, 22nd, 23rd … */
-function ordinal(n: number): string {
-  const teen = n % 100 >= 11 && n % 100 <= 13;
-  const suffix = teen ? 'th' : (['th', 'st', 'nd', 'rd'][n % 10] ?? 'th');
-  return `${n}${suffix}`;
-}
 
 // ── Holy wars of one realm ────────────────────────────────────────
 
@@ -131,7 +122,7 @@ export function callHolyWar(state: GameState, world: SimWorld, def: GreatHolyWar
   const attackers = realmMembers(state, leader.index);
   const war: War = {
     id: state.nextId++,
-    name: `The ${ORDINALS[record.count - 1] ?? ordinal(record.count)} ${def.name}`,
+    name: `The ${ordinal(record.count)} ${def.name}`,
     cb: 'crusade',
     goal: target.site,
     faith: def.faith,

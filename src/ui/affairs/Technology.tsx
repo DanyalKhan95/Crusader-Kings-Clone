@@ -20,9 +20,7 @@ import { run } from '../actions';
 import { useGame } from '../game';
 import { Icon } from '../Icon';
 import type { IconName } from '../../assets/icons';
-import { useStore } from '../store';
 import { BreakdownList, WithTip } from '../hud/Tip';
-import { Modal } from './Modal';
 
 const TRACK_ICON: Record<TechTrack, IconName> = {
   economy: 'coins-pile',
@@ -45,32 +43,30 @@ export function techSummary(t: TechDef): string {
   return bits.join(' · ');
 }
 
-export function TechScreen() {
-  const game = useGame();
-  useStore(game.ui, (s) => s.tick);
-  const c = game.state.countries[game.state.player];
-  if (!c) return null;
+export function TechnologyScreen({ c }: { c: Country }) {
   const era = eraOf(c);
   return (
-    <Modal title="Technology" kicker={`${ERAS[era].name} era`} wide>
-      <ol className="eras" aria-label="Eras">
-        {ERAS.map((e, i) => (
-          <li key={e.id} className={i === era ? 'current' : i < era ? 'past' : ''} title={e.blurb}>
-            <span className="caps">{e.name}</span>
-            <span className="num dim small">{e.from}</span>
-          </li>
-        ))}
-      </ol>
-      <p className="dim small">
-        Each track is learned level by level. A level costs about what an ordinary realm of its day would gather; it
-        costs more the further it is ahead of its time, and less once others know it, above all your neighbours.
-      </p>
+    <div className="affairs-grid technology">
+      <section className="affairs-card wide">
+        <ol className="eras" aria-label="Eras">
+          {ERAS.map((e, i) => (
+            <li key={e.id} className={i === era ? 'current' : i < era ? 'past' : ''} title={e.blurb}>
+              <span className="caps">{e.name}</span>
+              <span className="num dim small">{e.from}</span>
+            </li>
+          ))}
+        </ol>
+        <p className="dim small">
+          Each track is learned level by level. A level costs about what an ordinary realm of its day would gather; it
+          costs more the further it is ahead of its time, and less once others know it, above all your neighbours.
+        </p>
+      </section>
       <div className="tech-columns">
         {TECH_TRACKS.map((track) => (
           <TrackColumn key={track} c={c} track={track} />
         ))}
       </div>
-    </Modal>
+    </div>
   );
 }
 
@@ -91,8 +87,11 @@ function TrackColumn({ c, track }: { c: Country; track: TechTrack }) {
         ? `in ${months} month${months === 1 ? '' : 's'}`
         : 'any day now';
   const listRef = useRef<HTMLOListElement>(null);
+  // The next level in the middle of its list, without moving the screen around it.
   useEffect(() => {
-    listRef.current?.querySelector('li.next')?.scrollIntoView({ block: 'center' });
+    const list = listRef.current;
+    const next = list?.querySelector<HTMLElement>('li.next');
+    if (list && next) list.scrollTop = next.offsetTop - list.offsetTop - list.clientHeight / 2;
   }, []);
   return (
     <section className="tech-track" aria-label={TRACK_INFO[track].name}>

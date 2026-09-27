@@ -203,7 +203,7 @@ describe('saves and years of politics', () => {
         delete c[k];
     }
     const loaded = deserialize(JSON.stringify(file));
-    expect(loaded.version).toBe(8);
+    expect(loaded.version).toBe(9);
     expect(loaded.countries[tag(s, 'ENG').index].laws.tolerance).toBe(1);
     expect(loaded.countries[tag(s, 'ENG').index].tasks.steward).toBe('taxes');
     for (let d = 0; d < 40; d++) advanceDay(loaded, world);

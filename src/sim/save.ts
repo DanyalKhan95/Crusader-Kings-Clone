@@ -6,7 +6,7 @@ import { initialTech } from './tech';
 import type { CasusBelli, GameState } from './types';
 import type { SimWorld } from './world';
 
-export const SAVE_VERSION = 8;
+export const SAVE_VERSION = 9;
 
 /** What a save keeps about the campaign beside its state: not part of the world, so no migration. */
 export interface SaveExtras {
@@ -60,6 +60,7 @@ export function readSave(json: string, world?: SimWorld): SaveExtras & { state: 
   if (file.version < 6) migrateToNavies(s, world);
   if (file.version < 7) migrateToEvents(s);
   if (file.version < 8) migrateToLedger(s);
+  if (file.version < 9) migrateToBooks(s);
   // While the game loads rather than on the first New Year: the index of thousands of characters.
   indexRecords(s);
   return {
@@ -68,6 +69,11 @@ export function readSave(json: string, world?: SimWorld): SaveExtras & { state: 
     played: typeof file.played === 'number' && file.played >= 0 ? file.played : undefined,
     ironman: file.ironman === true || undefined,
   };
+}
+
+/** Version 8 (milestone 10) kept no monthly accounts: the player's books start with the next month. */
+function migrateToBooks(s: GameState) {
+  (s as unknown as { version: number }).version = 9;
 }
 
 /**

@@ -407,6 +407,22 @@ export function develop(state: GameState, world: SimWorld, country: number, id: 
 
 // ── The monthly tick ──────────────────────────────────────────────
 
+/** Months of accounts the player's realm keeps. */
+export const BOOK_MONTHS = 240;
+
+/** Writes the month's accounts into the player's books. */
+function keepBooks(state: GameState, c: Country, income: number, expenses: number) {
+  const books = (c.books ??= []);
+  books.push([
+    state.day,
+    Math.round(income * 10) / 10,
+    Math.round(expenses * 10) / 10,
+    Math.round(c.gold),
+    Math.round(c.manpower),
+  ]);
+  if (books.length > BOOK_MONTHS) books.splice(0, books.length - BOOK_MONTHS);
+}
+
 export function monthlyEconomy(state: GameState) {
   // Each realm's provinces and taxes are counted once, for its own accounts and its lord's tribute
   // alike, and who owes tribute to whom is found once: nothing in the month's accounts changes it.
@@ -436,6 +452,7 @@ export function monthlyEconomy(state: GameState) {
     const balance = inc - expenses(state, c, inc).total;
     c.gold += balance;
     c.lastBalance = balance;
+    if (c.index === state.player) keepBooks(state, c, inc, inc - balance);
     const max = maxManpower(state, c, accounts.yields(c)).total;
     // Levies recover a tenth of the full pool a month, faster when the commons are content.
     const recovery = 0.1 * (1 + 0.2 * estateEffect(state, c, 'commons'));

@@ -161,6 +161,11 @@ export interface Country {
   loans: Loan[];
   /** net gold of the last month, for display */
   lastBalance: number;
+  /**
+   * The player's accounts month by month, oldest first, for the economy screen: the day, income,
+   * expenses, gold and levies ready. Kept for the player's realm alone, twenty years at most.
+   */
+  books?: [number, number, number, number, number][];
 
   ruler: number;
   /** day the ruler came to the throne */
@@ -533,7 +538,7 @@ export interface LedgerSnapshot {
 }
 
 export interface GameState {
-  version: 8;
+  version: 9;
   scenario: string;
   seed: number;
   rng: number;

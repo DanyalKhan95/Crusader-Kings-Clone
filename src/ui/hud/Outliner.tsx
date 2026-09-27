@@ -79,7 +79,7 @@ function goTo(game: Game, id: number, select: () => void) {
   flyToProvince(game, id, 1.2);
 }
 
-function armyStatus(game: Game, a: Army): string {
+export function armyStatus(game: Game, a: Army): string {
   const { state, world } = game;
   const here = world.region(a.location);
   const dest = a.path.at(-1);
@@ -91,7 +91,7 @@ function armyStatus(game: Game, a: Army): string {
   return here.kind === 'land' ? `At ${here.name}` : `At sea in the ${here.name}`;
 }
 
-function fleetStatus(game: Game, f: Fleet): string {
+export function fleetStatus(game: Game, f: Fleet): string {
   const { state, world } = game;
   const here = world.region(f.location);
   const dest = f.path.at(-1);

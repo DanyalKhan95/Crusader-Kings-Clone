@@ -7,44 +7,54 @@ import { armyById, countryByTag, realmProvinces } from '../sim/queries';
 import { createGameState } from '../sim/setup';
 import type { GameState } from '../sim/types';
 import { sound } from './audio';
-import type { CountryTab, Game, SettingsSection } from './game';
+import type { Game, RealmScreen, SettingsSection } from './game';
 import { tourSeen } from './tour';
+
+// What goes to the side panel leaves the realm's screens, which would hide it.
 
 export function selectProvince(game: Game, id: number) {
   if (!id) {
     closePanel(game);
     return;
   }
-  game.ui.set({ selectedProvince: id, panel: 'province', orderMode: false });
+  game.ui.set({ selectedProvince: id, panel: 'province', orderMode: false, screen: null });
 }
 
+/** A realm in the side panel; the player's own opens its screens instead. */
 export function selectCountry(game: Game, index: number, fly = false) {
-  game.ui.set({ selectedCountry: index, panel: index ? 'country' : 'none', countryTab: 'realm' });
+  if (index && index === game.state.player && game.ui.get().phase === 'playing') {
+    openScreen(game, 'realm');
+    return;
+  }
+  game.ui.set({ selectedCountry: index, panel: index ? 'country' : 'none', screen: null });
   if (fly && index) flyToRealm(game, index);
 }
 
 export function selectArmy(game: Game, id: number) {
-  game.ui.set({ selectedArmy: id, panel: 'army', orderMode: false });
+  game.ui.set({ selectedArmy: id, panel: 'army', orderMode: false, screen: null });
 }
 
 export function selectFleet(game: Game, id: number) {
-  game.ui.set({ selectedFleet: id, panel: 'fleet', orderMode: false });
+  game.ui.set({ selectedFleet: id, panel: 'fleet', orderMode: false, screen: null });
 }
 
 export function selectWar(game: Game, id: number) {
-  game.ui.set({ selectedWar: id, panel: 'war' });
+  game.ui.set({ selectedWar: id, panel: 'war', screen: null });
 }
 
 export function closePanel(game: Game) {
   game.ui.set({ panel: 'none', selectedProvince: 0, selectedArmy: 0, selectedFleet: 0, orderMode: false });
 }
 
-/** Opens a tab of the player's realm; with `toggle`, the same tab again closes the panel. */
-export function openRealmTab(game: Game, tab: CountryTab, toggle = false) {
-  const { panel, selectedCountry, countryTab } = game.ui.get();
-  const player = game.state.player;
-  if (toggle && panel === 'country' && selectedCountry === player && countryTab === tab) closePanel(game);
-  else game.ui.set({ panel: 'country', selectedCountry: player, countryTab: tab });
+/** Opens a screen of the player's realm over the map; with `toggle`, the same screen again closes it. */
+export function openScreen(game: Game, screen: RealmScreen, toggle = false) {
+  if (toggle && game.ui.get().screen === screen) closeScreen(game);
+  else game.ui.set({ screen, contextMenu: null });
+}
+
+/** Back to the map. */
+export function closeScreen(game: Game) {
+  game.ui.set({ screen: null });
 }
 
 /** The next of the player's armies (or the one before), selected and in view. */
@@ -109,8 +119,9 @@ export function secondaryClick(game: Game, region: number, x: number, y: number)
   else game.ui.set({ contextMenu: region ? { region, x, y } : null });
 }
 
+/** A map mode, shown at once: the realm's screens make way for the map. */
 export function setMapMode(game: Game, mode: MapMode) {
-  game.ui.set({ mapMode: mode });
+  game.ui.set({ mapMode: mode, screen: null });
 }
 
 /** Opens the settings at a section; closing them goes back to the screen they were opened from. */
@@ -173,6 +184,7 @@ export function togglePause(game: Game) {
 
 /** Flies to the player's capital. */
 export function goToCapital(game: Game) {
+  closeScreen(game);
   const capital = game.state.countries[game.state.player]?.capital;
   if (capital) flyToProvince(game, capital, 1.2);
 }
@@ -244,10 +256,10 @@ export function startAs(game: Game, index: number) {
     tour: tourSeen() ? 0 : 1,
     phase: 'playing',
     player: index,
-    selectedCountry: index,
+    selectedCountry: 0,
     selectedProvince: 0,
-    panel: 'country',
-    countryTab: 'realm',
+    panel: 'none',
+    screen: null,
     mapMode: 'realms',
     speed: 0,
     modal: 'none',
@@ -272,9 +284,9 @@ export function resume(game: Game) {
   game.ui.set({
     phase: 'playing',
     player: game.state.player,
-    selectedCountry: game.state.player,
-    panel: 'country',
-    countryTab: 'realm',
+    selectedCountry: 0,
+    panel: 'none',
+    screen: null,
     modal: 'none',
   });
   // A loaded game may have an event or an offer waiting for an answer.

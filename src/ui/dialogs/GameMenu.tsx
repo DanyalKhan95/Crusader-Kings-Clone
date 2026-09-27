@@ -153,7 +153,15 @@ export function Fallen() {
   const game = useGame();
   const c = game.state.countries[game.ui.get().player];
   const playOn = () =>
-    game.ui.set({ phase: 'choose', modal: 'none', panel: 'none', selectedCountry: 0, speed: 0, selectedArmy: 0 });
+    game.ui.set({
+      phase: 'choose',
+      modal: 'none',
+      panel: 'none',
+      screen: null,
+      selectedCountry: 0,
+      speed: 0,
+      selectedArmy: 0,
+    });
   return (
     <Modal title="Your realm has fallen" kicker={c?.name} onClose={playOn}>
       <p>

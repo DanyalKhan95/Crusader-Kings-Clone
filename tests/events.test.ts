@@ -398,7 +398,7 @@ describe('saves', () => {
       delete c.spyTarget;
     }
     const back = deserialize(JSON.stringify(raw), world);
-    expect(back.version).toBe(8);
+    expect(back.version).toBe(9);
     expect(back.events).toEqual([]);
     expect(back.plague).toBeNull();
     expect(back.countries[1].modifiers).toEqual([]);

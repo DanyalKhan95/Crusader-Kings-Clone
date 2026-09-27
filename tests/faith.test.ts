@@ -323,7 +323,7 @@ describe('pagans, saves and the long run', () => {
         delete c[k];
     }
     const loaded = deserialize(JSON.stringify(file));
-    expect(loaded.version).toBe(8);
+    expect(loaded.version).toBe(9);
     expect(loaded.holyWars).toEqual({});
     const fra = tag(loaded, 'FRA');
     expect(fra.laws.tolerance).toBe(1);

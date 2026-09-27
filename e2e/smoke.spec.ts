@@ -30,7 +30,13 @@ test('loads the world of 1066, takes a realm and inspects the map', async ({ pag
 
   await page.getByRole('button', { name: 'Play as Byzantium' }).click();
   await expect(page.locator('.nation-name')).toHaveText('Byzantine Empire');
-  await expect(page.locator('.side-panel')).toContainText('Constantinople');
+
+  // The campaign opens on the map; the realm's affairs are a key away, and Esc goes back.
+  await expect(page.locator('.side-panel')).toHaveCount(0);
+  await page.keyboard.press('i');
+  await expect(page.getByRole('region', { name: 'The realm' })).toContainText('Constantinople');
+  await page.keyboard.press('Escape');
+  await expect(page.locator('.affairs')).toHaveCount(0);
 
   // Let the camera settle over the realm, then click the middle of the map.
   await page.waitForTimeout(1500);
@@ -54,9 +60,12 @@ test('plays England: armies, time and a saved game', async ({ page }) => {
   await page.getByRole('button', { name: 'Play as England' }).click();
   await expect(page.locator('.date-long')).toHaveText('15th of September, 1066 AD');
 
-  // The royal army, ordered north.
-  await page.getByRole('tab', { name: 'Army' }).click();
-  await page.locator('.army-row', { hasText: 'Royal Army of England' }).click();
+  // The royal army, from the military screen: a click goes to it on the map.
+  await page.locator('.nation-coa').click();
+  await page.getByRole('tab', { name: 'Military' }).click();
+  await expect(page.getByRole('heading', { name: 'The military' })).toBeVisible();
+  await page.locator('.affairs').getByRole('button', { name: 'Royal Army of England' }).click();
+  await expect(page.locator('.affairs')).toHaveCount(0);
   await expect(page.locator('.side-panel')).toContainText('Harold II');
   await expect(page.locator('.side-panel')).toContainText('Encamped at London');
 
@@ -199,7 +208,8 @@ test('keeps watch: the outliner, and alerts that lead to the fix', async ({ page
   });
   const sign = page.getByRole('button', { name: 'The treasury runs dry' });
   await sign.click();
-  await expect(page.getByRole('tab', { name: 'Treasury' })).toHaveAttribute('aria-selected', 'true');
+  await expect(page.getByRole('tab', { name: 'Economy' })).toHaveAttribute('aria-selected', 'true');
+  await page.keyboard.press('Escape');
   await sign.click({ button: 'right' });
   await expect(sign).toHaveCount(0);
   expect(errors).toEqual([]);
@@ -328,10 +338,11 @@ test('answers a right-click with what can be done there, and keys for the realm 
   const outliner = page.getByRole('complementary', { name: 'Outliner' });
   await expect(outliner).toContainText('Cleared fields');
 
-  // Keys: a tab of the realm, the armies in turn, the outliner folded away.
+  // Keys: a screen of the realm, the armies in turn (back on the map), the outliner folded away.
   await page.keyboard.press('a');
-  await expect(page.getByRole('tab', { name: 'Army' })).toHaveAttribute('aria-selected', 'true');
+  await expect(page.getByRole('tab', { name: 'Military' })).toHaveAttribute('aria-selected', 'true');
   await page.keyboard.press('z');
+  await expect(page.locator('.affairs')).toHaveCount(0);
   await expect(page.locator('.side-panel')).toHaveAttribute('aria-label', 'Army');
   await page.keyboard.press('o');
   await expect(outliner).toHaveCount(0);
@@ -360,22 +371,17 @@ test('clears the map: the player chooses whose armies and fleets it shows', asyn
       );
       return { all: g.map.units.hits.length, own: g.map.units.hits.filter((h) => own.has(h.id)).length };
     });
-  // The camera glides over the realm first; count once it is still.
-  const camera = () =>
-    page.evaluate(() => {
-      type C = { x: number; y: number; zoom: number };
-      const c = (window as unknown as { game: { map: { camera: C } } }).game.map.camera;
-      return `${c.x.toFixed(1)} ${c.y.toFixed(1)} ${c.zoom.toFixed(4)}`;
-    });
-  let still = '';
-  await expect
-    .poll(async () => {
-      const [a, b] = [await camera(), (await page.waitForTimeout(250), await camera())];
-      still = a;
-      return a === b;
-    })
-    .toBe(true);
-  expect(still).not.toBe('');
+  // A fixed view over London, taken at once: markers near the edge would come and go with a gliding camera.
+  await page.evaluate(() => {
+    type G = {
+      world: { regions: { name: string; label: [number, number] }[] };
+      map: { flyTo(x: number, y: number, zoom: number, dur?: number): void };
+    };
+    const g = (window as unknown as { game: G }).game;
+    const london = g.world.regions.find((r) => r.name === 'London')!;
+    g.map.flyTo(london.label[0], london.label[1], 0.5, 1);
+  });
+  await page.waitForTimeout(200);
   const before = await markers();
   expect(before.own).toBeGreaterThan(0);
 
@@ -450,12 +456,13 @@ test('rules at home: laws, estates and the council', async ({ page }) => {
   await expect(page.locator('.date-long')).toHaveText('15th of September, 1066 AD');
 
   // Raise taxes: the commons grumble, and the laws must now rest for five years.
-  await page.getByRole('tab', { name: 'Laws' }).click();
-  await expect(page.locator('.side-panel')).toContainText('Legitimacy');
+  await page.keyboard.press('j');
+  const screen = page.getByRole('region', { name: 'Government and laws' });
+  await expect(screen).toContainText('Legitimacy');
   const high = page.getByRole('radiogroup', { name: 'Taxation' }).getByRole('radio', { name: 'High' });
   await high.click();
   await expect(high).toHaveAttribute('aria-checked', 'true');
-  await expect(page.locator('.side-panel')).toContainText('Laws may change again on');
+  await expect(screen).toContainText('Laws may change again on');
   await expect(
     page.getByRole('radiogroup', { name: 'Conscription' }).getByRole('radio', { name: 'Heavy' }),
   ).toBeDisabled();
@@ -480,17 +487,19 @@ test('keeps the faith: missions, accepted peoples and the faith map', async ({ p
   await expect(page.locator('.nation-name')).toHaveText('Byzantine Empire');
 
   // The emperor's church, its holy places and the peoples of the empire.
-  await page.getByRole('tab', { name: 'Faith' }).click();
+  await page.keyboard.press('f');
   await expect(page.locator('.faith-name')).toContainText('Orthodox');
-  await expect(page.locator('.side-panel')).toContainText('Holy places');
-  await expect(page.locator('.side-panel')).toContainText('Jerusalem');
+  const screen = page.getByRole('region', { name: 'Faith and culture' });
+  await expect(screen).toContainText('Holy places');
+  await expect(screen).toContainText('Jerusalem');
   const armenians = page.locator('.shares li', { hasText: 'Armenian' });
   await armenians.getByRole('button', { name: 'Accept' }).click();
   await expect(armenians).toContainText('accepted');
 
   // Religious policy is a law like any other.
-  await page.getByRole('tab', { name: 'Laws' }).click();
+  await page.getByRole('tab', { name: 'Government' }).click();
   await expect(page.getByRole('radiogroup', { name: 'Religious policy' })).toBeVisible();
+  await page.keyboard.press('Escape');
 
   // Missionaries to the richest province of another faith.
   await page.evaluate(() => {
@@ -533,7 +542,7 @@ test('learns: the technology screen, a new era and its flag', async ({ page }) =
   await expect(page.locator('html')).toHaveAttribute('data-era', 'medieval');
 
   // Scholars favour the economy.
-  await page.getByRole('button', { name: 'Technology' }).click();
+  await page.getByRole('button', { name: /^Technology/ }).click();
   await expect(page.getByRole('heading', { name: 'Technology' })).toBeVisible();
   const economy = page.getByRole('region', { name: 'Economy' });
   await economy.getByRole('button', { name: 'Make this the focus' }).click();
@@ -541,10 +550,10 @@ test('learns: the technology screen, a new era and its flag', async ({ page }) =
   await expect(economy).toContainText('Guilds');
   await page.keyboard.press('Escape');
 
-  // The Laws tab shows the government and the reforms it may take.
+  // The government screen shows the government and the reforms it may take.
   await page.locator('.nation-coa').click();
-  await page.getByRole('tab', { name: 'Laws' }).click();
-  await expect(page.locator('.side-panel')).toContainText('Feudal monarchy');
+  await page.getByRole('tab', { name: 'Government' }).click();
+  await expect(page.locator('.affairs')).toContainText('Feudal monarchy');
 
   // Centuries on, in the industrial era: a new look, and a flag in place of the arms.
   await page.evaluate(() => {
@@ -558,7 +567,7 @@ test('learns: the technology screen, a new era and its flag', async ({ page }) =
   });
   await expect(page.locator('html')).toHaveAttribute('data-era', 'industrial');
   await expect(page.locator('.nation-coa .coa.flag')).toBeVisible();
-  await page.getByRole('tab', { name: 'Army' }).click();
+  await page.getByRole('tab', { name: 'Military' }).click();
   await expect(page.locator('.recruit')).toContainText('Line infantry');
 
   expect(errors).toEqual([]);
@@ -594,14 +603,14 @@ test('sails: a fleet, the unknown lands and a colony', async ({ page }) => {
   await page.locator('.recruit li', { hasText: 'Galleys' }).getByTitle('Build one').click();
   await expect(page.locator('.side-panel')).toContainText('6 ships');
 
-  // The fleet, from the navy in the Army tab: its ships, and an order to chart the unknown.
-  await page.locator('.nation-coa').click();
-  await page.getByRole('tab', { name: 'Army' }).click();
-  await expect(page.locator('.side-panel')).toContainText('cogs as transports');
+  // The fleet, from the navy on the military screen: its ships, and an order to chart the unknown.
+  await page.keyboard.press('a');
+  await expect(page.locator('.affairs')).toContainText('cogs as transports');
   await page
-    .locator('.side-panel')
+    .locator('.affairs')
     .getByRole('button', { name: /First Fleet of England/ })
     .click();
+  await expect(page.locator('.affairs')).toHaveCount(0);
   await expect(page.locator('.side-panel .sp-title')).toHaveText('First Fleet of England');
   await expect(page.locator('.side-panel')).toContainText('War cogs');
   await page.getByRole('button', { name: 'Explore' }).click();
@@ -672,7 +681,7 @@ test('meets events: a choice, a modifier, a nation to proclaim and spies abroad'
   await page.evaluate(() => {
     const g = (window as unknown as { game: E }).game;
     const fra = g.state.countries.find((c) => c?.tag === 'FRA')!;
-    g.ui.set({ panel: 'country', selectedCountry: fra.index });
+    g.ui.set({ panel: 'country', selectedCountry: fra.index, screen: null });
   });
   await expect(page.locator('.intrigue')).toBeVisible();
   await page.getByRole('button', { name: 'Build a network here' }).click();

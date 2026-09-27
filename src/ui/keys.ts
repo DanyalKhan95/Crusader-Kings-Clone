@@ -4,7 +4,7 @@
  * 'ArrowUp', 'F1'), so a binding reads as the key does. Esc always closes and goes back.
  */
 import { MAP_MODES, type MapMode } from '../game/mapModes';
-import type { CountryTab } from './game';
+import type { RealmScreen } from './game';
 import { settings } from './settings';
 
 export type KeyAction =
@@ -14,8 +14,7 @@ export type KeyAction =
   | 'speed3'
   | 'speed4'
   | 'speed5'
-  | `tab:${CountryTab}`
-  | 'tech'
+  | `screen:${RealmScreen}`
   | 'ledger'
   | 'log'
   | 'outliner'
@@ -35,15 +34,16 @@ export type KeyAction =
 export type KeyGroup = 'Time' | 'Your realm' | 'Screens' | 'Map modes' | 'The map';
 export const KEY_GROUPS: KeyGroup[] = ['Time', 'Your realm', 'Screens', 'Map modes', 'The map'];
 
-/** The tabs of the player's realm, with their keys: the letters of their names where they are free. */
-const TAB_KEYS: { tab: CountryTab; label: string; key: string }[] = [
-  { tab: 'realm', label: 'Your realm', key: 'I' },
-  { tab: 'treasury', label: 'The treasury', key: 'G' },
-  { tab: 'military', label: 'The army', key: 'A' },
-  { tab: 'court', label: 'The court', key: 'C' },
-  { tab: 'laws', label: 'Laws and estates', key: 'J' },
-  { tab: 'faith', label: 'Faith', key: 'F' },
-  { tab: 'diplomacy', label: 'Diplomacy', key: 'D' },
+/** The screens of the player's realm, with their keys: the letters of their names where they are free. */
+export const SCREEN_KEYS: { screen: RealmScreen; label: string; key: string }[] = [
+  { screen: 'realm', label: 'Your realm', key: 'I' },
+  { screen: 'court', label: 'The court', key: 'C' },
+  { screen: 'economy', label: 'The economy', key: 'G' },
+  { screen: 'military', label: 'The military', key: 'A' },
+  { screen: 'diplomacy', label: 'Diplomacy', key: 'D' },
+  { screen: 'faith', label: 'Faith and culture', key: 'F' },
+  { screen: 'government', label: 'Government and laws', key: 'J' },
+  { screen: 'technology', label: 'Technology', key: 'K' },
 ];
 
 export interface KeyActionInfo {
@@ -62,8 +62,12 @@ export const KEY_ACTIONS: KeyActionInfo[] = [
     group: 'Time',
     keys: [String(n)],
   })),
-  ...TAB_KEYS.map((t): KeyActionInfo => ({ id: `tab:${t.tab}`, label: t.label, group: 'Your realm', keys: [t.key] })),
-  { id: 'tech', label: 'Technology', group: 'Screens', keys: ['K'] },
+  ...SCREEN_KEYS.map((t): KeyActionInfo => ({
+    id: `screen:${t.screen}`,
+    label: t.label,
+    group: 'Your realm',
+    keys: [t.key],
+  })),
   { id: 'ledger', label: 'The ledger of nations', group: 'Screens', keys: ['L'] },
   { id: 'log', label: 'The log of news', group: 'Screens', keys: ['N'] },
   { id: 'outliner', label: 'Show or fold the outliner', group: 'Screens', keys: ['O'] },

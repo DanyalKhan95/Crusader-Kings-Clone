@@ -306,7 +306,7 @@ describe('saves', () => {
     delete raw.state.ledger;
     for (const c of raw.state.countries) if (c) delete c.score;
     const back = deserialize(JSON.stringify(raw), world);
-    expect(back.version).toBe(8);
+    expect(back.version).toBe(9);
     expect(back.ledger).toEqual([]);
     expect(back.countries[1].score).toBe(0);
     expect(back.chronicle.map((e) => e.text)).toContain('The Black Death breaks out.');

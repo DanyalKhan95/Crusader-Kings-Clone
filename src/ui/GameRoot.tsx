@@ -5,7 +5,8 @@ import {
   cycleArmies,
   cycleFleets,
   goToCapital,
-  openRealmTab,
+  closeScreen,
+  openScreen,
   setMapMode,
   setSpeed,
   togglePause,
@@ -23,8 +24,7 @@ import { Fallen, GameMenu } from './dialogs/GameMenu';
 import { Offer, Peace } from './dialogs/Peace';
 import { LoadGame } from './dialogs/Saves';
 import { Settings } from './dialogs/Settings';
-import { TechScreen } from './dialogs/TechScreen';
-import { useGame, type CountryTab } from './game';
+import { useGame, type RealmScreen } from './game';
 import { HoverTooltip } from './hud/HoverTooltip';
 import { Hud } from './hud/Hud';
 import { MapModeBar } from './hud/MapModeBar';
@@ -74,6 +74,7 @@ export function GameRoot() {
         // The settings go back to the screen they were opened from.
         if (s.modal === 'settings') game.ui.set({ modal: s.settingsBack });
         else if (s.modal !== 'none') game.ui.set({ modal: 'none' });
+        else if (s.screen) closeScreen(game);
         else if (s.orderMode) game.ui.set({ orderMode: false });
         else if (s.phase === 'playing' && s.panel !== 'none') closePanel(game);
         else if (s.phase === 'playing') game.ui.set({ modal: 'menu', speed: 0 });
@@ -97,8 +98,7 @@ export function GameRoot() {
       if (!playing) return false;
       if (action === 'pause') togglePause(game);
       else if (action.startsWith('speed')) setSpeed(game, Number(action.slice(5)));
-      else if (action.startsWith('tab:')) openRealmTab(game, action.slice(4) as CountryTab, true);
-      else if (action === 'tech') game.ui.set({ modal: 'tech' });
+      else if (action.startsWith('screen:')) openScreen(game, action.slice(7) as RealmScreen, true);
       else if (action === 'ledger') game.ui.set({ modal: 'ledger', speed: 0 });
       else if (action === 'log') game.ui.set({ modal: 'log', speed: 0 });
       else if (action === 'outliner') toggleOutliner();
@@ -130,7 +130,6 @@ export function GameRoot() {
       {phase === 'playing' && modal === 'peace' && <Peace />}
       {phase === 'playing' && modal === 'offer' && <Offer />}
       {phase === 'playing' && modal === 'fallen' && <Fallen />}
-      {phase === 'playing' && modal === 'tech' && <TechScreen />}
       {phase === 'playing' && modal === 'event' && <EventDialog />}
       {phase === 'playing' && modal === 'ledger' && <Ledger />}
       {phase === 'playing' && modal === 'log' && <MessageLog />}

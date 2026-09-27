@@ -8,7 +8,8 @@ import { ERAS } from '../../data/eras';
 import { TECH_TRACKS, TECHS, TRACK_INFO } from '../../data/techs';
 import { eraOf } from '../../sim/tech';
 import { armiesOf, menIn } from '../../sim/queries';
-import { flyToRealm, selectCountry, setSpeed, togglePause } from '../actions';
+import { flyToRealm, openScreen, setSpeed, togglePause } from '../actions';
+import { Affairs } from '../affairs/Affairs';
 import { sound } from '../audio';
 import { CoatOfArms } from '../CoatOfArms';
 import { formatDate, shortDate } from '../format';
@@ -44,6 +45,7 @@ export function Hud() {
       </div>
       <Toasts />
       <SidePanel />
+      <Affairs />
       <NoticeBar />
       <ContextMenu />
       {perf && <PerfOverlay />}
@@ -92,7 +94,13 @@ function NationPlate() {
   const ruler = character(state, c.ruler);
   return (
     <header className="panel nation">
-      <button className="nation-coa" onClick={() => selectCountry(game, player, true)} aria-label={`Open ${c.name}`}>
+      <button
+        className="nation-coa"
+        data-tour="affairs"
+        onClick={() => openScreen(game, 'realm', true)}
+        aria-label={withKey(`The affairs of ${c.name}`, 'screen:realm')}
+        title={withKey(`The affairs of ${c.name}`, 'screen:realm')}
+      >
         <CoatOfArms country={c} size={50} />
       </button>
       <div className="nation-text">
@@ -214,11 +222,11 @@ function EraButton() {
               </li>
             ))}
           </ul>
-          <p className="tip-text">{withKey('Open the technology screen', 'tech')}.</p>
+          <p className="tip-text">{withKey('Open the technology screen', 'screen:technology')}.</p>
         </div>
       }
     >
-      <button className="stat-hit" onClick={() => game.ui.set({ modal: 'tech' })} aria-label="Technology">
+      <button className="stat-hit" onClick={() => openScreen(game, 'technology', true)} aria-label="Technology">
         <Icon name="graduate-cap" />
         <span className="num stat-value">{era.name}</span>
         <span className="stat-label">Era</span>

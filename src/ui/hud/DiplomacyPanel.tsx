@@ -66,7 +66,7 @@ function CountryLink({ c, size = 16 }: { c: Country; size?: number }) {
   );
 }
 
-const PACT_ICON: Record<PactKind, IconName> = {
+export const PACT_ICON: Record<PactKind, IconName> = {
   alliance: 'shaking-hands',
   nap: 'wax-seal',
   access: 'open-gate',

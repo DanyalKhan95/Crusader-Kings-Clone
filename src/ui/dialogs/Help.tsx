@@ -5,7 +5,7 @@ import { MAP_MODES } from '../../game/mapModes';
 import { openSettings } from '../actions';
 import { useGame } from '../game';
 import { Icon } from '../Icon';
-import { shortcut, type KeyAction } from '../keys';
+import { SCREEN_KEYS, shortcut, type KeyAction } from '../keys';
 import { useStore } from '../store';
 import { startTour } from '../tour';
 import { Modal } from './Modal';
@@ -242,8 +242,6 @@ function Key({ action }: { action: KeyAction }) {
   return k ? <kbd>{k}</kbd> : <kbd className="unbound">none</kbd>;
 }
 
-const REALM_TABS = ['realm', 'treasury', 'military', 'court', 'laws', 'faith', 'diplomacy'] as const;
-
 /** The key table, from the bindings as they are now. */
 function keyRows(): [string, string][] {
   const keys = (actions: KeyAction[]) =>
@@ -258,8 +256,10 @@ function keyRows(): [string, string][] {
       keys(MAP_MODES.map((m) => `mode:${m.id}` as const)),
       `Map modes: ${MAP_MODES.map((m) => m.label.toLowerCase()).join(', ')}`,
     ],
-    [keys(REALM_TABS.map((t) => `tab:${t}` as const)), 'Your realm, treasury, army, court, laws, faith and diplomacy'],
-    [keys(['tech']), 'Technology'],
+    [
+      keys(SCREEN_KEYS.map((s) => `screen:${s.screen}` as const)),
+      'Your realm’s screens: the realm, court, economy, military, diplomacy, faith, government, technology',
+    ],
     [keys(['ledger']), 'The ledger of nations'],
     [keys(['log']), 'The log of news'],
     [keys(['outliner']), 'Show or fold the outliner'],

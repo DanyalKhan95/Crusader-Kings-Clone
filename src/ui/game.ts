@@ -13,7 +13,9 @@ import { createStore, type Store } from './store';
 
 export type Phase = 'menu' | 'choose' | 'playing';
 export type Panel = 'none' | 'province' | 'country' | 'army' | 'fleet' | 'war';
-export type CountryTab = 'realm' | 'treasury' | 'military' | 'court' | 'laws' | 'faith' | 'diplomacy';
+/** The screens of the player's realm, over the map. */
+export type RealmScreen =
+  'realm' | 'court' | 'economy' | 'military' | 'diplomacy' | 'faith' | 'government' | 'technology';
 export type Modal =
   | 'none'
   | 'credits'
@@ -22,7 +24,6 @@ export type Modal =
   | 'peace'
   | 'offer'
   | 'fallen'
-  | 'tech'
   | 'event'
   | 'ledger'
   | 'log'
@@ -55,7 +56,8 @@ export interface UIState {
   /** The country the player controls (0 = not chosen yet). */
   player: number;
   panel: Panel;
-  countryTab: CountryTab;
+  /** the screen of the realm's affairs open over the map, while time runs on */
+  screen: RealmScreen | null;
   modal: Modal;
   /** 0 = paused, 1 … 5 */
   speed: number;
@@ -113,7 +115,7 @@ export function createGame(world: StaticWorld, scenario: ScenarioData, state: Ga
     selectedCountry: 0,
     player: 0,
     panel: 'none',
-    countryTab: 'realm',
+    screen: null,
     modal: 'none',
     speed: 0,
     tick: 0,

@@ -222,7 +222,7 @@ describe('emblems and saves', () => {
     for (const c of file.state.countries)
       if (c) for (const k of ['tech', 'research', 'focus', 'reformed', 'transports', 'known', 'colonies']) delete c[k];
     const loaded = deserialize(JSON.stringify(file));
-    expect(loaded.version).toBe(8);
+    expect(loaded.version).toBe(9);
     expect(tag(loaded, 'FRA').tech).toEqual({ economy: 3, military: 3, society: 3 });
     for (let d = 0; d < 40; d++) advanceDay(loaded, world);
   });
