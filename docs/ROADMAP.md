@@ -414,11 +414,13 @@ after the content they show has settled.
 - [x] Hotkeys, all rebindable: every screen, cycling armies and fleets, the capital, and the common
       actions (the realm's tabs `I G A C J F D`, technology `K`, the outliner `O`, the capital
       `Home`, the next army `Z` and fleet `X`, with Shift the one before).
-- [ ] Less clutter on the map (by 1340, hundreds of fleet markers cover Europe):
-  - [ ] layers for your own, allied, enemy and other armies and fleets
-  - [ ] at far zoom, one marker per realm and region
-  - [ ] foreign fleets in port hidden unless they are at war with you
-- [ ] Realm names fade at close zoom instead of covering the provinces.
+- [x] Less clutter on the map (by 1340, hundreds of fleet markers cover Europe):
+  - [x] layers for your own, allied, enemy and other armies and fleets (the banner at the end of
+        the map-mode bar, kept in the settings)
+  - [x] at far zoom, one marker per realm and region: a realm's armies, or fleets, close together
+        on screen share one banner with their total, and a click selects the largest
+  - [x] foreign fleets in port hidden unless they are at war with you (a layer shows them all)
+- [x] Realm names fade at close zoom instead of covering the provinces.
 - [ ] The guided tour and How to play updated for the new HUD.
 
 ### M11: Realm screens and learning the game

@@ -83,6 +83,26 @@ export function relationTo(state: GameState, viewer: number, other: number): Rel
   return 'neutral';
 }
 
+/** Whose armies and fleets the map shows: each layer can be turned off (the unit layers setting). */
+export type UnitLayer = 'own' | 'allies' | 'enemies' | 'others';
+
+export const UNIT_LAYERS: { id: UnitLayer; name: string }[] = [
+  { id: 'own', name: 'Yours' },
+  { id: 'allies', name: 'Allies and subjects' },
+  { id: 'enemies', name: 'Enemies' },
+  { id: 'others', name: 'Everyone else' },
+];
+
+/** The layer a realm's armies and fleets belong to, as the viewer sees them. */
+export function unitLayerOf(state: GameState, viewer: number, owner: number): UnitLayer {
+  if (!viewer) return 'others';
+  if (owner === viewer) return 'own';
+  const rel = relationTo(state, viewer, owner);
+  if (rel === 'war') return 'enemies';
+  if (rel === 'self' || rel === 'realm' || rel === 'subject' || rel === 'lord' || rel === 'ally') return 'allies';
+  return 'others';
+}
+
 export const TERRAIN_INFO: Record<Terrain, { name: string; color: string }> = {
   plains: { name: 'Plains', color: '#b7c46a' },
   farmland: { name: 'Farmlands', color: '#e2cf5a' },

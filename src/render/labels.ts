@@ -178,6 +178,19 @@ function solve3(m: number[], r: number[]): [number, number, number] | null {
 }
 
 const FONT = '"Alegreya SC", "Iowan Old Style", Georgia, serif';
+
+/**
+ * Close in, the provinces speak for themselves: realm names begin to fade at the first zoom and are
+ * gone by the second, leaving the ground to province names.
+ */
+export const REALM_FADE_FROM = 0.45;
+export const REALM_FADE_TO = 0.95;
+
+/** How strongly realm names show at a zoom: 1 far out, 0 close in. */
+export function realmNameStrength(zoom: number): number {
+  return Math.max(0, Math.min(1, (REALM_FADE_TO - zoom) / (REALM_FADE_TO - REALM_FADE_FROM)));
+}
+
 const glyphCache = new Map<string, number[]>();
 
 function glyphWidths(ctx: CanvasRenderingContext2D, text: string): number[] {
@@ -317,7 +330,9 @@ export class LabelLayer {
     ctx.textBaseline = 'middle';
     ctx.lineJoin = 'round';
 
-    // Realm names along their territory: lay out every glyph now, draw them last (on top).
+    // Realm names along their territory: lay out every glyph now, draw them last (on top). Fading ones
+    // leave their space to the provinces.
+    const strength = realmNameStrength(cam.zoom);
     const glyphs: {
       ch: string;
       sx: number;
@@ -328,6 +343,7 @@ export class LabelLayer {
       kind: TextLabel['kind'];
     }[] = [];
     for (const lab of this.realms) {
+      if (strength <= 0) break;
       const L = lab.layout;
       const px = L.size * cam.zoom;
       const minPx = 10 * dpr,
@@ -335,7 +351,7 @@ export class LabelLayer {
       if (px < minPx * 0.8 || px > maxPx * 1.3) continue;
       const fadeIn = Math.min(1, (px - minPx * 0.8) / (minPx * 0.5));
       const fadeOut = Math.min(1, (maxPx * 1.3 - px) / (maxPx * 0.3));
-      const alpha = Math.min(fadeIn, fadeOut) * (showProvinceNames && cam.zoom > 0.5 ? 0.55 : 0.85);
+      const alpha = Math.min(fadeIn, fadeOut) * 0.85 * strength;
       if (alpha <= 0.02) continue;
       const [ax, ay] = toScreen(L.cx, L.cy);
       const text = L.text.toUpperCase();
@@ -356,7 +372,7 @@ export class LabelLayer {
         const ang = Math.atan2(L.uy + vy * slope, L.ux + vx * slope);
         glyphs.push({ ch: text[i], sx, sy, ang, px, alpha, kind: lab.kind });
         // Reserve the glyph's box (half the em square is enough: the letters are pale and big).
-        if (text[i] !== ' ') {
+        if (text[i] !== ' ' && alpha > 0.35) {
           const r = px * 0.36;
           occ.place(sx - r, sy - r, sx + r, sy + r);
         }

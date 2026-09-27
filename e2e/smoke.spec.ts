@@ -338,6 +338,64 @@ test('answers a right-click with what can be done there, and keys for the realm 
   expect(errors).toEqual([]);
 });
 
+test('clears the map: the player chooses whose armies and fleets it shows', async ({ page }) => {
+  const errors = watchErrors(page);
+  await page.goto('/?debug');
+  await page.getByRole('button', { name: 'New Campaign' }).click({ timeout: 120_000 });
+  await page.getByRole('button', { name: 'Play as England' }).click();
+  await expect(page.locator('.date-long')).toHaveText('15th of September, 1066 AD');
+  /** The markers the map has drawn, after a fresh drawing: all of them, and the player's own. */
+  const markers = () =>
+    page.evaluate(async () => {
+      type Unit = { id: number; owner: number };
+      type G = {
+        map: { invalidateUnits(): void; units: { hits: { id: number }[] } };
+        state: { player: number; armies: Unit[]; fleets: Unit[] };
+      };
+      const g = (window as unknown as { game: G }).game;
+      g.map.invalidateUnits();
+      await new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done)));
+      const own = new Set(
+        [...g.state.armies, ...g.state.fleets].filter((u) => u.owner === g.state.player).map((u) => u.id),
+      );
+      return { all: g.map.units.hits.length, own: g.map.units.hits.filter((h) => own.has(h.id)).length };
+    });
+  // The camera glides over the realm first; count once it is still.
+  const camera = () =>
+    page.evaluate(() => {
+      type C = { x: number; y: number; zoom: number };
+      const c = (window as unknown as { game: { map: { camera: C } } }).game.map.camera;
+      return `${c.x.toFixed(1)} ${c.y.toFixed(1)} ${c.zoom.toFixed(4)}`;
+    });
+  let still = '';
+  await expect
+    .poll(async () => {
+      const [a, b] = [await camera(), (await page.waitForTimeout(250), await camera())];
+      still = a;
+      return a === b;
+    })
+    .toBe(true);
+  expect(still).not.toBe('');
+  const before = await markers();
+  expect(before.own).toBeGreaterThan(0);
+
+  await page.getByRole('button', { name: 'Armies and fleets on the map' }).click();
+  const layers = page.getByRole('group', { name: 'Whose armies and fleets are shown' });
+  await layers.getByLabel('Yours').uncheck();
+  await expect.poll(async () => (await markers()).own).toBe(0);
+  expect((await markers()).all).toBe(before.all - before.own);
+  const kept = await page.evaluate(() => JSON.parse(localStorage.getItem('crowns-and-centuries:settings')!));
+  expect(kept.unitLayers).toEqual({ own: false, allies: true, enemies: true, others: true });
+
+  // Esc puts the choices away, and nothing else.
+  await layers.getByLabel('Yours').check();
+  await page.keyboard.press('Escape');
+  await expect(layers).toHaveCount(0);
+  await expect(page.getByRole('dialog', { name: 'The scriptorium' })).toHaveCount(0);
+  await expect.poll(async () => (await markers()).own).toBe(before.own);
+  expect(errors).toEqual([]);
+});
+
 test('makes friends: an alliance, the diplomacy map and a forged claim', async ({ page }) => {
   const errors = watchErrors(page);
   await page.goto('/?debug');

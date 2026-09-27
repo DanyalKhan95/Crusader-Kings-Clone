@@ -82,6 +82,7 @@ The plan, what each milestone brought and the known gaps are in [docs/ROADMAP.md
 | Sail              | select a fleet, then right-click a sea   |                             |
 | Pause, speed      | buttons at the top right                 | `Space`, `1`–`5`            |
 | Map modes         | buttons at the bottom right              | `Q` `W` `E` `R` `T` `Y` `U` |
+| Armies shown      | the banner after the map modes           |                             |
 | Your realm's tabs | coat of arms at the top left             | `I` `G` `A` `C` `J` `F` `D` |
 | Technology        | the era at the top                       | `K`                         |
 | Ledger of nations | scroll at the top right                  | `L`                         |

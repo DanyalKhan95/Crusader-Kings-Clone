@@ -131,6 +131,11 @@ export function MapCanvas({ onError }: { onError: (message: string) => void }) {
       map.setLetteringScale(uiScale());
       map.frameCap = s.frameCap;
       map.animations = s.animations;
+      if (s.unitLayers !== map.unitLayers || s.portFleets !== map.portFleets) {
+        map.unitLayers = s.unitLayers;
+        map.portFleets = s.portFleets;
+        map.invalidateUnits();
+      }
     };
     applyMapSettings();
     const unsubscribeSettings = settings.subscribe(applyMapSettings);

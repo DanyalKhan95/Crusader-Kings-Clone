@@ -41,6 +41,10 @@ describe('settings', () => {
     expect(s.keys).toEqual({ pause: ['P'], help: ['A', 'B'] });
     // What news does: only the rules there are, and only where they differ from auto.
     expect(s.messages).toEqual({ battle: 'log', death: 'off' });
+    expect(s.unitLayers).toEqual(DEFAULT_SETTINGS.unitLayers);
+    expect(
+      sanitizeSettings({ unitLayers: { others: false, allies: 'no', kings: false }, portFleets: true }),
+    ).toMatchObject({ unitLayers: { own: true, allies: true, enemies: true, others: false }, portFleets: true });
   });
 
   it('grow the interface only as far as the window leaves room for the desktop layout', () => {

@@ -3,7 +3,7 @@
  * loop. React drives it through a handful of methods and hears about hovers and clicks through
  * callbacks, so pointer movement never has to re-render components.
  */
-import { applyMapMode, type MapMode } from '../../game/mapModes';
+import { applyMapMode, unitLayerOf, type MapMode, type UnitLayer as Layer } from '../../game/mapModes';
 import type { StaticWorld } from '../../game/world';
 import { knows } from '../../sim/exploration';
 import { realmHead } from '../../sim/queries';
@@ -112,6 +112,12 @@ export class MapController {
   /** Called at the start of every frame with the seconds since the last one (drives game time). */
   onFrame: ((dt: number) => void) | null = null;
   unitStyle: UnitStyle | null = null;
+  /** Whose armies and fleets are shown, and foreign fleets in port (the settings). */
+  unitLayers: Record<Layer, boolean> = { own: true, allies: true, enemies: true, others: true };
+  portFleets = false;
+  /** The layer of each realm's units, until the day or the diplomacy changes. */
+  private layerOf = new Map<number, Layer>();
+  private layerKey = '';
 
   constructor(
     private host: HTMLElement,
@@ -189,6 +195,21 @@ export class MapController {
     this.refresh();
     this.invalidate();
   }
+
+  /** Whether a realm's armies and fleets are on the map, by the layers the player shows. */
+  private showsUnitsOf = (owner: number): boolean => {
+    const s = this.state;
+    if (!s.player) return true;
+    // Wars change who is an enemy without a new version of the diplomacy.
+    const key = `${s.player}:${s.day}:${s.diploVersion}:${s.borderVersion}:${s.wars.length}:${s.wars.at(-1)?.id}`;
+    if (key !== this.layerKey) {
+      this.layerKey = key;
+      this.layerOf.clear();
+    }
+    let layer = this.layerOf.get(owner);
+    if (!layer) this.layerOf.set(owner, (layer = unitLayerOf(s, s.player, owner)));
+    return this.unitLayers[layer];
+  };
 
   /** True if the viewer does not know this region. */
   isUnknown = (id: number): boolean => {
@@ -455,14 +476,13 @@ export class MapController {
     }
     if ((moved || this.unitsDirty) && this.unitStyle) {
       this.unitsDirty = false;
-      this.units.render(
-        c,
-        this.state,
-        this.selectedArmy,
-        this.unitStyle,
-        this.selectedFleet,
-        this.fog ? this.isUnknown : null,
-      );
+      this.units.render(c, this.state, this.unitStyle, {
+        selectedArmy: this.selectedArmy,
+        selectedFleet: this.selectedFleet,
+        hidden: this.fog ? this.isUnknown : null,
+        shows: this.showsUnitsOf,
+        portFleets: this.portFleets,
+      });
     }
     const busy = performance.now() - busyFrom;
     this.stats.frames++;

@@ -4133,3 +4133,47 @@ button.cm-item:focus-visible {
 .cm-item.back {
   color: var(--text-dim);
 }
+
+/* ── Whose armies and fleets the map shows (milestone 10) ────── */
+
+.unit-layers {
+  position: relative;
+  padding-left: 6px;
+  margin-left: 2px;
+  border-left: 1px solid var(--line-soft);
+}
+.layers-hidden {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 7px;
+  height: 7px;
+  background: var(--gold);
+  border-radius: 50%;
+}
+.layers-pop {
+  position: absolute;
+  right: -4px;
+  bottom: calc(100% + 12px);
+  display: grid;
+  gap: 4px;
+  width: 250px;
+  padding: 10px 12px 12px;
+}
+.layers-title {
+  margin: 0 0 2px;
+  font-size: calc(13px * var(--text-scale, 1));
+  color: var(--gold);
+}
+.layers-pop .choice.compact {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+}
+.layers-pop .choice input {
+  margin-top: 0;
+}
+.layers-pop p.small {
+  margin-top: 4px;
+  line-height: 1.4;
+}

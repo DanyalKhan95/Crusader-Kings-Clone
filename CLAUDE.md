@@ -45,6 +45,12 @@ when a milestone lands.
 - **`src/ui/map/MapController.ts`:** owns the camera, renderer, labels, picking, input and the frame
   loop. React talks to it through methods and store sync (`MapCanvas.tsx`). Pointer moves never
   re-render React.
+  - Unit markers (`render/units.ts`) take a `UnitView`: the layers the player shows
+    (`unitLayerOf` in `game/mapModes.ts`, remembered per realm until the day, the diplomacy or the
+    wars change), and whether foreign fleets in port show. Below `FAR_ZOOM`, `gather` puts each
+    realm's markers close together on screen under one.
+  - Realm names fade out between `REALM_FADE_FROM` and `REALM_FADE_TO` (`render/labels.ts`), and
+    a faint name leaves its space to the province names.
 - **`src/ui/`:** React screens.
   - UI state is a tiny external store (`store.ts`).
   - The game handle is `useGame()`.

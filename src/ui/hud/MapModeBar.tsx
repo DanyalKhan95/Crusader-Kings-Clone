@@ -1,12 +1,20 @@
-import { useLayoutEffect, useRef } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { IconName } from '../../assets/icons';
-import { CLAIM_COLOR, MAP_MODES, RELATION_INFO, TERRAIN_INFO, type MapMode, type Relation } from '../../game/mapModes';
+import {
+  CLAIM_COLOR,
+  MAP_MODES,
+  RELATION_INFO,
+  TERRAIN_INFO,
+  UNIT_LAYERS,
+  type MapMode,
+  type Relation,
+} from '../../game/mapModes';
 import { faithColor, faithName } from '../../sim/beliefs';
 import { setMapMode } from '../actions';
 import { useGame } from '../game';
 import { Icon } from '../Icon';
 import { shortcut, withKey } from '../keys';
-import { useSettings } from '../settings';
+import { settings, useSettings } from '../settings';
 import { useStore } from '../store';
 
 const MODE_ICONS: Record<MapMode, IconName> = {
@@ -61,7 +69,76 @@ export function MapModeBar() {
             );
           })}
         </div>
+        {phase === 'playing' && <UnitLayersButton />}
       </nav>
+    </div>
+  );
+}
+
+/** Whose armies and fleets the map shows: a button on the bar, and its choices above it. */
+function UnitLayersButton() {
+  const layers = useSettings((s) => s.unitLayers);
+  const portFleets = useSettings((s) => s.portFleets);
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  // A press elsewhere or Esc puts the choices away (Esc before anything else it would do).
+  useEffect(() => {
+    if (!open) return;
+    const outside = (e: PointerEvent) => {
+      if (!ref.current?.contains(e.target as Node)) setOpen(false);
+    };
+    const esc = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return;
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      setOpen(false);
+    };
+    window.addEventListener('pointerdown', outside, true);
+    window.addEventListener('keydown', esc, true);
+    return () => {
+      window.removeEventListener('pointerdown', outside, true);
+      window.removeEventListener('keydown', esc, true);
+    };
+  }, [open]);
+  const hidden = UNIT_LAYERS.filter((l) => !layers[l.id]).length;
+  return (
+    <div className="unit-layers" ref={ref}>
+      <button
+        className={`mapmode layers-button ${open ? 'active' : ''}`}
+        aria-expanded={open}
+        aria-label="Armies and fleets on the map"
+        title="Whose armies and fleets the map shows"
+        onClick={() => setOpen(!open)}
+      >
+        <Icon name="knight-banner" />
+        {hidden > 0 && <span className="layers-hidden" aria-hidden="true" />}
+      </button>
+      {open && (
+        <div className="panel layers-pop" role="group" aria-label="Whose armies and fleets are shown">
+          <p className="caps layers-title">Armies and fleets</p>
+          {UNIT_LAYERS.map((l) => (
+            <label key={l.id} className={`choice compact ${layers[l.id] ? 'active' : ''}`}>
+              <input
+                type="checkbox"
+                checked={layers[l.id]}
+                onChange={(e) => settings.set({ unitLayers: { ...layers, [l.id]: e.target.checked } })}
+              />
+              <span className="choice-name">{l.name}</span>
+            </label>
+          ))}
+          <label className={`choice compact ${portFleets ? 'active' : ''}`}>
+            <input
+              type="checkbox"
+              checked={portFleets}
+              onChange={(e) => settings.set({ portFleets: e.target.checked })}
+            />
+            <span className="choice-name">Foreign fleets in port</span>
+          </label>
+          <p className="dim small">
+            Fleets in port at war with you always show. Far out, a realm&rsquo;s armies close together share one banner.
+          </p>
+        </div>
+      )}
     </div>
   );
 }

@@ -2,13 +2,14 @@
  * Armies, fleets, battles and sieges drawn on a 2D canvas over the map: a banner per army with the
  * owner's arms and strength, a pennant per fleet with its ships, dashed routes for those on the move,
  * crossed swords where battles rage on land and at sea, and a siege tower with a progress bar where
- * walls are under attack.
+ * walls are under attack. Far out, each realm's armies and fleets close together share one marker;
+ * the player chooses whose are shown, and foreign fleets in port stay out of sight unless at war.
  */
 import { ICONS, type IconName } from '../assets/icons';
 import type { RegionData } from '../shared/dataTypes';
 import { marchFraction } from '../sim/military';
 import { fleetSize, shipLook } from '../sim/naval';
-import { armySize, atWar } from '../sim/queries';
+import { armySize, atWar, topLiege } from '../sim/queries';
 import type { Army, Fleet, GameState } from '../sim/types';
 import type { Camera } from './camera';
 
@@ -55,6 +56,64 @@ export interface UnitStyle {
   /** coat-of-arms image for a country, or null while it loads */
   arms(country: number): HTMLImageElement | null;
   color(country: number): string;
+}
+
+/** What the map shows of the armies and fleets, and how the player sees them. */
+export interface UnitView {
+  selectedArmy: number;
+  selectedFleet: number;
+  /** regions the viewer does not know: nothing of others is drawn there */
+  hidden: ((id: number) => boolean) | null;
+  /** whether a realm's armies and fleets are on the map (the layers the player shows) */
+  shows: (owner: number) => boolean;
+  /** foreign fleets lying in port, when they are not at war with the viewer */
+  portFleets: boolean;
+}
+
+/** Below this zoom a realm's armies, or fleets, close together on screen share one marker. */
+export const FAR_ZOOM = 0.22;
+
+/** An army or fleet on screen: one of them, or far out all of a realm's on a patch of the screen. */
+export interface Marker<T> {
+  /** the largest of them, whose place, look and selection the marker takes */
+  lead: T;
+  leadSize: number;
+  /** whose arms and colour it shows */
+  owner: number;
+  total: number;
+  count: number;
+  sx: number;
+  sy: number;
+}
+
+/** Gathers what is on screen into markers: far out, by realm and patch of the screen. */
+export function gather<T extends { id: number; owner: number }>(
+  list: { item: T; size: number; realm: number; sx: number; sy: number; alone: boolean }[],
+  far: boolean,
+  cellW: number,
+  cellH: number,
+): Marker<T>[] {
+  const out = new Map<string, Marker<T>>();
+  for (const { item, size, realm, sx, sy, alone } of list) {
+    const key = far && !alone ? `${realm}:${Math.round(sx / cellW)}:${Math.round(sy / cellH)}` : `one:${item.id}`;
+    const m = out.get(key);
+    if (!m)
+      out.set(key, {
+        lead: item,
+        leadSize: size,
+        owner: far && !alone ? realm : item.owner,
+        total: size,
+        count: 1,
+        sx,
+        sy,
+      });
+    else {
+      m.total += size;
+      m.count++;
+      if (size > m.leadSize) Object.assign(m, { lead: item, leadSize: size, sx, sy });
+    }
+  }
+  return [...out.values()];
 }
 
 export class UnitLayer {
@@ -111,15 +170,9 @@ export class UnitLayer {
     return p;
   }
 
-  render(
-    cam: Camera,
-    state: GameState,
-    selected: number,
-    style: UnitStyle,
-    selectedFleet = 0,
-    hidden: ((id: number) => boolean) | null = null,
-  ) {
+  render(cam: Camera, state: GameState, style: UnitStyle, view: UnitView) {
     const ctx = this.ctx;
+    const { selectedArmy: selected, hidden } = view;
     if (this.canvas.width !== cam.width || this.canvas.height !== cam.height) {
       this.canvas.width = cam.width;
       this.canvas.height = cam.height;
@@ -238,25 +291,39 @@ export class UnitLayer {
       ctx.strokeRect(x0, y0, w, h);
     }
 
-    // Army banners, stacked where several stand together
-    const stack = new Map<string, number>();
-    const small = cam.zoom < 0.22;
-    const order = [...armies].sort((a, b) => (a.id === selected ? 1 : 0) - (b.id === selected ? 1 : 0));
-    ctx.font = `700 ${12 * dpr}px ${FONT}`;
-    for (const a of order) {
+    // Army banners: one for each army close in; far out, one for each realm on each patch of the
+    // screen, with the men of all its armies there. Banners side by side stack.
+    const far = cam.zoom < FAR_ZOOM;
+    const onMap: { item: Army; size: number; realm: number; sx: number; sy: number; alone: boolean }[] = [];
+    for (const a of armies) {
       const mine = a.owner === state.player;
-      const size = armySize(a);
-      if (!mine && a.id !== selected && (cam.zoom < 0.1 || (small && size < 3000))) continue;
+      const isSel = a.id === selected;
+      if (!isSel && !view.shows(a.owner)) continue;
       if (!mine && hidden?.(a.location)) continue;
       const pos = a.path.length ? lerpPoint(at(a.location), at(a.path[0]), marchFraction(a)) : at(a.location);
-      let [sx, sy] = toScreen(pos[0], pos[1]);
+      const [sx, sy] = toScreen(pos[0], pos[1]);
       if (!onScreen(sx, sy)) continue;
-      const key = `${Math.round(sx / (30 * dpr))}:${Math.round(sy / (18 * dpr))}`;
+      // The player's own armies gather under the player's arms, even in a liege's realm.
+      const realm = mine ? a.owner : topLiege(state, a.owner);
+      onMap.push({ item: a, size: armySize(a), realm, sx, sy, alone: isSel });
+    }
+    const banners = gather(onMap, far, 110 * dpr, 44 * dpr)
+      .filter(
+        (m) =>
+          m.lead.owner === state.player || m.lead.id === selected || (cam.zoom >= 0.1 && (!far || m.total >= 3000)),
+      )
+      .sort((a, b) => (a.lead.id === selected ? 1 : 0) - (b.lead.id === selected ? 1 : 0));
+    const stack = new Map<string, number>();
+    ctx.font = `700 ${12 * dpr}px ${FONT}`;
+    for (const m of banners) {
+      const a = m.lead;
+      const mine = a.owner === state.player;
+      const { sx } = m;
+      const key = `${Math.round(sx / (30 * dpr))}:${Math.round(m.sy / (18 * dpr))}`;
       const n = stack.get(key) ?? 0;
       stack.set(key, n + 1);
-      sy += n * 22 * dpr;
-      sx += 0;
-      const text = formatMen(size);
+      const sy = m.sy + n * 22 * dpr;
+      const text = formatMen(m.total);
       const tw = ctx.measureText(text).width;
       const h = 20 * dpr,
         armsW = 15 * dpr,
@@ -266,16 +333,27 @@ export class UnitLayer {
         y0 = sy - h / 2;
       const isSel = a.id === selected;
       const hostile = !mine && atWar(state, a.owner, state.player);
+      const edge = isSel ? '#f3cc6a' : mine ? '#cfa65c' : hostile ? '#c0493f' : 'rgba(205, 164, 90, 0.45)';
+      // Several armies under one banner: another shows behind it.
+      if (m.count > 1) {
+        ctx.fillStyle = 'rgba(24, 18, 12, 0.8)';
+        ctx.strokeStyle = edge;
+        ctx.lineWidth = 1 * dpr;
+        ctx.beginPath();
+        ctx.roundRect(x0 + 3 * dpr, y0 - 3 * dpr, w, h, 3 * dpr);
+        ctx.fill();
+        ctx.stroke();
+      }
       ctx.fillStyle = a.retreating ? 'rgba(40, 30, 24, 0.75)' : 'rgba(24, 18, 12, 0.92)';
-      ctx.strokeStyle = isSel ? '#f3cc6a' : mine ? '#cfa65c' : hostile ? '#c0493f' : 'rgba(205, 164, 90, 0.45)';
+      ctx.strokeStyle = edge;
       ctx.lineWidth = (isSel ? 2.4 : 1.2) * dpr;
       ctx.beginPath();
       ctx.roundRect(x0, y0, w, h, 3 * dpr);
       ctx.fill();
       ctx.stroke();
-      ctx.fillStyle = style.color(a.owner);
+      ctx.fillStyle = style.color(m.owner);
       ctx.fillRect(x0 + 1.5 * dpr, y0 + 1.5 * dpr, 3 * dpr, h - 3 * dpr);
-      const img = style.arms(a.owner);
+      const img = style.arms(m.owner);
       if (img) ctx.drawImage(img, x0 + pad + 1 * dpr, y0 + 2 * dpr, armsW - 2 * dpr, (armsW - 2 * dpr) * 1.2);
       ctx.fillStyle = a.retreating ? '#ad9b7c' : '#ecdfc5';
       ctx.textAlign = 'left';
@@ -287,21 +365,21 @@ export class UnitLayer {
       this.hits.push({ kind: 'army', id: a.id, x0, y0, x1: x0 + w, y1: y0 + h });
     }
 
-    this.renderFleets(ctx, cam, state, selectedFleet, style, hidden, toScreen, lerpPoint, onScreen);
+    this.renderFleets(ctx, cam, state, style, view, toScreen, lerpPoint, onScreen);
   }
 
   private renderFleets(
     ctx: CanvasRenderingContext2D,
     cam: Camera,
     state: GameState,
-    selected: number,
     style: UnitStyle,
-    hidden: ((id: number) => boolean) | null,
+    view: UnitView,
     toScreen: (x: number, y: number) => [number, number],
     lerpPoint: (a: [number, number], b: [number, number], f: number) => [number, number],
     onScreen: (sx: number, sy: number, pad?: number) => boolean,
   ) {
     const dpr = cam.dpr * this.scale;
+    const { selectedFleet: selected, hidden } = view;
     const point = (id: number) => (this.region(id).kind === 'land' ? this.portPoint(id) : this.region(id).label);
     const fraction = (f: Fleet) => (f.path.length && f.stepDays > 0 ? Math.min(1, f.progress / f.stepDays) : 0);
     // Routes of our fleets and of the selected one
@@ -341,26 +419,41 @@ export class UnitLayer {
       ctx.stroke();
       drawIcon(ctx, 'crossed-swords', sx, sy - 30 * dpr, 18 * dpr, '#fbeccc');
     }
-    // Pennants
-    const small = cam.zoom < 0.22;
-    ctx.font = `700 ${11 * dpr}px ${FONT}`;
-    const stack = new Map<string, number>();
-    const order = [...state.fleets].sort((a, b) => (a.id === selected ? 1 : 0) - (b.id === selected ? 1 : 0));
-    for (const f of order) {
+    // Pennants: one for each fleet close in; far out, one for each realm on each patch of the screen.
+    // Foreign fleets lying in port stay out of sight unless they are at war with the player.
+    const far = cam.zoom < FAR_ZOOM;
+    const onMap: { item: Fleet; size: number; realm: number; sx: number; sy: number; alone: boolean }[] = [];
+    for (const f of state.fleets) {
       const mine = f.owner === state.player;
+      const isSel = f.id === selected;
       const n = fleetSize(f);
       if (n < 0.5) continue;
-      if (!mine && f.id !== selected && (cam.zoom < 0.1 || (small && n < 10))) continue;
+      if (!isSel && !view.shows(f.owner)) continue;
       if (!mine && hidden?.(f.location)) continue;
+      const docked = !f.path.length && this.region(f.location).kind === 'land';
+      if (docked && !mine && !isSel && !view.portFleets && !atWar(state, f.owner, state.player)) continue;
       const pos = f.path.length ? lerpPoint(point(f.location), point(f.path[0]), fraction(f)) : point(f.location);
-      const [sx, sy0] = toScreen(pos[0], pos[1]);
-      let sy = sy0;
+      const [sx, sy] = toScreen(pos[0], pos[1]);
       if (!onScreen(sx, sy)) continue;
+      onMap.push({ item: f, size: n, realm: mine ? f.owner : topLiege(state, f.owner), sx, sy, alone: isSel });
+    }
+    const pennants = gather(onMap, far, 100 * dpr, 40 * dpr)
+      .filter(
+        (m) => m.lead.owner === state.player || m.lead.id === selected || (cam.zoom >= 0.1 && (!far || m.total >= 10)),
+      )
+      .sort((a, b) => (a.lead.id === selected ? 1 : 0) - (b.lead.id === selected ? 1 : 0));
+    ctx.font = `700 ${11 * dpr}px ${FONT}`;
+    const stack = new Map<string, number>();
+    for (const m of pennants) {
+      const f = m.lead;
+      const mine = f.owner === state.player;
+      const { sx } = m;
+      let sy = m.sy;
       const key = `${Math.round(sx / (30 * dpr))}:${Math.round(sy / (18 * dpr))}`;
       const k = stack.get(key) ?? 0;
       stack.set(key, k + 1);
       sy += k * 20 * dpr + 22 * dpr;
-      const text = String(Math.round(n));
+      const text = String(Math.round(m.total));
       const tw = ctx.measureText(text).width;
       const h = 18 * dpr,
         icon = 15 * dpr,
@@ -370,20 +463,30 @@ export class UnitLayer {
         y0 = sy - h / 2;
       const isSel = f.id === selected;
       const hostile = !mine && atWar(state, f.owner, state.player);
+      const edge = isSel ? '#aad6ff' : mine ? '#7fa8cf' : hostile ? '#c0493f' : 'rgba(127, 168, 207, 0.4)';
+      if (m.count > 1) {
+        ctx.fillStyle = 'rgba(14, 24, 38, 0.8)';
+        ctx.strokeStyle = edge;
+        ctx.lineWidth = 1 * dpr;
+        ctx.beginPath();
+        ctx.roundRect(x0 + 3 * dpr, y0 - 3 * dpr, w, h, 9 * dpr);
+        ctx.fill();
+        ctx.stroke();
+      }
       ctx.fillStyle = f.retreating ? 'rgba(22, 30, 42, 0.75)' : 'rgba(14, 24, 38, 0.92)';
-      ctx.strokeStyle = isSel ? '#aad6ff' : mine ? '#7fa8cf' : hostile ? '#c0493f' : 'rgba(127, 168, 207, 0.4)';
+      ctx.strokeStyle = edge;
       ctx.lineWidth = (isSel ? 2.4 : 1.2) * dpr;
       ctx.beginPath();
       ctx.roundRect(x0, y0, w, h, 9 * dpr);
       ctx.fill();
       ctx.stroke();
-      ctx.fillStyle = style.color(f.owner);
+      ctx.fillStyle = style.color(m.owner);
       ctx.beginPath();
       ctx.arc(x0 + 5 * dpr, sy, 2.6 * dpr, 0, Math.PI * 2);
       ctx.fill();
       drawIcon(
         ctx,
-        shipLook(state.countries[f.owner], 'heavy').icon,
+        shipLook(state.countries[m.owner], 'heavy').icon,
         x0 + pad + 4 * dpr + icon / 2,
         sy,
         icon,

@@ -1,8 +1,9 @@
 /**
- * The player's settings: the interface, the map's graphics, the pace of the game, autosaves, what each
- * kind of news does, and the key bindings. They are kept between visits (`prefs.ts`), applied at once,
+ * The player's settings: the interface, the map's graphics and what it shows, the pace of the game,
+ * autosaves, what each kind of news does, and the key bindings. They are kept between visits (`prefs.ts`), applied at once,
  * and read outside React by the map and the runner. Sound keeps its own settings in `audio.ts`.
  */
+import type { UnitLayer } from '../game/mapModes';
 import { readPref, writePref } from './prefs';
 import { createStore, useStore } from './store';
 
@@ -33,6 +34,10 @@ export interface Settings {
   keys: Record<string, string[]>;
   /** what each kind of news does, where it differs from auto */
   messages: Record<string, MessageRule>;
+  /** whose armies and fleets the map shows */
+  unitLayers: Record<UnitLayer, boolean>;
+  /** foreign fleets lying in port, when they are not at war with the player */
+  portFleets: boolean;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -46,6 +51,8 @@ export const DEFAULT_SETTINGS: Settings = {
   perfOverlay: false,
   keys: {},
   messages: {},
+  unitLayers: { own: true, allies: true, enemies: true, others: true },
+  portFleets: false,
 };
 
 export const UI_SCALES = [0.8, 0.9, 1, 1.1, 1.25, 1.5, 1.75, 2];
@@ -69,6 +76,10 @@ export function sanitizeSettings(raw: unknown, d: Settings = DEFAULT_SETTINGS): 
   if (r.messages && typeof r.messages === 'object')
     for (const [kind, rule] of Object.entries(r.messages as Record<string, unknown>))
       if (MESSAGE_RULES.includes(rule as MessageRule) && rule !== 'auto') messages[kind] = rule as MessageRule;
+  const layers = (r.unitLayers && typeof r.unitLayers === 'object' ? r.unitLayers : {}) as Record<string, unknown>;
+  const unitLayers = { ...d.unitLayers };
+  for (const k of Object.keys(unitLayers) as UnitLayer[])
+    if (typeof layers[k] === 'boolean') unitLayers[k] = layers[k] as boolean;
   return {
     uiScale: pick(r.uiScale, UI_SCALES, d.uiScale),
     textScale: pick(r.textScale, TEXT_SCALES, d.textScale),
@@ -80,6 +91,8 @@ export function sanitizeSettings(raw: unknown, d: Settings = DEFAULT_SETTINGS): 
     perfOverlay: typeof r.perfOverlay === 'boolean' ? r.perfOverlay : d.perfOverlay,
     keys,
     messages,
+    unitLayers,
+    portFleets: typeof r.portFleets === 'boolean' ? r.portFleets : d.portFleets,
   };
 }
 
