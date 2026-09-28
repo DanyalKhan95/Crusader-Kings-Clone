@@ -500,12 +500,20 @@ after the content they show has settled.
 
 ### M13: War and peace
 
-- [ ] A clearer war score:
-  - [ ] the war goal counts for more the longer it is held
-  - [ ] battles, occupation and blockades each show their share
-  - [ ] every peace offer shows the enemy's answer and its reasons
-- [ ] Peace terms: release nations, make vassals, force a change of faith, humiliate, reparations
-      over years, break alliances, return claimed land.
+- [x] A clearer war score, seen from each side (`warScore(state, war, view)`):
+  - [x] the war goal counts for more the longer it is held: 10 for taking it, then up to 40 more on a
+        rising curve over two years, draining three months a month once it is lost; defenders who
+        lose no land for a year count months of their own, up to 25
+  - [x] battles, occupation and blockades each show their share: each side's victories up to 40
+        (a victory wears half as much off the enemy's), the land each side holds of the other's,
+        and blockaded coasts up to 10
+  - [x] every peace offer shows the enemy's answer and its reasons: the war score, what is asked,
+        their war weariness and the war's length, as a breakdown in the peace dialog
+- [x] Peace terms: release nations (a people of another culture becomes a realm of its own), make
+      vassals (a realm at most three quarters the victor's), force a change of faith, humiliate,
+      reparations over five or ten years (a fifth of the loser's taxes), break alliances, and
+      renounce claims on the victors. Each has its price, and the AI asks for them too: in 30 years
+      from 1066 it took claims back 70 times, reparations 34 times and humiliated 8 aggressors.
 - [ ] Logistics and fronts:
   - [ ] supply that depends on the season, the land and the latitude, with winter attrition
   - [ ] supply lines: armies deep in enemy land need a connection home, or they starve
@@ -519,7 +527,7 @@ after the content they show has settled.
 - [ ] AI for all of it.
 - [ ] Balance: fewer and weightier wars. Today there are about 250 in 30 years, three quarters over
       forged claims. The target is set from long runs.
-- [ ] Saves from milestone 12 load.
+- [x] Saves from milestone 12 load (version 10: each side's battles counted apart, and reparations).
 
 ### M14: Economy and diplomacy
 

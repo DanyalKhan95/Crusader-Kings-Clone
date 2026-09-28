@@ -16,10 +16,10 @@ export function WarView({ id }: { id: number }) {
   const state = game.state;
   const war = state.wars.find((w) => w.id === id);
   if (!war) return <p className="sp-body dim">This war has ended.</p>;
-  const score = warScore(state, war);
   const mySide = sideOf(war, state.player);
+  const score = warScore(state, war, mySide ?? 'attacker');
   const leader = war.attacker === state.player || war.defender === state.player;
-  const shown = mySide === 'defender' ? -score.total : score.total;
+  const shown = score.total;
   const goalText: Record<string, string> = {
     claim: `the province of ${placeName(state, war.goal)}`,
     holy: `the province of ${placeName(state, war.goal)}`,
@@ -60,19 +60,15 @@ export function WarView({ id }: { id: number }) {
         </p>
       </div>
       <div className="war-score">
-        <span className="caps">War score{mySide ? ' for us' : ''}</span>
+        <span className="caps">War score{mySide ? ' for us' : ' for the attackers'}</span>
         <span className={`num big ${shown < 0 ? 'bad' : shown > 0 ? 'good' : ''}`}>{fmtSigned(shown, 0)}%</span>
         <span className="score-bar" aria-hidden="true">
           <span style={{ left: `${50 + Math.min(50, Math.max(-50, shown / 2))}%` }} />
         </span>
       </div>
       <BreakdownList
-        title="Where the score comes from"
-        b={
-          mySide === 'defender'
-            ? { total: -score.total, parts: score.parts.map((p) => ({ ...p, value: -p.value })) }
-            : score
-        }
+        title={mySide ? 'Where the score comes from' : 'Where the score comes from, for the attackers'}
+        b={score}
         digits={0}
         more="rule:war-score"
       />

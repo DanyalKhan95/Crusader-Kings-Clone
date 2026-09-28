@@ -48,7 +48,7 @@ export function createGameState(world: SimWorld, scenario: ScenarioData, opts: {
   registerBeliefs(world.world, world.regions);
   const seed = opts.seed ?? hashString(scenario.id);
   const state: GameState = {
-    version: 9,
+    version: 10,
     scenario: scenario.id,
     seed,
     rng: seed,
@@ -104,6 +104,7 @@ export function createGameState(world: SimWorld, scenario: ScenarioData, opts: {
       warExhaustion: 0,
       manpower: 0,
       loans: [],
+      reparations: [],
       lastBalance: 0,
       ruler: 0,
       rulerSince: 0,

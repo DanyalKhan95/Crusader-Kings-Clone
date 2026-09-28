@@ -8,7 +8,7 @@ import { cultureName } from './beliefs';
 import { makeCharacter, staffCourt } from './characters';
 import { loyalty, release, remember } from './diplomacy';
 import { maxManpower, provinceLevy } from './economy';
-import { chronicle } from './chronicle';
+import { chronicle, theName } from './chronicle';
 import { log } from './log';
 import { newArmy } from './military';
 import {
@@ -35,6 +35,7 @@ import {
   type War,
 } from './types';
 import { distanceKm, type SimWorld } from './world';
+import { placeName } from './places';
 
 export const REVOLT_LOYALTY = -30;
 
@@ -189,6 +190,7 @@ export function createRebelRealm(
     warExhaustion: 0,
     manpower: 0,
     loans: [],
+    reparations: [],
     lastBalance: 0,
     ruler: 0,
     rulerSince: state.day,
@@ -299,7 +301,8 @@ export function startRevolt(state: GameState, world: SimWorld, c: Country, e: Es
     attackers: [rebel.index],
     defenders: realmMembers(state, c.index),
     start: state.day,
-    battleScore: 0,
+    battleGain: 0,
+    battleLoss: 0,
     ticking: 0,
     ...(demand === 'throne' ? {} : { demand }),
   };
@@ -394,7 +397,8 @@ export function startNationalRevolt(
     attackers: [rebel.index],
     defenders: realmMembers(state, c.index),
     start: state.day,
-    battleScore: 0,
+    battleGain: 0,
+    battleLoss: 0,
     ticking: 0,
     demand: 'nation',
   };
@@ -440,6 +444,87 @@ function becomeNation(state: GameState, world: SimWorld, rebel: Country) {
     province: rebel.capital,
     important: true,
   });
+}
+
+/** A people a treaty of peace could set free: the provinces of a culture that is not the crown's own. */
+export interface Releasable {
+  culture: string;
+  provinces: number[];
+  dev: number;
+}
+
+/** The peoples of a realm's own land that a peace could set free, the largest first. */
+export function releasable(state: GameState, c: Country): Releasable[] {
+  const groups = new Map<string, Releasable>();
+  for (const id of provincesOf(state, c.index)) {
+    const p = state.provinces[id];
+    if (!p.culture || p.culture === c.culture || id === c.capital) continue;
+    let g = groups.get(p.culture);
+    if (!g) groups.set(p.culture, (g = { culture: p.culture, provinces: [], dev: 0 }));
+    g.provinces.push(id);
+    g.dev += p.dev;
+  }
+  return [...groups.values()].sort((a, b) => b.dev - a.dev || a.culture.localeCompare(b.culture));
+}
+
+/**
+ * A people set free by a treaty of peace: a realm of its own over its provinces, grateful to the one
+ * that freed it. Its crown follows the age: a duchy or kingdom, a chiefdom of the tribes, or a republic.
+ */
+export function releaseNation(
+  state: GameState,
+  world: SimWorld,
+  from: Country,
+  culture: string,
+  by: Country,
+): Country | null {
+  const provinces = provincesOf(state, from.index)
+    .filter((id) => state.provinces[id].culture === culture && id !== from.capital)
+    .sort((a, b) => state.provinces[b].dev - state.provinces[a].dev);
+  if (!provinces.length) return null;
+  const nation = createRebelRealm(state, world, from, provinces, 'commons', 'nation');
+  const people = cultureName(culture);
+  const seat = placeName(state, nation.capital);
+  nation.rebel = undefined;
+  nation.culture = culture;
+  nation.adj = people;
+  nation.rank = provinces.length >= 6 ? 'kingdom' : 'duchy';
+  nation.gov = knowsId(from, 'popular_sovereignty')
+    ? 'democracy'
+    : knowsId(from, 'constitutionalism')
+      ? 'constitutional'
+      : from.gov === 'tribal' || from.gov === 'nomadic' || from.gov === 'clan'
+        ? from.gov
+        : 'feudal';
+  nation.laws.succession = nation.gov === 'democracy' ? 'republic' : 'hereditary';
+  if (nation.laws.succession === 'republic') nation.termEnds = state.day + 4 * 365;
+  if (nation.gov === 'democracy') nation.name = nation.short = `${people} Republic`;
+  else if (nation.gov === 'tribal' || nation.gov === 'nomadic' || nation.gov === 'clan') {
+    nation.name = `${people} Chiefdom of ${seat}`;
+    nation.short = seat;
+  } else {
+    nation.name = `${nation.rank === 'kingdom' ? 'Kingdom' : 'Duchy'} of ${seat}`;
+    nation.short = seat;
+  }
+  const hex = world.world.cultures[culture]?.color;
+  if (hex) {
+    nation.colorHex = hex;
+    nation.color = [parseInt(hex.slice(1, 3), 16), parseInt(hex.slice(3, 5), 16), parseInt(hex.slice(5, 7), 16)];
+  }
+  nation.legitimacy = 50;
+  nation.ai = { nextWarCheck: state.day + 365 * 3, nextBuild: state.day, nextDiplo: state.day + 60 };
+  remember(state, nation.index, by.index, 'freed_us', 50);
+  invalidatePolitics(state);
+  if (nation.rank === 'kingdom')
+    chronicle(state, `The ${people} are set free by ${theName(by.name)}: the ${nation.name} is born.`, {
+      province: nation.capital,
+      realm: nation.index,
+    });
+  log(state, 'all', 'peace', `The ${people} of ${from.name} are set free by ${by.name}: the ${nation.name} is born.`, {
+    province: nation.capital,
+    important: from.index === state.player || by.index === state.player,
+  });
+  return nation;
 }
 
 /**
@@ -564,7 +649,8 @@ export function factionWar(state: GameState, liege: number, members: number[], l
     attackers,
     defenders: realmMembers(state, liege).filter((x) => !attackers.includes(x)),
     start: state.day,
-    battleScore: 0,
+    battleGain: 0,
+    battleLoss: 0,
     ticking: 0,
   };
   state.wars.push(war);

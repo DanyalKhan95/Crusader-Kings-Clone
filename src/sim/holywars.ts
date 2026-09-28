@@ -132,7 +132,8 @@ export function callHolyWar(state: GameState, world: SimWorld, def: GreatHolyWar
     attackers,
     defenders: realmMembers(state, d.index).filter((x) => !attackers.includes(x)),
     start: state.day,
-    battleScore: 0,
+    battleGain: 0,
+    battleLoss: 0,
     ticking: 0,
   };
   state.wars.push(war);
@@ -262,6 +263,7 @@ function foundKingdom(
     warExhaustion: 0,
     manpower: 0,
     loans: [],
+    reparations: [],
     lastBalance: 0,
     ruler: 0,
     rulerSince: state.day,

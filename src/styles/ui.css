@@ -1861,6 +1861,9 @@ button.holder:hover {
   padding: 0;
   border: 0;
 }
+.choices .segmented {
+  justify-self: start;
+}
 .choices legend {
   margin-bottom: 6px;
   font-size: calc(13px * var(--text-scale, 1));
@@ -1891,6 +1894,15 @@ button.holder:hover {
 }
 .choice-name {
   font-weight: 700;
+}
+.choice-cost {
+  margin-left: 6px;
+  font-weight: 400;
+  color: var(--text-dim);
+}
+.choice-cost::before {
+  content: '·';
+  margin-right: 6px;
 }
 .choice input {
   accent-color: var(--seal-bright);

@@ -201,6 +201,7 @@ export const MEMORY: Record<MemoryKind, { label: string; decay: number; min: num
   refused: { label: 'Turned down our proposal', decay: 2, min: -20, max: 0 },
   insulted: { label: 'Insulted us', decay: 0.5, min: -60, max: 0 },
   plotted: { label: 'Plotted against us', decay: 0.4, min: -150, max: 0 },
+  humiliated: { label: 'Humiliated us', decay: 0.4, min: -80, max: 0 },
 };
 
 /** Adds to what `of` remembers about `about`. */

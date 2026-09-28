@@ -104,7 +104,8 @@ export type MemoryKind =
   | 'freed_us'
   | 'refused'
   | 'insulted'
-  | 'plotted';
+  | 'plotted'
+  | 'humiliated';
 
 export interface Memory {
   kind: MemoryKind;
@@ -129,6 +130,12 @@ export interface Loan {
   amount: number;
   /** gold per month */
   interest: number;
+}
+
+/** Reparations a beaten realm owes: a share of its taxes each month, to a realm, until a day. */
+export interface Reparation {
+  to: number;
+  until: number;
 }
 
 export interface Country {
@@ -159,6 +166,8 @@ export interface Country {
   /** levies available to raise (men) */
   manpower: number;
   loans: Loan[];
+  /** reparations it pays after a lost war */
+  reparations: Reparation[];
   /** net gold of the last month, for display */
   lastBalance: number;
   /**
@@ -396,9 +405,14 @@ export interface War {
   attackers: number[];
   defenders: number[];
   start: number;
-  /** battle share of the war score, attacker's view, -40 … 40 */
-  battleScore: number;
-  /** months the war goal has been held, positive for the attacker */
+  /** war score the attackers have won in battle, 0 … 40 */
+  battleGain: number;
+  /** war score the attackers have lost in battle (the defenders' victories), 0 … 40 */
+  battleLoss: number;
+  /**
+   * Months the attackers have held the war goal (positive), or the defenders have held out with none
+   * of their land taken (negative); it counts for more the longer it lasts.
+   */
   ticking: number;
   /** revolts: what the rebels want */
   demand?: Demand;
@@ -428,6 +442,20 @@ export interface PeaceTerms {
   crush?: boolean;
   /** great holy wars: the land around the holy city is won for the faith */
   holyLand?: boolean;
+  /** peoples of the loser's realm set free as nations of their own (by culture) */
+  release?: string[];
+  /** the losing leader becomes the winner's vassal */
+  vassal?: boolean;
+  /** the losing leader takes the winner's faith */
+  convert?: boolean;
+  /** the losing leader is humbled: its legitimacy falls, and the winner's rises */
+  humiliate?: boolean;
+  /** years for which the losing leader pays reparations */
+  reparations?: number;
+  /** the losing leader's alliances are dissolved */
+  breakAlliances?: boolean;
+  /** the losing leader gives up its claims on the winners' land and crowns */
+  renounce?: boolean;
   white?: boolean;
 }
 
@@ -538,7 +566,7 @@ export interface LedgerSnapshot {
 }
 
 export interface GameState {
-  version: 9;
+  version: 10;
   scenario: string;
   seed: number;
   rng: number;

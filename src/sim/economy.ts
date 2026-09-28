@@ -138,6 +138,8 @@ export function fortLevel(state: GameState, id: number): number {
 
 /** Share of a tributary's taxes paid to its overlord (a vassal's share depends on crown authority). */
 export const TRIBUTARY_TRIBUTE = 0.15;
+/** Share of its taxes a beaten realm pays each month to a realm it owes reparations. */
+export const REPARATIONS = 0.2;
 
 /**
  * What a realm's own provinces yield before its multipliers: taxes and levies in full, what is paid
@@ -203,6 +205,8 @@ interface Accounts {
   taxes(c: Country): Taxes;
   vassals(index: number): Country[];
   tributaries(index: number): Country[];
+  /** realms that owe this one reparations */
+  debtors(index: number): Country[];
 }
 
 function freshAccounts(state: GameState): Accounts {
@@ -211,17 +215,29 @@ function freshAccounts(state: GameState): Accounts {
     taxes: (c) => taxesOf(state, c, yieldOf(state, c)),
     vassals: (index) => vassalsOf(state, index),
     tributaries: (index) => tributariesOf(state, index),
+    debtors: (index) => state.countries.filter((c) => c?.alive && c.reparations.some((r) => r.to === index)),
   };
+}
+
+/** Share of a realm's taxes it pays to a realm it owes reparations, unless the two are at war again. */
+function reparationsTo(state: GameState, payer: Country, to: number): number {
+  return payer.reparations.some((r) => r.to === to && r.until > state.day) && !atWar(state, payer.index, to)
+    ? REPARATIONS
+    : 0;
 }
 
 export function income(state: GameState, c: Country, accounts: Accounts = freshAccounts(state)): Breakdown {
   const { taxes, withheld, blockaded } = accounts.taxes(c);
   let fromVassals = 0,
-    fromTributaries = 0;
+    fromTributaries = 0,
+    fromDebtors = 0,
+    toCreditors = 0;
   for (const v of accounts.vassals(c.index))
     if (!atWar(state, v.index, c.index)) fromVassals += accounts.taxes(v).taxes * CROWN_TRIBUTE[c.laws.crown];
   for (const t of accounts.tributaries(c.index))
     if (!atWar(state, t.index, c.index)) fromTributaries += accounts.taxes(t).taxes * TRIBUTARY_TRIBUTE;
+  for (const d of accounts.debtors(c.index)) fromDebtors += accounts.taxes(d).taxes * reparationsTo(state, d, c.index);
+  for (const r of c.reparations) toCreditors += taxes * reparationsTo(state, c, r.to);
   const paysLiege = c.liege && !atWar(state, c.index, c.liege);
   const paysOverlord = c.overlord && !atWar(state, c.index, c.overlord);
   return breakdown([
@@ -230,11 +246,13 @@ export function income(state: GameState, c: Country, accounts: Accounts = freshA
     { label: 'Lost to enemy blockades', value: -blockaded },
     { label: 'Tribute from vassals', value: fromVassals },
     { label: 'Tribute from tributaries', value: fromTributaries },
+    { label: 'Reparations owed to us', value: fromDebtors },
     {
       label: 'Tribute to your liege',
       value: paysLiege ? -taxes * CROWN_TRIBUTE[state.countries[c.liege].laws.crown] : 0,
     },
     { label: 'Tribute to your overlord', value: paysOverlord ? -taxes * TRIBUTARY_TRIBUTE : 0 },
+    { label: 'Reparations we pay', value: -toCreditors },
   ]);
 }
 
@@ -431,6 +449,7 @@ export function monthlyEconomy(state: GameState) {
   const taxes: (Taxes | undefined)[] = [];
   const vassals = new Map<number, Country[]>();
   const tributaries = new Map<number, Country[]>();
+  const debtors = new Map<number, Country[]>();
   const add = (subjects: Map<number, Country[]>, lord: number, c: Country) => {
     const list = subjects.get(lord);
     if (list) list.push(c);
@@ -440,12 +459,14 @@ export function monthlyEconomy(state: GameState) {
     if (!c?.alive) continue;
     if (c.liege) add(vassals, c.liege, c);
     if (c.overlord) add(tributaries, c.overlord, c);
+    for (const r of c.reparations) add(debtors, r.to, c);
   }
   const accounts: Accounts = {
     yields: (c) => (yields[c.index] ??= yieldOf(state, c)),
     taxes: (c) => (taxes[c.index] ??= taxesOf(state, c, accounts.yields(c))),
     vassals: (index) => vassals.get(index) ?? [],
     tributaries: (index) => tributaries.get(index) ?? [],
+    debtors: (index) => debtors.get(index) ?? [],
   };
   for (const c of state.countries) {
     if (!c?.alive) continue;

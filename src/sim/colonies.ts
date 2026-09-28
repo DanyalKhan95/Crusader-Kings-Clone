@@ -353,6 +353,7 @@ export function foundColonialNation(
     warExhaustion: 0,
     manpower: 0,
     loans: [],
+    reparations: [],
     lastBalance: 0,
     ruler: 0,
     rulerSince: state.day,

@@ -184,7 +184,9 @@ describe('fleets', () => {
     expect(s.navalBattles).toHaveLength(0);
     expect(fleetSize(a)).toBeGreaterThan(20);
     expect(!s.fleets.includes(b) || b.retreating || fleetSize(b) < 8).toBe(true);
-    expect(s.wars[0].battleScore).toBeGreaterThan(0);
+    // England attacks: its victory at sea counts for the attackers, and nothing against them.
+    expect(s.wars[0].battleGain).toBeGreaterThan(0);
+    expect(s.wars[0].battleLoss).toBe(0);
   });
 
   it('blockade enemy coasts: taxes suffer', () => {

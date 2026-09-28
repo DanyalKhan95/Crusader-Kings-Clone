@@ -118,6 +118,11 @@ when a milestone lands.
   - `diplomacy.ts` holds treaties, opinion and memories, claims, aggressive expansion, coalitions
     and subjects; `war.ts` holds casus belli, calls to arms and peace; `realm.ts` holds capitals
     and the end of a country. Treaties belong to independent realms only (vassals have none).
+  - The war score is a breakdown seen from one side (`warScore(state, war, view)`, `scoreFor`).
+    Battles add to it through `recordBattle`; `War.ticking` counts the months the goal is held
+    (or the defenders hold out). A peace term needs its price in `peaceCost`, its rule in
+    `allowedTerms`, its effect in `endWar` and a line in both peace dialogs; the answer is a
+    breakdown (`peaceAcceptance(…).why`). `setPeaceSink` lets `tools/simulate.ts` count the terms.
   - `politics.ts` holds laws, legitimacy, estates, council tasks and elections; `revolts.ts`
     holds revolts and vassal factions. Council bonuses go through `taskSkill(seat, task)`, not
     `seatSkill`. Call `invalidatePolitics` after changing laws, privileges or tasks outside the

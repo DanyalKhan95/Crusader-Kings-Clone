@@ -19,7 +19,7 @@ import { monthlyHeresies } from '../src/sim/faith';
 import { canCallHolyWar, holyWarLeader } from '../src/sim/holywars';
 import { greatPowers, monthlyWorldEvents } from '../src/sim/worldEvents';
 import { countryByTag, provincesOf } from '../src/sim/queries';
-import { deserialize, serialize } from '../src/sim/save';
+import { deserialize, SAVE_VERSION, serialize } from '../src/sim/save';
 import { END_DAY, ranking, rankOf, standing, yearlyScore } from '../src/sim/score';
 import { createGameState } from '../src/sim/setup';
 import { advanceDay } from '../src/sim/tick';
@@ -306,7 +306,7 @@ describe('saves', () => {
     delete raw.state.ledger;
     for (const c of raw.state.countries) if (c) delete c.score;
     const back = deserialize(JSON.stringify(raw), world);
-    expect(back.version).toBe(9);
+    expect(back.version).toBe(SAVE_VERSION);
     expect(back.ledger).toEqual([]);
     expect(back.countries[1].score).toBe(0);
     expect(back.chronicle.map((e) => e.text)).toContain('The Black Death breaks out.');

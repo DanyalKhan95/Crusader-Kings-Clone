@@ -19,7 +19,7 @@ import {
 import { income } from '../src/sim/economy';
 import { newArmy, orderMove } from '../src/sim/military';
 import { countryByTag, provincesOf, realmNeighbours } from '../src/sim/queries';
-import { deserialize, serialize } from '../src/sim/save';
+import { deserialize, SAVE_VERSION, serialize } from '../src/sim/save';
 import { createGameState } from '../src/sim/setup';
 import { advanceDay } from '../src/sim/tick';
 import type { GameState } from '../src/sim/types';
@@ -334,7 +334,7 @@ describe('saves', () => {
       defenders: [pol.index],
     });
     const loaded = deserialize(JSON.stringify(file));
-    expect(loaded.version).toBe(9);
+    expect(loaded.version).toBe(SAVE_VERSION);
     expect(loaded.pacts).toEqual([]);
     expect(loaded.countries[hun.index].laws.taxation).toBe(1);
     const war = loaded.wars.find((w) => w.id === 9999)!;

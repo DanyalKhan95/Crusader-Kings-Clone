@@ -16,6 +16,7 @@ import { militaryEra, techEffect } from './tech';
 import type { Army, Battle, BattleSide, GameState, UnitType, Units } from './types';
 import type { SimWorld } from './world';
 import { placeName } from './places';
+import { recordBattle } from './war';
 
 /** Damage multiplier for attackers by the defender's terrain. */
 const TERRAIN_DEFENCE: Record<string, number> = {
@@ -290,8 +291,7 @@ function endBattle(state: GameState, world: SimWorld, battle: Battle, winner: 'a
   });
   if (war) {
     const swing = Math.min(12, (40 * L.losses) / Math.max(1, W.start + L.start) + 2);
-    const sign = sideOf(war, W.country) === 'attacker' ? 1 : -1;
-    war.battleScore = Math.max(-40, Math.min(40, war.battleScore + sign * swing));
+    recordBattle(war, sideOf(war, W.country) === 'attacker', swing);
   }
   for (const side of [W, L]) {
     const c = state.countries[side.country];

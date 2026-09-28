@@ -29,7 +29,7 @@ import {
 import { canReach, routeFor } from '../src/sim/military';
 import { canChangeLaw, estateLoyalty, lawCost, legitimacyTarget } from '../src/sim/politics';
 import { countryByTag, provincesOf, realmNeighbours, topLiege } from '../src/sim/queries';
-import { deserialize, serialize } from '../src/sim/save';
+import { deserialize, SAVE_VERSION, serialize } from '../src/sim/save';
 import { createGameState } from '../src/sim/setup';
 import { advanceDay } from '../src/sim/tick';
 import type { Country, GameState } from '../src/sim/types';
@@ -323,7 +323,7 @@ describe('pagans, saves and the long run', () => {
         delete c[k];
     }
     const loaded = deserialize(JSON.stringify(file));
-    expect(loaded.version).toBe(9);
+    expect(loaded.version).toBe(SAVE_VERSION);
     expect(loaded.holyWars).toEqual({});
     const fra = tag(loaded, 'FRA');
     expect(fra.laws.tolerance).toBe(1);

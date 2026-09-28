@@ -20,6 +20,8 @@ import { ProfileTotals, setProfileSink } from '../src/sim/profile.ts';
 import { deserialize, serialize } from '../src/sim/save.ts';
 import { makeSimWorld } from '../src/sim/world.ts';
 import { ranking as scoreRanking } from '../src/sim/score.ts';
+import { setPeaceSink } from '../src/sim/war.ts';
+import type { PeaceTerms } from '../src/sim/types.ts';
 import type { RegionData, ScenarioData, WorldData } from '../src/shared/dataTypes.ts';
 
 const arg = (name: string, fallback: number) => {
@@ -79,6 +81,32 @@ const initialOwners = state.provinces.map((p) => p?.owner ?? 0);
 const initialFaiths = state.provinces.map((p) => p?.religion ?? null);
 const initialCultures = state.provinces.map((p) => p?.culture ?? null);
 const crusades: string[] = [];
+/** How the wars ended: who won, and what each peace asked. */
+const endings = new Map<string, number>();
+const count = (k: string) => endings.set(k, (endings.get(k) ?? 0) + 1);
+const TERMS: (keyof PeaceTerms)[] = [
+  'throne',
+  'tributary',
+  'vassal',
+  'independence',
+  'demands',
+  'crush',
+  'holyLand',
+  'convert',
+  'humiliate',
+  'reparations',
+  'breakAlliances',
+  'renounce',
+];
+setPeaceSink((_, war, winner, terms) => {
+  if (!winner || terms.white) return count(terms.white ? 'white peace' : 'no one');
+  count(`won by the ${winner}s`);
+  if (terms.provinces.length) count('land');
+  if (terms.gold > 0) count('gold');
+  if (terms.release?.length) count('release');
+  for (const t of TERMS) if (terms[t]) count(t);
+  void war;
+});
 const seenSeaBattles = new Set<number>();
 let seaBattles = 0;
 for (let d = 0; d < years * 365; d++) {
@@ -176,6 +204,12 @@ if (profile) {
   }
 }
 console.log(`wars started ${wars}, ended ${peaces}: ${[...byCause].map(([k, n]) => `${k} ${n}`).join(', ')}`);
+console.log(
+  `how they ended: ${[...endings]
+    .sort((a, b) => b[1] - a[1])
+    .map(([k, n]) => `${k} ${n}`)
+    .join(', ')}`,
+);
 const changed = state.provinces.filter((p, id) => p && p.owner !== initialOwners[id]).length;
 console.log(`provinces that changed hands: ${changed}`);
 const ranking = state.countries

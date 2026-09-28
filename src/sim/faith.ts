@@ -9,7 +9,7 @@ import { toDate } from './calendar';
 import { cultureGroup, cultureName, faithFamily, faithName, holySites } from './beliefs';
 import { rulerSkill, seatSkill } from './characters';
 import type { Part } from './economy';
-import { agree, chronicle, firstTime, TheName } from './chronicle';
+import { agree, chronicle, firstTime, theName, TheName } from './chronicle';
 import { log } from './log';
 import { modifierEffect } from './modifiers';
 import { countryByTag, provincesOf, realmNeighbours, topLiege } from './queries';
@@ -536,6 +536,43 @@ export function adoptFaith(state: GameState, world: SimWorld, c: Country, faith:
     important: c.index === state.player,
   });
   return true;
+}
+
+/**
+ * The crown takes up a new faith, and the capital with it: by its own choice, or at the demand of the
+ * realm that has beaten it (`by`).
+ */
+export function turnFaith(state: GameState, c: Country, faith: string, by?: Country) {
+  const old = c.religion;
+  c.religion = faith;
+  c.converting = null;
+  const cap = state.provinces[c.capital];
+  if (cap && cap.owner === c.index) cap.religion = faith;
+  state.mapVersion++;
+  state.diploVersion++;
+  if (!c.liege && (c.rank === 'kingdom' || c.rank === 'empire'))
+    chronicle(
+      state,
+      by
+        ? `${TheName(c.name)} ${agree(c.name, 'is', 'are')} made to take up the ${faithName(faith)} faith by ${theName(by.name)}.`
+        : `${TheName(c.name)} ${agree(c.name, 'breaks', 'break')} with the ${faithName(old)} church and ${agree(c.name, 'turns', 'turn')} ${faithName(faith)}.`,
+      {
+        province: c.capital,
+        realm: c.index,
+      },
+    );
+  log(
+    state,
+    'all',
+    'event',
+    by
+      ? `${c.name} must forsake ${faithName(old)}: at the demand of ${by.name}, its crown is now ${faithName(faith)}.`
+      : `${c.name} breaks with the ${faithName(old)} church: its crown is now ${faithName(faith)}.`,
+    {
+      province: c.capital,
+      important: c.index === state.player,
+    },
+  );
 }
 
 /** Legitimacy from holding the holy places of the realm's own faith. */

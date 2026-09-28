@@ -1,19 +1,71 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 import * as cmd from '../../sim/commands';
-import { PACT_INFO } from '../../sim/diplomacy';
+import { cultureName, faithName } from '../../sim/beliefs';
+import { alliesOf, PACT_INFO } from '../../sim/diplomacy';
+import { REPARATIONS } from '../../sim/economy';
 import { greatHolyWarOf, holyLandOf } from '../../sim/holywars';
 import { provincesOf, realmStrength } from '../../sim/queries';
 import type { PeaceTerms } from '../../sim/types';
-import { allowedTerms, offerCost, peaceAcceptance, scoreFor, winnerSide } from '../../sim/war';
+import { releasable } from '../../sim/revolts';
+import {
+  allowedTerms,
+  claimsToRenounce,
+  HUMILIATION,
+  offerCost,
+  peaceAcceptance,
+  REPARATION_TERMS,
+  scoreFor,
+  winnerSide,
+} from '../../sim/war';
 import { formatMen } from '../../render/units';
 import { CoatOfArms } from '../CoatOfArms';
 import { run } from '../actions';
 import { useGame } from '../game';
 import { Icon } from '../Icon';
 import { useStore } from '../store';
-import { fmtSigned } from '../hud/Tip';
+import { BreakdownList, fmtSigned } from '../hud/Tip';
 import { Modal } from './Modal';
 import { placeName } from '../../sim/places';
+
+type Flag =
+  | 'throne'
+  | 'tributary'
+  | 'independence'
+  | 'settle'
+  | 'holyLand'
+  | 'vassal'
+  | 'convert'
+  | 'humiliate'
+  | 'breakAlliances'
+  | 'renounce';
+
+/** A term of peace to tick, with what it does and what it costs on its own. */
+function Choice({
+  on,
+  set,
+  name,
+  cost,
+  children,
+}: {
+  on: boolean;
+  set: (v: boolean) => void;
+  name: string;
+  cost?: number;
+  children: ReactNode;
+}) {
+  return (
+    <label className={`choice ${on ? 'active' : ''}`}>
+      <input type="checkbox" checked={on} onChange={(e) => set(e.target.checked)} />
+      <span>
+        <span className="choice-name">
+          {name}
+          {cost !== undefined && <span className="choice-cost num"> {Math.round(cost)}%</span>}
+        </span>
+        <span className="dim small">{children}</span>
+      </span>
+    </label>
+  );
+}
 
 /** Terms of peace for a war the player leads. */
 export function Peace() {
@@ -36,29 +88,49 @@ export function Peace() {
   }, [war?.id]);
   const [picked, setPicked] = useState<number[]>([]);
   const [gold, setGold] = useState(0);
-  const [throne, setThrone] = useState(false);
-  const [tributary, setTributary] = useState(false);
-  const [freedom, setFreedom] = useState(false);
-  const [settle, setSettle] = useState(false);
-  const [holyLand, setHolyLand] = useState(false);
+  const [flags, setFlags] = useState<Partial<Record<Flag, boolean>>>({});
+  const [freed, setFreed] = useState<string[]>([]);
+  const [reparations, setReparations] = useState(0);
   const [white, setWhite] = useState(false);
   if (!war) return null;
   const enemyLeader = state.countries[side === 'attacker' ? war.defender : war.attacker];
+  const me = state.countries[player];
   const score = scoreFor(state, war, player);
   const allowed = allowedTerms(state, war, side);
-  const claimed = new Set(state.countries[player]?.claims ?? []);
+  const claimed = new Set(me?.claims ?? []);
+  const peoples = allowed.release ? releasable(state, enemyLeader).slice(0, 8) : [];
+  const renounce = allowed.renounce ? claimsToRenounce(state, war, side) : null;
+  const flag = (f: Flag) => !!flags[f];
+  const setFlag = (f: Flag) => (v: boolean) =>
+    setFlags((old) => ({
+      ...old,
+      [f]: v,
+      // A vassal pays no tribute, and a tributary is no vassal.
+      ...(v && f === 'vassal' ? { tributary: false } : {}),
+      ...(v && f === 'tributary' ? { vassal: false } : {}),
+    }));
   const terms: PeaceTerms = white
     ? { provinces: [], gold: 0, white: true }
     : {
         provinces: picked,
         gold,
-        throne: allowed.throne && throne,
-        tributary: allowed.tributary && tributary,
-        independence: allowed.independence && freedom,
-        demands: allowed.demands && settle,
-        crush: allowed.crush && settle,
-        holyLand: allowed.holyLand && holyLand,
+        throne: allowed.throne && flag('throne'),
+        tributary: allowed.tributary && flag('tributary'),
+        independence: allowed.independence && flag('independence'),
+        demands: allowed.demands && flag('settle'),
+        crush: allowed.crush && flag('settle'),
+        holyLand: allowed.holyLand && flag('holyLand'),
+        vassal: allowed.vassal && flag('vassal'),
+        convert: allowed.convert && flag('convert'),
+        humiliate: allowed.humiliate && flag('humiliate'),
+        breakAlliances: allowed.breakAlliances && flag('breakAlliances'),
+        renounce: allowed.renounce && flag('renounce'),
+        ...(allowed.release && freed.length ? { release: freed } : {}),
+        ...(allowed.reparations && reparations ? { reparations } : {}),
       };
+  /** What one term would cost on its own. */
+  const alone = (extra: Partial<PeaceTerms>) =>
+    offerCost(state, game.world, war, side, { provinces: [], gold: 0, ...extra });
   const cost = white ? 0 : offerCost(state, game.world, war, side, terms);
   const answer = peaceAcceptance(state, game.world, war, player, terms);
   const empty =
@@ -70,9 +142,18 @@ export function Peace() {
     !terms.independence &&
     !terms.demands &&
     !terms.crush &&
-    !terms.holyLand;
+    !terms.holyLand &&
+    !terms.vassal &&
+    !terms.convert &&
+    !terms.humiliate &&
+    !terms.breakAlliances &&
+    !terms.renounce &&
+    !terms.release?.length &&
+    !terms.reparations;
   const maxGold = Math.max(0, Math.floor(enemyLeader.gold));
   const toggle = (id: number) => setPicked((p) => (p.includes(id) ? p.filter((x) => x !== id) : [...p, id]));
+  const free = (culture: string) =>
+    setFreed((f) => (f.includes(culture) ? f.filter((x) => x !== culture) : [...f, culture]));
   const send = () => {
     if (run(game, cmd.offerPeace(state, game.world, war.id, terms))) game.ui.set({ modal: 'none', panel: 'country' });
   };
@@ -94,109 +175,206 @@ export function Peace() {
       {!white && (
         <>
           {allowed.throne && (
-            <label className={`choice ${throne ? 'active' : ''}`}>
-              <input type="checkbox" checked={throne} onChange={(e) => setThrone(e.target.checked)} />
-              <span>
-                <span className="choice-name">Take the crown</span>
-                <span className="dim small">
-                  Your ruler becomes ruler of {enemyLeader.name}, and your lands join it.
-                </span>
-              </span>
-            </label>
+            <Choice on={flag('throne')} set={setFlag('throne')} name="Take the crown" cost={alone({ throne: true })}>
+              Your ruler becomes ruler of {enemyLeader.name}, and your lands join it.
+            </Choice>
           )}
           {allowed.independence && (
-            <label className={`choice ${freedom ? 'active' : ''}`}>
-              <input type="checkbox" checked={freedom} onChange={(e) => setFreedom(e.target.checked)} />
-              <span>
-                <span className="choice-name">Independence</span>
-                <span className="dim small">You answer to {enemyLeader.name} no longer.</span>
-              </span>
-            </label>
+            <Choice
+              on={flag('independence')}
+              set={setFlag('independence')}
+              name="Independence"
+              cost={alone({ independence: true })}
+            >
+              You answer to {enemyLeader.name} no longer.
+            </Choice>
           )}
           {(allowed.demands || allowed.crush) && (
-            <label className={`choice ${settle ? 'active' : ''}`}>
-              <input type="checkbox" checked={settle} onChange={(e) => setSettle(e.target.checked)} />
-              <span>
-                <span className="choice-name">
-                  {allowed.crush
-                    ? 'Crush the revolt'
-                    : war.demand === 'nation'
-                      ? 'Independence'
-                      : 'Our demands are met'}
-                </span>
-                <span className="dim small">
-                  {allowed.crush
-                    ? 'The rebels lay down their arms and their land returns to the crown.'
-                    : war.demand === 'nation'
-                      ? 'The land you hold becomes a nation of its own.'
-                      : 'The crown gives way, and the land returns to it.'}
-                </span>
-              </span>
-            </label>
+            <Choice
+              on={flag('settle')}
+              set={setFlag('settle')}
+              name={
+                allowed.crush ? 'Crush the revolt' : war.demand === 'nation' ? 'Independence' : 'Our demands are met'
+              }
+              cost={alone(allowed.crush ? { crush: true } : { demands: true })}
+            >
+              {allowed.crush
+                ? 'The rebels lay down their arms and their land returns to the crown.'
+                : war.demand === 'nation'
+                  ? 'The land you hold becomes a nation of its own.'
+                  : 'The crown gives way, and the land returns to it.'}
+            </Choice>
           )}
-          {allowed.holyLand && <HolyLandChoice checked={holyLand} onChange={setHolyLand} />}
+          {allowed.holyLand && <HolyLandChoice checked={flag('holyLand')} onChange={setFlag('holyLand')} />}
+          {allowed.vassal && (
+            <Choice
+              on={flag('vassal')}
+              set={setFlag('vassal')}
+              name="Make them our vassal"
+              cost={alone({ vassal: true })}
+            >
+              {enemyLeader.name} swears fealty to you: its land joins your realm, it gives up its treaties and its other
+              wars, and in time you may integrate it. The neighbours will be alarmed.
+            </Choice>
+          )}
           {allowed.tributary && (
-            <label className={`choice ${tributary ? 'active' : ''}`}>
-              <input type="checkbox" checked={tributary} onChange={(e) => setTributary(e.target.checked)} />
-              <span>
-                <span className="choice-name">Make them pay tribute</span>
-                <span className="dim small">
-                  {enemyLeader.name} pays you 15% of its taxes, gives up its alliances, and calls on you when attacked.
-                  It will resent it.
-                </span>
-              </span>
-            </label>
+            <Choice
+              on={flag('tributary')}
+              set={setFlag('tributary')}
+              name="Make them pay tribute"
+              cost={alone({ tributary: true })}
+            >
+              {enemyLeader.name} pays you 15% of its taxes, gives up its alliances, and calls on you when attacked. It
+              will resent it.
+            </Choice>
+          )}
+          {allowed.spoils && allowed.land && (
+            <fieldset className="choices">
+              <legend className="caps">Provinces to take</legend>
+              {candidates.length ? (
+                <ul className="peace-provinces">
+                  {candidates.map((id) => (
+                    <li key={id}>
+                      <label className={`choice compact ${picked.includes(id) ? 'active' : ''}`}>
+                        <input type="checkbox" checked={picked.includes(id)} onChange={() => toggle(id)} />
+                        <span className="choice-name">{placeName(game.state, id)}</span>
+                        <span className="dim small num">
+                          dev {state.provinces[id].dev}
+                          {id === war.goal ? ' · war goal' : ''}
+                          {claimed.has(id) ? ' · claimed' : ''}
+                        </span>
+                      </label>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="dim small">You hold none of their land. Occupy provinces to demand them.</p>
+              )}
+            </fieldset>
+          )}
+          {peoples.length > 0 && (
+            <fieldset className="choices">
+              <legend className="caps">Peoples to set free</legend>
+              <ul className="peace-provinces">
+                {peoples.map((g) => (
+                  <li key={g.culture}>
+                    <label className={`choice compact ${freed.includes(g.culture) ? 'active' : ''}`}>
+                      <input type="checkbox" checked={freed.includes(g.culture)} onChange={() => free(g.culture)} />
+                      <span className="choice-name">The {cultureName(g.culture)}</span>
+                      <span className="dim small num">
+                        {g.provinces.length} {g.provinces.length === 1 ? 'province' : 'provinces'} · dev {g.dev}
+                      </span>
+                    </label>
+                  </li>
+                ))}
+              </ul>
+              <p className="dim small">Each people becomes a realm of its own, grateful to you.</p>
+            </fieldset>
+          )}
+          {allowed.convert && (
+            <Choice
+              on={flag('convert')}
+              set={setFlag('convert')}
+              name="Force a change of faith"
+              cost={alone({ convert: true })}
+            >
+              The crown of {enemyLeader.name} takes up the {faithName(me.religion)} faith. Its people keep their own,
+              and will resent it.
+            </Choice>
+          )}
+          {allowed.humiliate && (
+            <Choice
+              on={flag('humiliate')}
+              set={setFlag('humiliate')}
+              name="Humiliate them"
+              cost={alone({ humiliate: true })}
+            >
+              Their crown loses {HUMILIATION.loser} legitimacy and yours gains {HUMILIATION.winner}. They will not
+              forget it.
+            </Choice>
+          )}
+          {allowed.reparations && (
+            <fieldset className="choices">
+              <legend className="caps">Reparations</legend>
+              <div className="segmented" role="radiogroup" aria-label="Reparations">
+                {[0, ...REPARATION_TERMS.map((r) => r.years)].map((y) => (
+                  <button
+                    key={y}
+                    type="button"
+                    role="radio"
+                    aria-checked={reparations === y}
+                    onClick={() => setReparations(y)}
+                  >
+                    {y ? `${y} years · ${Math.round(alone({ reparations: y }))}%` : 'None'}
+                  </button>
+                ))}
+              </div>
+              <p className="dim small">
+                {enemyLeader.name} pays you {Math.round(REPARATIONS * 100)}% of its taxes every month, unless you go to
+                war again.
+              </p>
+            </fieldset>
+          )}
+          {allowed.breakAlliances && (
+            <Choice
+              on={flag('breakAlliances')}
+              set={setFlag('breakAlliances')}
+              name="Break their alliances"
+              cost={alone({ breakAlliances: true })}
+            >
+              {enemyLeader.name} gives up its alliances with{' '}
+              {alliesOf(state, enemyLeader.index)
+                .map((i) => state.countries[i]?.short)
+                .join(', ')}
+              .
+            </Choice>
+          )}
+          {renounce && (
+            <Choice
+              on={flag('renounce')}
+              set={setFlag('renounce')}
+              name="Renounce their claims"
+              cost={alone({ renounce: true })}
+            >
+              {enemyLeader.name} gives up{' '}
+              {[
+                renounce.provinces.length
+                  ? `${renounce.provinces.length} ${renounce.provinces.length === 1 ? 'claim' : 'claims'} on your side’s land`
+                  : '',
+                renounce.thrones.length ? 'its claim on your crown' : '',
+              ]
+                .filter(Boolean)
+                .join(' and ')}
+              .
+            </Choice>
           )}
           {allowed.spoils && (
-            <>
-              {allowed.land && (
-                <fieldset className="choices">
-                  <legend className="caps">Provinces to take</legend>
-                  {candidates.length ? (
-                    <ul className="peace-provinces">
-                      {candidates.map((id) => (
-                        <li key={id}>
-                          <label className={`choice compact ${picked.includes(id) ? 'active' : ''}`}>
-                            <input type="checkbox" checked={picked.includes(id)} onChange={() => toggle(id)} />
-                            <span className="choice-name">{placeName(game.state, id)}</span>
-                            <span className="dim small num">
-                              dev {state.provinces[id].dev}
-                              {id === war.goal ? ' · war goal' : ''}
-                              {claimed.has(id) ? ' · claimed' : ''}
-                            </span>
-                          </label>
-                        </li>
-                      ))}
-                    </ul>
-                  ) : (
-                    <p className="dim small">You hold none of their land. Occupy provinces to demand them.</p>
-                  )}
-                </fieldset>
-              )}
-              <label className="field">
-                <span className="caps">
-                  Gold: <span className="num">{gold}</span> of {maxGold}
-                </span>
-                <input
-                  type="range"
-                  min={0}
-                  max={maxGold}
-                  step={10}
-                  value={gold}
-                  onChange={(e) => setGold(Number(e.target.value))}
-                />
-              </label>
-            </>
+            <label className="field">
+              <span className="caps">
+                Gold: <span className="num">{gold}</span> of {maxGold}
+              </span>
+              <input
+                type="range"
+                min={0}
+                max={maxGold}
+                step={10}
+                value={gold}
+                onChange={(e) => setGold(Number(e.target.value))}
+              />
+            </label>
           )}
         </>
       )}
-      <p className={`alert ${answer.accept ? 'good' : ''}`}>
+      <p className={`alert ${answer.accept && !empty ? 'good' : ''}`}>
         {empty
           ? 'Choose what to demand, or offer a white peace.'
           : answer.accept
             ? `They will accept. ${answer.reason}.`
             : `They will refuse. ${answer.reason}.`}
       </p>
+      {!empty && answer.why.parts.length > 0 && (
+        <BreakdownList title="How they weigh it" b={answer.why} digits={0} more="rule:peace" />
+      )}
       <div className="modal-actions">
         <button className="btn ghost" onClick={() => game.ui.set({ modal: 'none' })}>
           Keep fighting
@@ -337,9 +515,17 @@ export function Offer() {
   if (t.white) items.push('A white peace: everyone keeps what they had.');
   if (t.throne) items.push(`Their ruler takes your crown, and ${from.name} joins your realm under them.`);
   if (t.independence) items.push(`${from.name} goes free.`);
+  if (t.vassal) items.push(`You swear fealty to ${from.name}: your realm becomes its vassal.`);
   if (t.tributary) items.push(`You pay tribute to ${from.name}, and give up your alliances.`);
   if (t.holyLand && war) items.push(`You give up the land around ${placeName(game.state, war.goal)}.`);
   for (const id of t.provinces) items.push(`You cede ${placeName(game.state, id)}.`);
+  for (const culture of t.release ?? []) items.push(`You set the ${cultureName(culture)} free, with their land.`);
+  if (t.convert) items.push(`Your crown takes up the ${faithName(from.religion)} faith.`);
+  if (t.humiliate) items.push(`You are humiliated: your crown loses ${HUMILIATION.loser} legitimacy.`);
+  if (t.reparations)
+    items.push(`You pay ${from.name} ${Math.round(REPARATIONS * 100)}% of your taxes for ${t.reparations} years.`);
+  if (t.breakAlliances) items.push('You give up your alliances.');
+  if (t.renounce) items.push(`You give up your claims on ${from.name} and its allies.`);
   if (t.gold) items.push(`You pay ${Math.round(t.gold)} gold.`);
   return (
     <Modal title={`${from.name} proposes peace`} kicker={war?.name} onClose={() => answer(false)}>

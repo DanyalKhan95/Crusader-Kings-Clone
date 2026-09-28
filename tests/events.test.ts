@@ -23,7 +23,7 @@ import { monthlyHeresies, provinceFactor } from '../src/sim/faith';
 import { addModifier, dailyModifiers, hasModifier, modifierEffect } from '../src/sim/modifiers';
 import { breakOut, monthlyPlague } from '../src/sim/plague';
 import { countryByTag, provincesOf } from '../src/sim/queries';
-import { deserialize, serialize } from '../src/sim/save';
+import { deserialize, SAVE_VERSION, serialize } from '../src/sim/save';
 import { createGameState } from '../src/sim/setup';
 import { researchPoints } from '../src/sim/tech';
 import { advanceDay } from '../src/sim/tick';
@@ -398,7 +398,7 @@ describe('saves', () => {
       delete c.spyTarget;
     }
     const back = deserialize(JSON.stringify(raw), world);
-    expect(back.version).toBe(9);
+    expect(back.version).toBe(SAVE_VERSION);
     expect(back.events).toEqual([]);
     expect(back.plague).toBeNull();
     expect(back.countries[1].modifiers).toEqual([]);

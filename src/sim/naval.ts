@@ -28,6 +28,7 @@ import { knowsId, militaryEra, techEffect } from './tech';
 import type { Army, Country, Fleet, FleetSide, GameState, NavalBattle, Ships, ShipType, UnitType } from './types';
 import type { SimWorld } from './world';
 import { placeName } from './places';
+import { recordBattle } from './war';
 
 // ── Ships ─────────────────────────────────────────────────────────
 
@@ -621,8 +622,7 @@ function endNavalBattle(state: GameState, world: SimWorld, battle: NavalBattle, 
   });
   if (war) {
     const swing = Math.min(8, (30 * L.losses) / Math.max(1, W.start + L.start) + 1);
-    const sign = sideOf(war, W.country) === 'attacker' ? 1 : -1;
-    war.battleScore = Math.max(-40, Math.min(40, war.battleScore + sign * swing));
+    recordBattle(war, sideOf(war, W.country) === 'attacker', swing);
   }
   const place = placeName(state, battle.zone);
   const wc = state.countries[W.country],

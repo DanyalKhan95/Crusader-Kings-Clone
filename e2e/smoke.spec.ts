@@ -905,6 +905,70 @@ test('draws the map of each age: its three styles near and far, and places named
   expect(errors).toEqual([]);
 });
 
+test('makes peace: the war score’s shares, the enemy’s answer, and a vassal won at the table', async ({ page }) => {
+  const errors = watchErrors(page);
+  await page.goto('/?debug');
+  await page.getByRole('button', { name: 'New Campaign' }).click({ timeout: 120_000 });
+  await page.getByRole('button', { name: 'Play as England' }).click();
+  await expect(page.locator('.date-long')).toHaveText('15th of September, 1066 AD');
+  type W = {
+    ui: { set: (p: object) => void };
+    runner: { sync: () => void };
+    state: {
+      player: number;
+      wars: { id: number; attacker: number; attackers: number[]; battleLoss: number }[];
+      provinces: ({ owner: number; controller: number } | null)[];
+      countries: ({ tag: string; index: number; liege: number; reparations: object[] } | null)[];
+    };
+  };
+
+  // Norway's claim on the English crown goes badly: the English win the first battles.
+  await page.evaluate(() => {
+    const g = (window as unknown as { game: W }).game;
+    const s = g.state;
+    const nrw = s.countries.find((c) => c?.tag === 'NRW')!;
+    const war = s.wars.find((w) => w.attacker === nrw.index)!;
+    war.battleLoss = 30;
+    g.ui.set({ panel: 'war', selectedWar: war.id, screen: null });
+    g.runner.sync();
+  });
+  const panel = page.locator('.side-panel');
+  await expect(panel.locator('.breakdown')).toContainText('Battles we won');
+  await panel.getByRole('button', { name: 'Negotiate peace' }).click();
+
+  // Every term shows its price, and the answer shows how Norway weighs it: not yet enough for fealty.
+  let peace = page.getByRole('dialog', { name: /Peace with/ });
+  await peace.locator('.choice', { hasText: 'Make them our vassal' }).click();
+  await expect(peace.locator('.alert')).toContainText('They will refuse');
+  await expect(peace.locator('.breakdown')).toContainText('What you ask');
+  await peace.getByRole('button', { name: 'Keep fighting' }).click();
+
+  // With all of Norway held, it must give way.
+  await page.evaluate(() => {
+    const g = (window as unknown as { game: W }).game;
+    const s = g.state;
+    const war = s.wars.find((w) => s.countries[w.attacker]?.tag === 'NRW')!;
+    for (const p of s.provinces) if (p && war.attackers.includes(p.owner)) p.controller = s.player;
+    g.runner.sync();
+  });
+  await expect(panel.locator('.breakdown')).toContainText('Enemy land we hold');
+  await panel.getByRole('button', { name: 'Negotiate peace' }).click();
+  peace = page.getByRole('dialog', { name: /Peace with/ });
+  await peace.locator('.choice', { hasText: 'Make them our vassal' }).click();
+  await peace.locator('.choice', { hasText: 'Humiliate them' }).click();
+  await peace.getByRole('radio', { name: /5 years/ }).click();
+  await expect(peace.locator('.alert')).toContainText('They will accept');
+  await peace.getByRole('button', { name: 'Send the offer' }).click();
+  await expect(page.locator('.modal')).toHaveCount(0);
+  const norway = await page.evaluate(() => {
+    const s = (window as unknown as { game: W }).game.state;
+    const nrw = s.countries.find((c) => c?.tag === 'NRW')!;
+    return { vassal: nrw.liege === s.player, reparations: nrw.reparations.length };
+  });
+  expect(norway).toEqual({ vassal: true, reparations: 1 });
+  expect(errors).toEqual([]);
+});
+
 test('keeps the ledger of nations and ends the age in 2066', async ({ page }) => {
   const errors = watchErrors(page);
   await page.goto('/?debug');

@@ -19,9 +19,8 @@ import { TECH_TRACKS } from '../data/techs';
 import { cultureGroup, faithFamily, faithName } from './beliefs';
 import { age, character, die, makeCharacter, rulerSkill } from './characters';
 import { opinionOf, remember } from './diplomacy';
+import { turnFaith } from './faith';
 import { income, maxManpower, MAX_DEV, takeLoan } from './economy';
-import { agree, chronicle, TheName } from './chronicle';
-import { log } from './log';
 import { addModifier, hasModifier, removeModifier } from './modifiers';
 import { estateInfluence, estateLoyalty, estateName, grantPrivilege, invalidateRealm } from './politics';
 import { provincesOf, realmNeighbours, warsOf } from './queries';
@@ -369,36 +368,6 @@ function special(state: GameState, world: SimWorld, c: Country, id: SpecialId, s
       c.legitimacy = Math.min(100, c.legitimacy + 10);
       return;
   }
-}
-
-/** The crown takes up a new faith, and the capital with it. */
-function turnFaith(state: GameState, c: Country, faith: string) {
-  const old = c.religion;
-  c.religion = faith;
-  c.converting = null;
-  const cap = state.provinces[c.capital];
-  if (cap && cap.owner === c.index) cap.religion = faith;
-  state.mapVersion++;
-  state.diploVersion++;
-  if (!c.liege && (c.rank === 'kingdom' || c.rank === 'empire'))
-    chronicle(
-      state,
-      `${TheName(c.name)} ${agree(c.name, 'breaks', 'break')} with the ${faithName(old)} church and ${agree(c.name, 'turns', 'turn')} ${faithName(faith)}.`,
-      {
-        province: c.capital,
-        realm: c.index,
-      },
-    );
-  log(
-    state,
-    'all',
-    'event',
-    `${c.name} breaks with the ${faithName(old)} church: its crown is now ${faithName(faith)}.`,
-    {
-      province: c.capital,
-      important: c.index === state.player,
-    },
-  );
 }
 
 // ── Choosing ──────────────────────────────────────────────────────

@@ -6,7 +6,7 @@ import { income, taxMultiplier } from '../src/sim/economy';
 import { estateLoyalty, lawCooldown, monthlyElections } from '../src/sim/politics';
 import { countryByTag, provincesOf } from '../src/sim/queries';
 import { factionWar, grantFreedom, monthlyFactions, startRevolt } from '../src/sim/revolts';
-import { deserialize, serialize } from '../src/sim/save';
+import { deserialize, SAVE_VERSION, serialize } from '../src/sim/save';
 import { createGameState } from '../src/sim/setup';
 import { advanceDay } from '../src/sim/tick';
 import type { GameState } from '../src/sim/types';
@@ -203,7 +203,7 @@ describe('saves and years of politics', () => {
         delete c[k];
     }
     const loaded = deserialize(JSON.stringify(file));
-    expect(loaded.version).toBe(9);
+    expect(loaded.version).toBe(SAVE_VERSION);
     expect(loaded.countries[tag(s, 'ENG').index].laws.tolerance).toBe(1);
     expect(loaded.countries[tag(s, 'ENG').index].tasks.steward).toBe('taxes');
     for (let d = 0; d < 40; d++) advanceDay(loaded, world);

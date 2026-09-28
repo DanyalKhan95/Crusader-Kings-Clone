@@ -6,7 +6,7 @@ import { initialTech } from './tech';
 import type { CasusBelli, GameState } from './types';
 import type { SimWorld } from './world';
 
-export const SAVE_VERSION = 9;
+export const SAVE_VERSION = 10;
 
 /** What a save keeps about the campaign beside its state: not part of the world, so no migration. */
 export interface SaveExtras {
@@ -61,6 +61,7 @@ export function readSave(json: string, world?: SimWorld): SaveExtras & { state: 
   if (file.version < 7) migrateToEvents(s);
   if (file.version < 8) migrateToLedger(s);
   if (file.version < 9) migrateToBooks(s);
+  if (file.version < 10) migrateToWarAndPeace(s);
   // While the game loads rather than on the first New Year: the index of thousands of characters.
   indexRecords(s);
   return {
@@ -69,6 +70,23 @@ export function readSave(json: string, world?: SimWorld): SaveExtras & { state: 
     played: typeof file.played === 'number' && file.played >= 0 ? file.played : undefined,
     ironman: file.ironman === true || undefined,
   };
+}
+
+/**
+ * Version 9 (milestone 12) kept the battles of a war as one score for both sides, and knew no
+ * reparations: each side's victories are counted apart from now on.
+ */
+function migrateToWarAndPeace(s: GameState) {
+  (s as unknown as { version: number }).version = 10;
+  for (const w of s.wars) {
+    const old = (w as unknown as { battleScore?: number }).battleScore ?? 0;
+    w.battleGain ??= Math.max(0, old);
+    w.battleLoss ??= Math.max(0, -old);
+    delete (w as unknown as { battleScore?: number }).battleScore;
+    // The war goal counted its months up to 25 either way; months held go on from there.
+    w.ticking = Math.max(-36, Math.min(36, w.ticking ?? 0));
+  }
+  for (const c of s.countries) if (c) c.reparations ??= [];
 }
 
 /** Version 8 (milestone 10) kept no monthly accounts: the player's books start with the next month. */

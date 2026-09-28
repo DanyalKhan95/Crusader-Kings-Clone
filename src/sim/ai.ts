@@ -26,6 +26,7 @@ import {
   memory,
   opinionOf,
   pactWillingness,
+  realmDev,
   REBEL_LOYALTY,
   signPact,
   startFabrication,
@@ -37,7 +38,7 @@ import { acceptCulture, adoptFaith, canAcceptCulture, cultureShares, diversity, 
 import { holyWarGoals, unbelievers, wagesHolyWar } from './holywars';
 import { canReform, militaryEra, reform, reformOptions } from './tech';
 import { changeLaw, estateInfluence, estateLoyalty, grantPrivilege, lawCooldown } from './politics';
-import { revoltRisk } from './revolts';
+import { releasable, revoltRisk } from './revolts';
 import { log } from './log';
 import { modifierEffect } from './modifiers';
 import { availableMaa, detach, disband, inBattle, mergeInto, orderMove, raiseArmy, recruit } from './military';
@@ -733,6 +734,9 @@ function considerPeace(state: GameState, world: SimWorld, c: Country, war: War) 
   }
 }
 
+/** A beaten realm this small against the victor's is made a vassal rather than a tributary. */
+const AI_VASSAL_SHARE = 0.3;
+
 /** The most this side can ask for with its war score, or null if nothing worth asking. */
 function bestTerms(state: GameState, world: SimWorld, war: War, from: number, score: number): PeaceTerms | null {
   if (score < 15) return null;
@@ -786,18 +790,40 @@ function bestTerms(state: GameState, world: SimWorld, war: War, from: number, sc
     if (peaceCost(state, world, war, side, trial) <= score) terms.provinces = trial.provinces;
   }
   const loser = state.countries[side === 'attacker' ? war.defender : war.attacker];
-  // Nothing to take, but the enemy is beaten: make it pay tribute.
-  if (
-    !terms.provinces.length &&
-    allowed.tributary &&
-    peaceCost(state, world, war, side, { ...terms, tributary: true }) <= score
-  )
-    terms.tributary = true;
+  /** Adds terms if the war score still covers them. */
+  const tryAdd = (extra: Partial<PeaceTerms>): boolean => {
+    if (peaceCost(state, world, war, side, { ...terms, ...extra }) > score) return false;
+    Object.assign(terms, extra);
+    return true;
+  };
+  // A coalition breaks the realm it feared: its subject peoples go free.
+  if (war.cb === 'coalition' && allowed.release)
+    for (const g of releasable(state, loser).slice(0, 3)) tryAdd({ release: [...(terms.release ?? []), g.culture] });
+  // Nothing to take, but the enemy is beaten: a small realm swears fealty, a larger one pays tribute.
+  if (!terms.provinces.length && !terms.release?.length) {
+    const small = realmDev(state, loser.index) <= realmDev(state, from) * AI_VASSAL_SHARE;
+    if (!(allowed.vassal && small && tryAdd({ vassal: true })) && allowed.tributary) tryAdd({ tributary: true });
+  }
+  // A holy war won outright brings the unbelievers to the faith.
+  if (war.cb === 'holy' && side === 'attacker' && allowed.convert) tryAdd({ convert: true });
+  // Their claims on our land are given up with the peace.
+  if (allowed.renounce) tryAdd({ renounce: true });
+  // A beaten realm with an empty treasury pays over the years instead.
+  if (allowed.reparations && loser.gold < 50 && !tryAdd({ reparations: 10 })) tryAdd({ reparations: 5 });
+  // Those who beat off an attack humble the aggressor.
+  if (allowed.humiliate && side === 'defender') tryAdd({ humiliate: true });
   const left = score - peaceCost(state, world, war, side, terms);
   if (left > 5 && loser.gold > 20)
     terms.gold = Math.floor(Math.min(loser.gold, (left / 25) * income(state, loser).total * 12));
-  if (!terms.provinces.length && !terms.tributary && terms.gold < 20) return null;
-  return terms;
+  const worth =
+    terms.provinces.length ||
+    terms.tributary ||
+    terms.vassal ||
+    terms.release?.length ||
+    terms.reparations ||
+    terms.humiliate ||
+    terms.gold >= 20;
+  return worth ? terms : null;
 }
 
 // ── Armies ────────────────────────────────────────────────────────

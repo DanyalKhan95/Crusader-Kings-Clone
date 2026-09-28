@@ -29,6 +29,7 @@ import {
   MAX_DEV,
   MAX_LOANS,
   maxManpower,
+  REPARATIONS,
   TAX_PER_DEV,
   taxMultiplier,
   TRIBUTARY_TRIBUTE,
@@ -40,7 +41,25 @@ import { END_YEAR, standing } from '../../sim/score';
 import { GARRISON_PER_FORT } from '../../sim/siege';
 import { FOCUS_BONUS, REFORM_YEARS, researchPoints } from '../../sim/tech';
 import { ESTATES, type Country } from '../../sim/types';
-import { TRUCE_YEARS } from '../../sim/war';
+import {
+  BATTLE_CAP,
+  BLOCKADE_CAP,
+  BLOCKADE_WEIGHT,
+  GOAL_CAP,
+  GOAL_DECAY,
+  GOAL_TAKEN,
+  goalScore,
+  HOLDOUT_CAP,
+  HUMILIATION,
+  MAX_MONTHS,
+  OCCUPATION_WEIGHT,
+  RELEASE_BASE,
+  RELEASE_WEIGHT,
+  REPARATION_TERMS,
+  TERM_COST,
+  TRUCE_YEARS,
+  VASSAL_SHARE,
+} from '../../sim/war';
 import type { Game } from '../game';
 import { BreakdownList } from '../hud/Tip';
 import { estateName } from '../../sim/politics';
@@ -763,27 +782,46 @@ const RULES: Rule[] = [
     icon: 'scales',
     summary: 'From −100 to 100: how the war stands, and what it can buy at the peace table.',
     terms: ['war score', 'warscore', 'ticking', 'war goal', 'occupation'],
-    see: ['rule:peace', 'rule:battles', 'rule:sieges'],
+    see: ['rule:peace', 'rule:battles', 'rule:sieges', 'rule:blockades'],
     body: () => (
       <>
-        <p>War score is counted from the attacker’s side, from −100 to 100:</p>
+        <p>
+          War score runs from −100 to 100, and each side sees it from its own side: what one side gains, the other
+          loses. It is the sum of these shares, each shown apart in the war’s panel:
+        </p>
         <Table
           rows={[
-            ['Occupied enemy land', '70 × the share of the other side’s development occupied'],
-            ['Our land occupied', 'the same, against'],
-            ['Battles', 'up to ±40 in all; each battle moves it by up to 12, more for a bloodier defeat'],
-            ['War goal held', '+1 a month while the attackers hold the goal, up to +25'],
+            ['Enemy land we hold', `${OCCUPATION_WEIGHT} × the share of the other side’s development occupied`],
+            ['Our land they hold', 'the same, against'],
             [
-              'Defenders holding out',
-              '−1 a month once a year has passed with no enemy land held by the attackers, down to −25',
+              'Battles we won',
+              `up to ${BATTLE_CAP}; each victory adds up to 12 (8 at sea), more for a bloodier defeat, and wears half as much off the enemy’s victories`,
             ],
-            ['War goal occupied', '+15 in wars for a province'],
-            ['Their capital taken', '+20 in a war for a throne'],
+            ['Battles we lost', `the same, against, up to ${BATTLE_CAP}`],
+            [
+              'Enemy coasts blockaded',
+              `${BLOCKADE_WEIGHT} × the share of the other side’s development under blockade, up to ${BLOCKADE_CAP}`,
+            ],
+            ['Our coasts blockaded', `the same, against, up to ${BLOCKADE_CAP}`],
           ]}
         />
         <p>
-          The goal of a war for independence or of a revolt is held while the rebels keep their own land free (for half
-          a year, or three months for a revolt).
+          The war goal counts for more the longer it is held. Taking a goal that is a place (the province fought over,
+          or the capital in a war for a throne) is worth {GOAL_TAKEN} at once; then every month it is held adds to its
+          count, up to {MAX_MONTHS} months, and the count is worth more with each month:
+        </p>
+        <Table
+          head={['Months held', 'War score']}
+          rows={[1, 3, 6, 12, 18, 24].map((m) => [String(m), `${Math.round(goalScore(m))}`])}
+        />
+        <p>
+          The goal’s count reaches {GOAL_CAP} at most. Once the goal is lost, the count drains by {GOAL_DECAY} months a
+          month. The goal of a war for independence or of a revolt is held while the rebels keep their own land free
+          (for half a year, or three months for a revolt).
+        </p>
+        <p>
+          Defenders who have lost no land for a year count months of their own, on the same scale up to {HOLDOUT_CAP},
+          against the attackers; these fade by {GOAL_DECAY} months a month once the enemy gains a foothold.
         </p>
       </>
     ),
@@ -793,9 +831,9 @@ const RULES: Rule[] = [
     group: WAR,
     title: 'Making peace',
     icon: 'peace-dove',
-    summary: 'Every demand has a price in war score; the other side accepts what the score covers.',
-    terms: ['peace', 'terms', 'white peace', 'treaty', 'surrender', 'reparations'],
-    see: ['rule:war-score', 'rule:aggressive-expansion', 'rule:war-weariness'],
+    summary: 'Every demand has a price in war score; the other side weighs it against the war and its weariness.',
+    terms: ['peace', 'terms', 'white peace', 'treaty', 'surrender', 'reparations', 'vassalise', 'release', 'humiliate'],
+    see: ['rule:war-score', 'rule:aggressive-expansion', 'rule:war-weariness', 'rule:subjects'],
     body: () => (
       <>
         <p>Each demand costs war score:</p>
@@ -805,16 +843,59 @@ const RULES: Rule[] = [
             ['Gold', '25 for a year of the loser’s income, in proportion'],
             ['A throne', '70'],
             ['Tribute (a tributary)', '25 + up to 50, by the size of their realm'],
+            ['A vassal', '40 + up to 40, by the size of their realm'],
+            [
+              'A people set free',
+              `${RELEASE_WEIGHT * 100} × its share of the losers’ development + ${RELEASE_BASE}, for each people`,
+            ],
+            ['A change of faith', `${TERM_COST.convert}`],
+            ['Humiliation', `${TERM_COST.humiliate}`],
+            ...REPARATION_TERMS.map((r) => [`Reparations for ${r.years} years`, `${r.cost}`]),
+            ['Breaking their alliances', `${TERM_COST.breakAlliances}`],
+            [
+              'Renouncing their claims',
+              `${TERM_COST.renounce} + ${TERM_COST.perClaim} a claim (three for a crown), up to ${TERM_COST.renounce + TERM_COST.maxClaims}`,
+            ],
             ['Independence', '50'],
             ['A revolt’s demands', '40'],
             ['Crushing a revolt', '30'],
           ]}
         />
         <p>
-          The other side accepts terms whose price the war score covers (a chancellor who negotiates takes up to a fifth
-          off). A white peace, with nothing given, is accepted when the proposer is not losing by more than 10, when the
-          other side is weary (12 or more), or after four years of war.
+          A chancellor who negotiates takes up to a fifth off. The other side weighs the terms, and accepts at zero or
+          more: the war score, less what is asked, plus half its <T to="rule:war-weariness">war weariness</T> and 3 for
+          every year the war has lasted beyond three. A side with a war score of 99 or more accepts anything. The peace
+          dialog shows how they weigh it, before the offer is sent.
         </p>
+        <p>
+          A white peace, with nothing given, is weighed the same way: the proposer’s war score, plus 10, plus one and a
+          half times the other side’s weariness, plus 15 for every year of war beyond two.
+        </p>
+        <Table
+          head={['Term', 'What it does']}
+          rows={[
+            [
+              'A vassal',
+              `Only a realm with no liege or overlord, and no more than ${pct(VASSAL_SHARE)} the size of the victor’s realm. It makes peace in its other wars, gives up its treaties, and its land joins the victor’s realm; it alarms the neighbours as half the conquest of all of it.`,
+            ],
+            [
+              'A people set free',
+              'The provinces of a culture that is not the crown’s own (never its capital) become a realm of their own, grateful to the victor.',
+            ],
+            [
+              'A change of faith',
+              'The loser’s crown and capital take up the victor’s faith; the rest of its people keep their own.',
+            ],
+            [
+              'Humiliation',
+              `The loser’s crown loses ${HUMILIATION.loser} legitimacy and the victor’s gains ${HUMILIATION.winner}; the loser remembers it (${HUMILIATION.memory}).`,
+            ],
+            [
+              'Reparations',
+              `The loser pays ${pct(REPARATIONS)} of its taxes each month to the victor, unless they go to war again.`,
+            ],
+          ]}
+        />
         <p>
           The victor gains a point of <T to="rule:stability">stability</T> and the loser loses one; a truce of{' '}
           {TRUCE_YEARS} years follows. Land taken is remembered by those who lost it, and alarms the neighbours (
@@ -848,7 +929,10 @@ const RULES: Rule[] = [
             ['Answering calls to arms', '−3'],
           ]}
         />
-        <p>A weary realm (12 or more) accepts a white peace; the AI leaves a war it is tired of.</p>
+        <p>
+          A weary realm is readier to make peace (see <T to="rule:peace">making peace</T>); the AI leaves a war it is
+          tired of.
+        </p>
       </>
     ),
   },
@@ -1047,14 +1131,15 @@ const RULES: Rule[] = [
     icon: 'kneeling',
     summary: 'Subjects pay, and vassals fight; their loyalty decides whether they stay.',
     terms: ['vassal', 'tributary', 'subject', 'loyalty', 'integrate', 'integration', 'liege', 'overlord'],
-    see: ['law:crown', 'rule:revolts', 'rule:opinion'],
+    see: ['law:crown', 'rule:revolts', 'rule:opinion', 'rule:peace'],
     body: () => (
       <>
         <p>
           A <strong>vassal</strong> holds its land under a liege: it pays a share of its taxes set by the liege’s{' '}
           <T to="law:crown">crown authority</T>, joins every war of its liege, and has no foreign policy of its own. A{' '}
           <strong>tributary</strong> keeps its crown and its treaties (except alliances) and pays{' '}
-          {pct(TRIBUTARY_TRIBUTE)} of its taxes; its overlord defends it.
+          {pct(TRIBUTARY_TRIBUTE)} of its taxes; its overlord defends it. A beaten realm becomes either at the{' '}
+          <T to="rule:peace">peace table</T>.
         </p>
         <p>Loyalty starts from the subject’s opinion of its lord, and adds:</p>
         <Table
