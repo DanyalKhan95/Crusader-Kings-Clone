@@ -25,6 +25,7 @@ when a milestone lands.
 - `npm run app`: builds and starts the desktop app (`-- --debug-game` exposes `window.game`, since
   Node claims `--debug`). `npm run app:dist` packages it for this system into `release/`.
 - `npm run mapgen -- <steps>` and `npm run mapgen:validate`: the map pipeline and its checks.
+  `npm run mapgen:names` writes the period names of `src/content/places.json` (see Map data).
 - `npm run simulate -- --years N [--seed S]`: runs the whole world under AI in Node and prints a
   summary (wars, conquests, debts, speed). Use it for balance changes. `--load` starts from a save,
   `--save` writes the world at the end, and `--profile` adds where the time went and the worst days.
@@ -42,6 +43,21 @@ when a milestone lands.
 - **`src/render/`:** the WebGL2 map.
   - Region colours and owners live in 64×64 data textures, so recolouring is a texture upload.
   - Border styles are computed in the vertex shader from owner and liege.
+  - Three map styles (`styles.ts`): manuscript, engraved atlas and modern. Every shader takes
+    `u_style`, the weights of the three, and blends what each would draw, so a change of style
+    fades (`StyleMix`). The style follows the player's era (`styleOfEra`) unless the `mapStyle`
+    setting pins one. Patterns meant to look drawn (hachures, stipple, water-lines, grain) are laid
+    out in CSS pixels. The land is marked in the stencil buffer so that land and sea are drawn each
+    their own way; the unknown lies under a blurred fog drawn after the rivers and symbols.
+  - The terrain pass reads three textures of detail beside the colour (mapgen's `details` step):
+    hillshade, steepness and the signed distance from the coast.
+  - Symbols (`symbols.ts`): mountains, hills and forests from `public/data/symbols.json` in tiers of
+    spacing, towns (`game/mapSymbols.ts`, sized against the world's development and rebuilt each
+    month), holy places and compass roses, as instanced sprites of an atlas drawn in code
+    (`sprites.ts`). A style may lack a sprite (the modern map has no mountains).
+  - Lettering (`labels.ts`, `LETTERING`): each style's fonts and inks for realm, province and sea
+    names, and cartouches for the oceans on the old maps. Names come from `nameOf`, which the map
+    controller points at `placeName`.
 - **`src/ui/map/MapController.ts`:** owns the camera, renderer, labels, picking, input and the frame
   loop. React talks to it through methods and store sync (`MapCanvas.tsx`). Pointer moves never
   re-render React.
@@ -112,7 +128,11 @@ when a milestone lands.
   - Faiths, heresies, culture groups and holy sites are looked up through `beliefs.ts`, never
     `world.world.religions` (heresies are not in the map data). `registerBeliefs` runs in
     `makeSimWorld`, `loadWorld` and `createGameState`; code that builds a world another way must
-    call it too.
+    call it too. It also registers the names of places (`places.ts`).
+  - Show a province's name with `placeName(state, id)`, never `region.name`: names change with the
+    era and the owner's culture (`src/content/places.json`). Registration puts period names in
+    place of the admin-style ones on the regions themselves (`mapName` keeps the map's), so lookups
+    by name (`provinceNamed`) take either.
   - `faith.ts` holds province standing (faith and culture), missions and schools, accepted
     cultures, heresies, heads of faith and holy sites; `holywars.ts` holds holy wars, crusades and
     jihads and the founding of the Kingdom of Jerusalem. Great holy wars are data
@@ -147,8 +167,8 @@ when a milestone lands.
     the whole world); use `knows`, `learn` and `revealAround`, never the string. Armies and fleets
     reveal what they reach, allies and realms share maps monthly, cartography shares them within a
     faith family each January, and the industrial era knows everything. The map shows the
-    player's knowledge (`MapController.setFog`): unknown regions get `FLAG_UNKNOWN` and are drawn
-    as parchment after the rivers.
+    player's knowledge (`MapController.setFog`): unknown regions get `FLAG_UNKNOWN` and lie under a
+    fog with a soft edge, in the map's style.
   - Colonies (`colonies.ts`): unowned land settled by colonists (`Country.colonies`, missions of
     months). Native land needs the `colonists` technology effect. Colonies on another landmass in
     a colonial region (by modern country code) pass to a colonial nation: a vassal with
@@ -231,14 +251,17 @@ when a milestone lands.
 - **Era themes:** `src/ui/themes/medieval.css` defines every variable; `eras.css` overrides them per
   era under `[data-era]`, which follows the player's era. Fonts ship as files; `npm run artifact`
   inlines them into the artifact's stylesheet (its host only allows fonts from its own CSS), so add
-  only the weights a theme uses, Latin subset.
+  only the weights a theme uses, Latin subset. The map's lettering also ships the Latin Extended
+  subset of its fonts, for place names.
 
 ## Content
 
 - Content that mods will one day add to or change lives as JSON in `src/content`, each file checked
   on load against a schema written with `src/shared/schema.ts` and registered with `defineContent`
   (`src/content/registry.ts`). The module in `src/data` that owns it keeps the types, the schema and
-  the export the rest of the game uses. So far: the featured realms and the modifiers.
+  the export the rest of the game uses. So far: the featured realms, the modifiers and the names of
+  places (whose `period` names `npm run mapgen:names` writes; the rules by era and culture are
+  written by hand).
 - A system's content moves there when the system is reworked. Events wait for the condition language
   of M15, since their conditions are code today.
 
@@ -259,7 +282,14 @@ when a milestone lands.
 - The map geometry ships as `map.json`: the gzipped binary map, base64-wrapped, because the
   claude.ai artifact host refuses binary files.
 - Step order: `land`, `elevation`, `history`, `realms`, `provinces`, `seas`, `vectorize`,
-  `attributes`, `scenario`, `terrain`, `export`.
+  `attributes`, `scenario`, `terrain`, `export`, `details`.
+  - The upstream sources have moved on since the committed map was made: re-running the steps
+    from `history` on shifts region ids, which breaks saves. Don't, unless the map is meant to
+    change. `terrain` still reproduces its files exactly.
+  - `details` (the style textures and `symbols.json`) and `npm run mapgen:names` read the exported
+    map, and need only the elevation raster: `npm run mapgen -- elevation details`.
+  - Period names chosen by hand are in `tools/mapgen/curated/periodNames.ts`; the tool finds the
+    rest in Natural Earth's rivers and regions, and in the provinces' neighbours.
   - Changing a realm override: `realms scenario export`.
   - Changing provinces: `provinces seas vectorize attributes scenario export`.
   - The province step reads the realm raster, so re-run `realms` first when overrides change.

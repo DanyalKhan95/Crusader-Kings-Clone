@@ -462,25 +462,41 @@ after the content they show has settled.
 - [x] The tour points at the new screens, the counsel and the encyclopedia.
 - [x] Saves from milestone 10 load: the only new field is the player's books.
 
-### M12: The map through the ages
+### M12: The map through the ages (done)
 
-- [ ] Three map styles that follow the player's era, with a setting to pin one:
-  - [ ] a manuscript map, to about 1450: parchment, inked coasts, painted hills and forests, walled
-        towns, gilt borders
-  - [ ] an engraved atlas, to about 1800: hachured relief, stippled seas and rhumb lines,
-        hand-coloured borders, cartouches and compass roses
-  - [ ] a modern map, after: clean political colours over shaded relief, and crisp borders
-  - [ ] a crossfade when the era changes
-- [ ] Map symbols (mountains, forests, towns, holy places) placed by the map pipeline and drawn in
-      each style.
-- [ ] Detail at close zoom in each style (the terrain is soft at one texel per map unit).
-- [ ] The edge of the known world drawn in each style, instead of ruled lines across the sea.
-- [ ] Realm, province and sea names lettered in the hands and types of each age.
-- [ ] Place names by era and by the owner's culture:
-  - [ ] Constantinople and Istanbul, Königsberg and Kaliningrad
-  - [ ] period names in place of the admin-style ones ("North-West Aktobe")
-- [ ] Every map mode readable in every style.
-- [ ] e2e screenshots of each style at world, Europe and county zoom.
+- [x] Three map styles that follow the player's era, with a setting to pin one (Settings, Map and
+      graphics: by era, manuscript, engraved atlas or modern):
+  - [x] a manuscript map, to about 1450: parchment, inked coasts washed in blue-green, painted
+        hills and forests, walled towns, gilt borders, and the rhumb lines and roses of the
+        portolan charts in their black, green and red
+  - [x] an engraved atlas, to about 1800: hachured relief (from a hillshade and the steepness of
+        the land), water-lined and stippled seas, a graticule, rhumb lines, hand-coloured bands along
+        the borders, cartouches for the oceans and compass roses
+  - [x] a modern map, after: political colours over shaded relief, crisp borders, a faint
+        graticule, towns as dots and capitals as stars
+  - [x] a crossfade when the era changes (every layer blends by the style weights)
+- [x] Map symbols placed by the map pipeline (the new `details` step): about 27,000 mountains,
+      hills and forests (conifers, broadleaf and palms) in tiers of spacing that the map thins out
+      far away, and the town of each province, 2,397 in all. Towns grow with the province's
+      development against the world's, capitals of kingdoms and empires wear a crown or a star, and
+      holy places carry their faith's sign. Every picture is drawn in code into one atlas.
+- [x] Detail at close zoom in each style: the hachures, stipple, water-lines and paper grain are laid
+      out in screen pixels, so they stay sharp at any zoom, and the symbols grow as the map closes in.
+- [x] The edge of the known world drawn in each style: a blurred mask of the unknown, laid over as
+      parchment, paper or mist with a darker rim, instead of ruled lines.
+- [x] Realm, province and sea names lettered in the hands and types of each age: rubricated
+      Grenze Gotisch and Alegreya on the manuscript, IM Fell and EB Garamond on the plate, Oswald and
+      Source Sans on the modern map.
+- [x] Place names by era and by the owner's culture (`src/content/places.json`, `placeName`):
+  - [x] Constantinople and Istanbul (or Tsargrad and Miklagarðr), Königsberg, Królewiec and
+        Kaliningrad, Reval and Tallinn, Tsaritsyn, Stalingrad and Volgograd, Qurtuba and Córdoba,
+        about 80 places in all
+  - [x] period names in place of the admin-style ones: 517 provinces, 100 of them chosen by hand
+        and the rest after the rivers, ranges, deserts and neighbours that `npm run mapgen:names`
+        finds ("North-West Aktobe" is now the Ilek, "West Inner Mongolia VII" the Hexi Corridor)
+- [x] Every map mode readable in every style: the data maps take stronger washes and fainter
+      symbols.
+- [x] e2e screenshots of each style at world, Europe and county zoom, attached to the test report.
 
 ### M13: War and peace
 
@@ -608,13 +624,12 @@ after the content they show has settled.
 
 ## Known gaps and ideas
 
-- **Province names:** these are mostly modern.
-  - Historical names exist for about 290 major cities.
-  - Parts of Central Asia and the Americas still read like modern admin regions ("North-West
-    Aktobe").
-  - Names by era and culture are planned for M12.
-- **Close zoom:** the terrain is soft, at one texel per map unit. Detail in each map style is
-  planned for M12.
+- **Province names:** historical names exist for about 290 major cities, and since M12 period
+  names for the provinces once named after admin regions. Elsewhere, and in the Americas and
+  Australia above all, many names are still modern geography rather than names of their time.
+- **The map pipeline:** the upstream sources have moved on since the map was made, so re-running
+  its first steps no longer gives the committed map (region ids shift). The `details` step and
+  `mapgen:names` read the exported map instead, and need only the elevation raster.
 - **Small realms:** these were dropped where a province is bigger than the whole realm (for
   example the Duchy of Naples).
 - **Balance:**

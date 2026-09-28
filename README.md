@@ -11,25 +11,32 @@ every push).
 
 ## Status
 
-**Milestone 11: realm screens and learning the game.** The game can be played from 1066 to 2066
-and beyond, every other realm run by the AI, and it is on the road to Early Access as a desktop app
-(milestones 9 to 18 in the [roadmap](docs/ROADMAP.md)). This milestone brought:
+**Milestone 12: the map through the ages.** The game can be played from 1066 to 2066 and beyond,
+every other realm run by the AI, and it is on the road to Early Access as a desktop app (milestones
+9 to 18 in the [roadmap](docs/ROADMAP.md)). This milestone brought:
 
-- **Screens for the realm's affairs,** over the map while time runs on: the realm, the court, the
-  economy (income, expenses and the treasury charted month by month, and every province), the
-  military, diplomacy (every realm's opinion, wariness and treaties), faith and culture,
-  government and laws, and technology. The side panel keeps provinces, armies, fleets and other
-  realms.
-- **An encyclopedia** (`B`): every rule of the game with the numbers the simulation uses, and
-  entries built from its data (technologies, arms and ships by era, buildings, laws, governments,
-  faiths, events, modifiers and more), searchable, with the realm's own figures beside the rules.
-  Underlined words in tooltips lead to it.
-- **Counsel and hints:** the councillors suggest what to do next, from the same judgements the AI
-  makes, each with a click that does it; a hint explains each screen and turn of fortune the first
-  time it comes up.
+- **Three maps for three ages,** following the player's era or pinned in the settings: a
+  manuscript on parchment with painted hills and forests, walled towns, gilt borders and the rhumb
+  lines of the portolan charts; an engraved atlas with hachured relief, water-lined seas, a
+  graticule, compass roses and cartouches; and a modern map of political colours over shaded
+  relief. A new era fades the old map into the new.
+- **Symbols on the land:** some 27,000 mountains, hills and forests placed from the elevation and
+  the forest cover, and a town in each province that grows with it, crowned in the capitals of
+  kings and marked with its faith's sign where it is holy.
+- **Names in the hands of each age, and of their time:** realm names rubricated on the manuscript
+  and in copperplate capitals on the atlas; Constantinople becomes Istanbul under the Turks and
+  Königsberg is Kaliningrad only after 1946; 517 provinces once named after modern admin regions
+  take period names ("North-West Aktobe" is now the Ilek).
+
+![Europe in 1066 as a manuscript map: rubricated realm names, painted mountains and forests, walled towns, and the rhumb lines of a portolan chart](docs/images/manuscript-1066.webp)
+
+![Scandinavia and the Baltic in 1620 as an engraved atlas: hachured mountains, water-lined coasts, a compass rose, and the towns of the realms](docs/images/engraved-1620.webp)
 
 Earlier milestones:
 
+- **Realm screens and learning the game (M11):** full screens for the realm's affairs over the map;
+  an encyclopedia (`B`) of every rule and the game's data, linked from tooltips; counsel from the
+  council, and hints the first time something comes up.
 - **The new HUD (M10):** an outliner of armies, fleets, sieges, wars and works; an alerts bar that
   leads to the fix; a message log with filters and a setting for each kind of news; menus on a
   right-click; hotkeys for everything; layers for whose armies and fleets the map shows.
@@ -152,12 +159,15 @@ version tags, or run by hand from the Actions tab.
 5. Classify terrain and development, and name everything.
 6. Assign the 1066 realms.
 7. Render the terrain tiles.
+8. Draw the details the map's styles need: hillshade, steepness and the distance from the coast,
+   and place the mountains, forests and towns.
 
 ```sh
 npm run mapgen:download   # sources into .cache/ (about 1 GB)
 npm run mapgen            # all steps (needs about 12 GB of memory, about 10 minutes)
 npm run mapgen -- scenario export        # or just some steps
 npm run mapgen:validate
+npm run mapgen:names      # period names for provinces named after modern admin regions
 ```
 
 Hand-curated tables live in `tools/mapgen/curated`:
@@ -167,12 +177,13 @@ Hand-curated tables live in `tools/mapgen/curated`:
 - historical city names
 - terrain zones
 - sea names
+- period names chosen by hand
 
 ## Project layout
 
 | Path             | What                                                                             |
 | ---------------- | -------------------------------------------------------------------------------- |
-| `src/render/`    | WebGL2 map: terrain, fills, borders, rivers, labels, picking, camera             |
+| `src/render/`    | WebGL2 map in three styles: terrain, fills, borders, symbols, labels, picking    |
 | `src/sim/`       | The simulation: economy, war, diplomacy, politics, faith, technology, events, AI |
 | `src/game/`      | Loading the world, and map modes                                                 |
 | `src/heraldry/`  | Coats of arms: blazon model, curated arms, generator, SVG                        |

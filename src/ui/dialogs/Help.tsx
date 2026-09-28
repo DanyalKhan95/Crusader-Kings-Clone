@@ -82,8 +82,13 @@ const TOPICS: Topic[] = [
           why: a click leads to the remedy, a right-click hides the alert until something changes.
         </p>
         <p>
-          Beyond the lands your people know lies unknown country, drawn as bare parchment. Armies and fleets reveal what
-          they reach, allies share their maps, and by the industrial age the whole world is known.
+          The map is drawn as the maps of your age were: a manuscript on parchment until the Renaissance, then an
+          engraved atlas, then a modern map from the industrial age; the settings can keep one style throughout. Towns
+          grow with their provinces, and places take the names of their time and of whoever holds them.
+        </p>
+        <p>
+          Beyond the lands your people know lies unknown country, lost in the paper at the edge of the map. Armies and
+          fleets reveal what they reach, allies share their maps, and by the industrial age the whole world is known.
         </p>
       </>
     ),
