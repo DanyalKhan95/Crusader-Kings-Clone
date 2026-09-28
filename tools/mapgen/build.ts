@@ -15,6 +15,7 @@ import { buildAttributes } from './steps/attributes.ts';
 import { buildRealms } from './steps/realms.ts';
 import { buildScenario } from './steps/scenario.ts';
 import { buildExport } from './steps/export.ts';
+import { buildDetails } from './steps/details.ts';
 
 const STEPS: [string, () => Promise<void>][] = [
   ['land', buildLand],
@@ -28,6 +29,7 @@ const STEPS: [string, () => Promise<void>][] = [
   ['scenario', buildScenario],
   ['terrain', buildTerrain],
   ['export', buildExport],
+  ['details', buildDetails],
 ];
 
 async function main() {

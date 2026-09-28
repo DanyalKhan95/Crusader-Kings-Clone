@@ -4,6 +4,7 @@
  * and read outside React by the map and the runner. Sound keeps its own settings in `audio.ts`.
  */
 import type { UnitLayer } from '../game/mapModes';
+import { MAP_STYLES, type MapStyle } from '../render/styles';
 import { readPref, writePref } from './prefs';
 import { createStore, useStore } from './store';
 
@@ -20,6 +21,8 @@ export interface Settings {
   /** size of the interface's text on top of that */
   textScale: number;
   quality: MapQuality;
+  /** the map's look: the style of the player's era, or one style throughout */
+  mapStyle: 'era' | MapStyle;
   /** frames a second at most; 0 for the display's own rate */
   frameCap: number;
   /** pulsing highlights, camera glides and the drift behind the title */
@@ -46,6 +49,7 @@ export const DEFAULT_SETTINGS: Settings = {
   uiScale: 1,
   textScale: 1,
   quality: 'high',
+  mapStyle: 'era',
   frameCap: 0,
   animations: true,
   topSpeed: 120,
@@ -87,6 +91,7 @@ export function sanitizeSettings(raw: unknown, d: Settings = DEFAULT_SETTINGS): 
     uiScale: pick(r.uiScale, UI_SCALES, d.uiScale),
     textScale: pick(r.textScale, TEXT_SCALES, d.textScale),
     quality: pick(r.quality, Object.keys(QUALITY_DPR) as MapQuality[], d.quality),
+    mapStyle: pick<Settings['mapStyle']>(r.mapStyle, ['era', ...MAP_STYLES], d.mapStyle),
     frameCap: pick(r.frameCap, FRAME_CAPS, d.frameCap),
     animations: typeof r.animations === 'boolean' ? r.animations : d.animations,
     topSpeed: pick(r.topSpeed, TOP_SPEEDS, d.topSpeed),

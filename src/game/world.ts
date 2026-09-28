@@ -2,7 +2,7 @@
  * Loads the static world (regions, cultures, religions), the 1066 scenario and the map meshes.
  * The game state itself is built by the simulation (src/sim/setup.ts).
  */
-import type { RegionData, ScenarioData, WorldData } from '../shared/dataTypes';
+import type { RegionData, ScenarioData, SymbolFile, WorldData } from '../shared/dataTypes';
 import type { MeshBundle } from '../render/meshBuilder';
 import { registerBeliefs } from '../sim/beliefs';
 
@@ -12,6 +12,8 @@ export interface StaticWorld {
   regions: RegionData[];
   /** region id → RegionData (index = id) */
   region: (id: number) => RegionData;
+  /** the map's symbols and towns, if their file loaded (the map draws without them) */
+  symbols: SymbolFile | null;
 }
 
 export interface LoadProgress {
@@ -53,10 +55,11 @@ export async function loadWorld(
   onProgress: (p: LoadProgress) => void,
 ): Promise<{ world: StaticWorld; scenario: ScenarioData; bundle: MeshBundle }> {
   onProgress({ stage: 'Reading the chronicles', fraction: 0.02 });
-  const [world, regions, scenario] = await Promise.all([
+  const [world, regions, scenario, symbols] = await Promise.all([
     fetchJSON<WorldData>(`${base}/world.json`),
     fetchJSON<RegionData[]>(`${base}/provinces.json`),
     fetchJSON<ScenarioData>(`${base}/scenario-1066.json`),
+    fetchJSON<SymbolFile>(`${base}/symbols.json`).catch(() => null),
   ]);
   registerBeliefs(world, regions);
   onProgress({ stage: 'Surveying the realms', fraction: 0.15 });
@@ -83,7 +86,7 @@ export async function loadWorld(
   const byId: RegionData[] = [];
   for (const r of regions) byId[r.id] = r;
   return {
-    world: { base, world, regions, region: (id) => byId[id] },
+    world: { base, world, regions, region: (id) => byId[id], symbols },
     scenario,
     bundle,
   };

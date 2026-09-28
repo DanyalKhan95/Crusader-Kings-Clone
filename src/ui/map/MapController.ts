@@ -4,6 +4,7 @@
  * callbacks, so pointer movement never has to re-render components.
  */
 import { applyMapMode, unitLayerOf, type MapMode, type UnitLayer as Layer } from '../../game/mapModes';
+import { townMarks } from '../../game/mapSymbols';
 import type { StaticWorld } from '../../game/world';
 import { knows } from '../../sim/exploration';
 import { realmHead } from '../../sim/queries';
@@ -13,6 +14,8 @@ import { LabelLayer, layoutLabel, type TextLabel } from '../../render/labels';
 import { FLAG_HOVERED, FLAG_SELECTED, MapRenderer } from '../../render/mapRenderer';
 import type { MeshBundle } from '../../render/meshBuilder';
 import { Picker } from '../../render/picking';
+import { StyleMix, type MapStyle } from '../../render/styles';
+import { decodeTowns } from '../../render/symbols';
 import { UnitLayer, type UnitStyle } from '../../render/units';
 import { actionsFor, keyOf, type KeyAction } from '../keys';
 
@@ -82,6 +85,12 @@ export class MapController {
   /** the country whose knowledge of the world the map shows (0 = all of it) */
   private fog = 0;
   private labelStyle: 'realms' | 'countries' | '' = '';
+  /** The map's style, fading from the last one after a change. */
+  private styleMix = new StyleMix();
+  private wasFading = false;
+  /** Where each province's town stands, and when the marks were last worked out. */
+  private towns: Uint16Array;
+  private townKey = '';
   private flight: Flight | null = null;
   private zoomTarget = 0;
   private zoomAnchor: [number, number] = [0, 0];
@@ -136,7 +145,9 @@ export class MapController {
       worldH: height,
       terrainUrl: `${world.base}/terrain`,
       tileSize: terrainTiles.size,
+      symbols: world.symbols,
     });
+    this.towns = decodeTowns(world.symbols);
     this.renderer.terrain.onTileLoaded = () => (this.glDirty = true);
     this.labels = new LabelLayer(labelCanvas, world.regions, width);
     this.units = new UnitLayer(unitCanvas, world.region, width);
@@ -185,7 +196,23 @@ export class MapController {
   /** Recolours for changed owners or controllers without re-laying out the labels. */
   recolor() {
     applyMapMode(this.renderer, this.world, this.state, this.mode, this.player, this.fog);
+    this.townKey = '';
     this.glDirty = true;
+  }
+
+  /**
+   * The towns grow with their provinces: their marks (and the names of places) are worked out again
+   * each month and on changes of owner.
+   */
+  private updateTowns() {
+    const s = this.state;
+    const key = `${s.mapVersion}:${Math.floor(s.day / 30)}`;
+    if (key === this.townKey) return;
+    this.townKey = key;
+    this.renderer.symbols.setTowns(townMarks(s, this.towns));
+    // Places change their names with their masters and the years.
+    this.glDirty = true;
+    this.labelsDirty = true;
   }
 
   /** Shows the world as a country knows it (0 = all of it). */
@@ -253,6 +280,7 @@ export class MapController {
     this.mode = mode;
     this.player = player;
     applyMapMode(this.renderer, this.world, this.state, mode, player, this.fog);
+    this.townKey = '';
     const style = mode === 'countries' ? 'countries' : 'realms';
     if (style !== this.labelStyle) {
       this.labelStyle = style;
@@ -282,6 +310,18 @@ export class MapController {
     this.hovered = region;
     if (region) this.renderer.setFlag(region, FLAG_HOVERED, true);
     this.glDirty = true;
+  }
+
+  /** The map's style (styles.ts); with `fade` (and animations on), the old style fades into the new. */
+  setMapStyle(style: MapStyle, fade: boolean) {
+    if (style === this.styleMix.style) return;
+    this.styleMix.set(style, performance.now(), fade && this.animations);
+    this.labels.style = style;
+    this.invalidate();
+  }
+
+  get mapStyle(): MapStyle {
+    return this.styleMix.style;
   }
 
   // ── Camera ──────────────────────────────────────────────────────
@@ -436,11 +476,11 @@ export class MapController {
     return out;
   }
 
-  /** All realm-label texts, so the label font can be loaded for every glyph before drawing. */
+  /** All realm-label texts, so the label fonts can be loaded for every glyph before drawing. */
   labelText(): string {
     return this.state.countries
       .filter(Boolean)
-      .map((c) => c.short.toUpperCase())
+      .map((c) => c.short + c.short.toUpperCase())
       .join('');
   }
 
@@ -460,16 +500,22 @@ export class MapController {
     this.lastT = t;
     const busyFrom = performance.now();
     this.onFrame?.(dt);
+    this.updateTowns();
     this.stepCamera(dt);
     const c = this.camera;
     const key = `${c.x.toFixed(2)} ${c.y.toFixed(2)} ${c.zoom.toFixed(5)} ${c.width} ${c.height}`;
     const moved = key !== this.camKey;
     this.camKey = key;
-    // The selected province pulses, so it needs every frame while animations are on.
-    if (moved || this.glDirty || (this.selected && this.animations)) {
+    // The selected province pulses, so it needs every frame while animations are on; so does a
+    // change of style, until it has faded in (and once more after, at its final weights).
+    const now = performance.now();
+    const fading = this.styleMix.fading(now);
+    if (moved || this.glDirty || fading || this.wasFading || (this.selected && this.animations)) {
       this.glDirty = false;
+      this.renderer.style = this.styleMix.weights(now);
       this.renderer.render(c, this.animations ? t : 0);
     }
+    this.wasFading = fading;
     if (moved || this.labelsDirty) {
       this.labelsDirty = false;
       this.labels.render(c, this.showProvinceNames);

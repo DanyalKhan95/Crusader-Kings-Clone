@@ -25,6 +25,8 @@ export interface LineMesh {
   sideB: Uint16Array;
   /** line class (rivers: width class) */
   widths: Float32Array;
+  /** distance along the line from its start, in map units (for dashes) */
+  lengths: Float32Array;
   indices: Uint32Array;
 }
 
@@ -88,6 +90,7 @@ class LineBuilder {
   a: number[] = [];
   b: number[] = [];
   w: number[] = [];
+  len: number[] = [];
   idx: number[] = [];
 
   add(pts: ArrayLike<number>, sideA: number, sideB: number, width: number) {
@@ -95,9 +98,11 @@ class LineBuilder {
     if (n < 2) return;
     const closed = n > 2 && pts[0] === pts[(n - 1) * 2] && pts[1] === pts[(n - 1) * 2 + 1];
     const base = this.pos.length / 2;
+    let dist = 0;
     for (let i = 0; i < n; i++) {
       const x = pts[i * 2],
         y = pts[i * 2 + 1];
+      if (i > 0) dist += Math.hypot(x - pts[i * 2 - 2], y - pts[i * 2 - 1]);
       let pi = i - 1,
         ni = i + 1;
       if (closed) {
@@ -149,6 +154,7 @@ class LineBuilder {
       this.a.push(sideA, sideA);
       this.b.push(sideB, sideB);
       this.w.push(width, width);
+      this.len.push(dist, dist);
     }
     for (let i = 0; i < n - 1; i++) {
       const v = base + i * 2;
@@ -163,6 +169,7 @@ class LineBuilder {
       sideA: Uint16Array.from(this.a),
       sideB: Uint16Array.from(this.b),
       widths: Float32Array.from(this.w),
+      lengths: Float32Array.from(this.len),
       indices: Uint32Array.from(this.idx),
     };
   }
@@ -238,7 +245,7 @@ export function bundleTransferables(b: MeshBundle): ArrayBuffer[] {
   const add = (arr: { buffer: ArrayBufferLike }) => out.push(arr.buffer as ArrayBuffer);
   for (const f of b.fills) [f.positions, f.regions, f.indices].forEach(add);
   for (const l of [...b.borders, b.rivers])
-    [l.positions, l.offsets, l.sideA, l.sideB, l.widths, l.indices].forEach(add);
+    [l.positions, l.offsets, l.sideA, l.sideB, l.widths, l.lengths, l.indices].forEach(add);
   [b.picking.coords, b.picking.ringStart, b.picking.regionRings, b.picking.bboxes].forEach(add);
   return out;
 }

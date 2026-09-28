@@ -809,6 +809,87 @@ test('shows a new ruler around with the guided tour, and explains the game', asy
   expect(errors).toEqual([]);
 });
 
+test('draws the map of each age: its three styles near and far', async ({ page }, info) => {
+  const errors = watchErrors(page);
+  await page.goto('/?debug');
+  await page.getByRole('button', { name: 'New Campaign' }).click({ timeout: 120_000 });
+  await page.getByRole('button', { name: 'Play as England' }).click();
+  await expect(page.locator('.nation-name')).toHaveText('Kingdom of England');
+  type G = {
+    map: { mapStyle: string; flyTo(x: number, y: number, zoom: number, dur?: number): void };
+    state: {
+      player: number;
+      day: number;
+      countries: ({ index: number; culture: string; alive: boolean; tech: Record<string, number> } | null)[];
+      provinces: ({ owner: number } | null)[];
+    };
+    world: { regions: { id: number; name: string; mapName?: string }[] };
+    runner: { sync(): void };
+    ui: { set(patch: Record<string, unknown>): void };
+  };
+  const style = () => page.evaluate(() => (window as unknown as { game: G }).game.map.mapStyle);
+  // The world, Europe and a county's worth of the North Sea's shores, each on screen for its picture.
+  const views: [string, number, number, number][] = [
+    ['world', 8600, 3000, 0.075],
+    ['europe', 8900, 2250, 0.3],
+    ['county', 8400, 2050, 1.1],
+  ];
+  const pictures = async (name: string) => {
+    for (const [view, x, y, zoom] of views) {
+      await page.evaluate(
+        ([x, y, zoom]) => (window as unknown as { game: G }).game.map.flyTo(x, y, zoom, 1),
+        [x, y, zoom],
+      );
+      await page.waitForTimeout(1200);
+      await info.attach(`${name}-${view}`, { body: await page.screenshot(), contentType: 'image/png' });
+    }
+  };
+
+  // In 1066 the map is a manuscript.
+  await expect.poll(style).toBe('manuscript');
+  await page.evaluate(() => (window as unknown as { game: G }).game.ui.set({ panel: 'none' }));
+  await pictures('manuscript');
+
+  // The settings pin the engraved atlas, then the modern map.
+  await page.getByRole('button', { name: 'Game menu' }).click();
+  await page.getByRole('button', { name: 'Settings' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Settings' });
+  await dialog.getByRole('button', { name: 'Map and graphics' }).click();
+  const styles = dialog.getByRole('radiogroup', { name: 'Map style' });
+  await styles.getByRole('radio', { name: 'Engraved atlas' }).click();
+  await expect(dialog).toContainText('Hachured relief');
+  await page.keyboard.press('Escape');
+  await page.keyboard.press('Escape');
+  await expect.poll(style).toBe('engraved');
+  await pictures('engraved');
+  await page.getByRole('button', { name: 'Game menu' }).click();
+  await page.getByRole('button', { name: 'Settings' }).click();
+  await dialog.getByRole('button', { name: 'Map and graphics' }).click();
+  await styles.getByRole('radio', { name: 'Modern' }).click();
+  await page.keyboard.press('Escape');
+  await page.keyboard.press('Escape');
+  await expect.poll(style).toBe('modern');
+  await pictures('modern');
+
+  // By era again: the map follows the realm into the age of steam.
+  await page.getByRole('button', { name: 'Game menu' }).click();
+  await page.getByRole('button', { name: 'Settings' }).click();
+  await dialog.getByRole('button', { name: 'Map and graphics' }).click();
+  await styles.getByRole('radio', { name: 'By era' }).click();
+  await page.keyboard.press('Escape');
+  await page.keyboard.press('Escape');
+  await expect.poll(style).toBe('manuscript');
+  await page.evaluate(() => {
+    const g = (window as unknown as { game: G }).game;
+    g.state.countries[g.state.player]!.tech = { economy: 20, military: 20, society: 20 };
+    g.runner.sync();
+    g.ui.set({ tick: Date.now() });
+  });
+  await expect.poll(style).toBe('modern');
+
+  expect(errors).toEqual([]);
+});
+
 test('keeps the ledger of nations and ends the age in 2066', async ({ page }) => {
   const errors = watchErrors(page);
   await page.goto('/?debug');

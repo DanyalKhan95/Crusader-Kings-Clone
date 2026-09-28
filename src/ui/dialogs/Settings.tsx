@@ -4,6 +4,7 @@
  */
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import type { IconName } from '../../assets/icons';
+import { MAP_STYLE_INFO, MAP_STYLES } from '../../render/styles';
 import type { MessageKind } from '../../sim/types';
 import { sound, type AudioSettings } from '../audio';
 import { useGame, type SettingsSection } from '../game';
@@ -250,6 +251,24 @@ function GraphicsSection() {
           value={s.quality}
           options={QUALITY}
           onChange={(quality) => settings.set({ quality })}
+        />
+      </Row>
+      <Row
+        name="Map style"
+        blurb={
+          s.mapStyle === 'era'
+            ? 'The map of your era: a manuscript until about 1450, an engraved atlas until about 1800, then a modern map.'
+            : MAP_STYLE_INFO[s.mapStyle].blurb
+        }
+      >
+        <Segmented
+          label="Map style"
+          value={s.mapStyle}
+          options={[
+            { value: 'era', label: 'By era' },
+            ...MAP_STYLES.map((v) => ({ value: v, label: MAP_STYLE_INFO[v].name })),
+          ]}
+          onChange={(mapStyle) => settings.set({ mapStyle })}
         />
       </Row>
       <Row name="Frame rate" blurb="Frames a second at most. A cap saves power and keeps laptops cool.">

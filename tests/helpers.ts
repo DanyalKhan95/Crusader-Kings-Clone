@@ -38,7 +38,7 @@ export function staticWorld(): StaticWorld {
   const { world, regions } = loadData();
   const byId: RegionData[] = [];
   for (const r of regions) byId[r.id] = r;
-  return { base: '', world, regions, region: (id) => byId[id] };
+  return { base: '', world, regions, region: (id) => byId[id], symbols: null };
 }
 
 export function gameState() {

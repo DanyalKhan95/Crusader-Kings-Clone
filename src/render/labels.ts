@@ -5,6 +5,7 @@
 import type { RegionData } from '../shared/dataTypes';
 import { kmPerPxX, kmPerPxY } from '../shared/projection';
 import type { Camera } from './camera';
+import type { MapStyle } from './styles';
 
 /** Approximate on-map area (map units²) of a region from its km² area. */
 export function mapArea(r: RegionData): number {
@@ -177,7 +178,111 @@ function solve3(m: number[], r: number[]): [number, number, number] | null {
   return [det(col(0)) / d, det(col(1)) / d, det(col(2)) / d];
 }
 
-const FONT = '"Alegreya SC", "Iowan Old Style", Georgia, serif';
+/** How a style letters its names: the hands and types of each age. */
+interface Lettering {
+  realm: {
+    font: string;
+    weight: string;
+    upper: boolean;
+    /** letter spacing, in ems */
+    spacing: number;
+    color: string;
+    vassal: string;
+    unknown: string;
+    halo: string;
+  };
+  province: { font: string; weight: string; color: string; halo: string };
+  sea: { font: string; weight: string; color: string; spacing: number };
+}
+
+export const LETTERING: Record<MapStyle, Lettering> = {
+  // A scribe's hand: realm names rubricated in red, places in a book hand, seas in italic.
+  manuscript: {
+    realm: {
+      font: '"Grenze Gotisch", "Alegreya SC", Georgia, serif',
+      weight: '600',
+      upper: false,
+      spacing: 0.1,
+      color: 'rgb(128, 34, 20)',
+      vassal: 'rgb(104, 46, 26)',
+      unknown: 'rgb(116, 84, 50)',
+      halo: 'rgba(242, 228, 192, 0.5)',
+    },
+    province: {
+      font: '"Alegreya", Georgia, serif',
+      weight: '400',
+      color: 'rgba(46, 30, 16, 0.95)',
+      halo: 'rgba(240, 228, 198, 0.62)',
+    },
+    sea: {
+      font: '"Alegreya", Georgia, serif',
+      weight: 'italic 400',
+      color: 'rgba(28, 56, 58, 0.82)',
+      spacing: 0.06,
+    },
+  },
+  // Copperplate: spaced capitals for realms, a Garamond for places, italics for the waters.
+  engraved: {
+    realm: {
+      font: '"IM Fell English SC", "EB Garamond", Georgia, serif',
+      weight: '400',
+      upper: true,
+      spacing: 0.22,
+      color: 'rgb(36, 28, 20)',
+      vassal: 'rgb(62, 48, 34)',
+      unknown: 'rgb(104, 88, 66)',
+      halo: 'rgba(248, 243, 228, 0.45)',
+    },
+    province: {
+      font: '"EB Garamond", Georgia, serif',
+      weight: '400',
+      color: 'rgba(30, 24, 18, 0.95)',
+      halo: 'rgba(248, 242, 226, 0.7)',
+    },
+    sea: {
+      font: '"EB Garamond", Georgia, serif',
+      weight: 'italic 400',
+      color: 'rgba(36, 50, 60, 0.88)',
+      spacing: 0.14,
+    },
+  },
+  // A modern atlas: condensed sans capitals, a plain sans for places, pale italics on the sea.
+  modern: {
+    realm: {
+      font: '"Oswald", "Source Sans 3", "Helvetica Neue", Arial, sans-serif',
+      weight: '500',
+      upper: true,
+      spacing: 0.2,
+      color: 'rgb(28, 24, 20)',
+      vassal: 'rgb(52, 44, 36)',
+      unknown: 'rgb(90, 90, 90)',
+      halo: 'rgba(255, 255, 255, 0.3)',
+    },
+    province: {
+      font: '"Source Sans 3", "Helvetica Neue", Arial, sans-serif',
+      weight: '400',
+      color: 'rgba(24, 20, 16, 0.95)',
+      halo: 'rgba(250, 246, 236, 0.72)',
+    },
+    sea: {
+      font: '"Source Sans 3", "Helvetica Neue", Arial, sans-serif',
+      weight: 'italic 400',
+      color: 'rgba(214, 228, 238, 0.78)',
+      spacing: 0.1,
+    },
+  },
+};
+
+/** Every font the map letters with, and the weights, so that they can be loaded before drawing. */
+export function letteringFonts(): string[] {
+  const out = new Set<string>();
+  for (const l of Object.values(LETTERING)) {
+    out.add(`${l.realm.weight} 32px ${l.realm.font}`);
+    out.add(`${l.province.weight} 16px ${l.province.font}`);
+    out.add(`${l.sea.weight} 16px ${l.sea.font}`);
+  }
+  return [...out];
+}
 
 /**
  * Close in, the provinces speak for themselves: realm names begin to fade at the first zoom and are
@@ -191,14 +296,107 @@ export function realmNameStrength(zoom: number): number {
   return Math.max(0, Math.min(1, (REALM_FADE_TO - zoom) / (REALM_FADE_TO - REALM_FADE_FROM)));
 }
 
+/**
+ * A cartouche behind a name, `hw` by `hh` device px from its centre: on the engraved plate a framed
+ * panel with scrolled ends, on the manuscript a ribbon with forked tails.
+ */
+function cartouche(
+  ctx: CanvasRenderingContext2D,
+  style: MapStyle,
+  cx: number,
+  cy: number,
+  hw: number,
+  hh: number,
+  px: number,
+) {
+  ctx.save();
+  ctx.lineJoin = 'round';
+  if (style === 'engraved') {
+    const r = hh * 0.55;
+    const panel = () => {
+      ctx.beginPath();
+      // Corners cut inwards, as the engravers framed their titles.
+      ctx.moveTo(cx - hw + r, cy - hh);
+      ctx.lineTo(cx + hw - r, cy - hh);
+      ctx.arc(cx + hw, cy - hh, r, Math.PI, Math.PI / 2, true);
+      ctx.lineTo(cx + hw, cy + hh - r);
+      ctx.arc(cx + hw, cy + hh, r, -Math.PI / 2, Math.PI, true);
+      ctx.lineTo(cx - hw + r, cy + hh);
+      ctx.arc(cx - hw, cy + hh, r, 0, -Math.PI / 2, true);
+      ctx.lineTo(cx - hw, cy - hh + r);
+      ctx.arc(cx - hw, cy - hh, r, Math.PI / 2, 0, true);
+      ctx.closePath();
+    };
+    panel();
+    ctx.fillStyle = 'rgba(246, 241, 226, 0.92)';
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(36, 28, 20, 0.85)';
+    ctx.lineWidth = 1.4 * px;
+    ctx.stroke();
+    // A second, finer line inside the first.
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.scale((hw - 3 * px) / hw, (hh - 3 * px) / hh);
+    ctx.translate(-cx, -cy);
+    panel();
+    ctx.restore();
+    ctx.lineWidth = 0.7 * px;
+    ctx.stroke();
+    // Scrolls at either end.
+    for (const side of [-1, 1]) {
+      const x = cx + side * (hw + hh * 0.35);
+      ctx.beginPath();
+      ctx.arc(x, cy, hh * 0.42, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(246, 241, 226, 0.92)';
+      ctx.fill();
+      ctx.lineWidth = 1.2 * px;
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(x, cy, hh * 0.18, 0, Math.PI * 1.5);
+      ctx.stroke();
+    }
+  } else {
+    // A ribbon: its tails folded behind, forked.
+    const tail = hh * 1.6;
+    ctx.fillStyle = 'rgba(214, 190, 142, 0.95)';
+    ctx.strokeStyle = 'rgba(106, 40, 22, 0.85)';
+    ctx.lineWidth = 1.2 * px;
+    for (const side of [-1, 1]) {
+      const x0 = cx + side * (hw - hh * 0.4),
+        x1 = cx + side * (hw + tail);
+      ctx.beginPath();
+      ctx.moveTo(x0, cy - hh * 0.55);
+      ctx.lineTo(x1, cy - hh * 0.55);
+      ctx.lineTo(x1 - side * hh * 0.6, cy + hh * 0.1);
+      ctx.lineTo(x1, cy + hh * 0.75);
+      ctx.lineTo(x0, cy + hh * 0.75);
+      ctx.closePath();
+      ctx.fillStyle = 'rgba(190, 162, 112, 0.95)';
+      ctx.fill();
+      ctx.stroke();
+    }
+    ctx.beginPath();
+    ctx.moveTo(cx - hw, cy - hh);
+    ctx.quadraticCurveTo(cx, cy - hh * 1.35, cx + hw, cy - hh);
+    ctx.lineTo(cx + hw, cy + hh);
+    ctx.quadraticCurveTo(cx, cy + hh * 0.65, cx - hw, cy + hh);
+    ctx.closePath();
+    ctx.fillStyle = 'rgba(232, 214, 172, 0.96)';
+    ctx.fill();
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
 const glyphCache = new Map<string, number[]>();
 
-function glyphWidths(ctx: CanvasRenderingContext2D, text: string): number[] {
-  let w = glyphCache.get(text);
+function glyphWidths(ctx: CanvasRenderingContext2D, font: string, text: string): number[] {
+  const key = `${font}|${text}`;
+  let w = glyphCache.get(key);
   if (!w) {
-    ctx.font = `700 100px ${FONT}`;
+    ctx.font = font.replace('{px}', '100px');
     w = [...text].map((ch) => ctx.measureText(ch).width / 100);
-    glyphCache.set(text, w);
+    glyphCache.set(key, w);
   }
   return w;
 }
@@ -255,6 +453,10 @@ export class LabelLayer {
   hidden: ((id: number) => boolean) | null = null;
   /** Size of the lettering, with the interface's scale. */
   scale = 1;
+  /** The map's style, whose hands letter the names. */
+  style: MapStyle = 'manuscript';
+  /** A region's name as the game gives it now (by era and owner); its map name if none is set. */
+  nameOf: (r: RegionData) => string = (r) => r.name;
 
   constructor(
     readonly canvas: HTMLCanvasElement,
@@ -264,14 +466,16 @@ export class LabelLayer {
     this.ctx = canvas.getContext('2d')!;
   }
 
-  private nameWidth(ctx: CanvasRenderingContext2D, r: RegionData, style: string): number {
-    const key = `${style}|${r.id}`;
+  /** Width of a region's name at a 1px font, in a font given as "weight {px} family". */
+  private nameWidth(ctx: CanvasRenderingContext2D, r: RegionData, font: string, spacing = 0): number {
+    const name = this.nameOf(r);
+    const key = `${font}|${spacing}|${name}`;
     let w = this.widths.get(key);
     if (w === undefined) {
-      const font = ctx.font;
-      ctx.font = `${style} 100px ${FONT}`;
-      w = ctx.measureText(r.name).width / 100;
-      ctx.font = font;
+      const prev = ctx.font;
+      ctx.font = font.replace('{px}', '100px');
+      w = ctx.measureText(name).width / 100 + spacing * Math.max(0, [...name].length - 1);
+      ctx.font = prev;
       this.widths.set(key, w);
     }
     return w;
@@ -332,6 +536,8 @@ export class LabelLayer {
 
     // Realm names along their territory: lay out every glyph now, draw them last (on top). Fading ones
     // leave their space to the provinces.
+    const L_ = LETTERING[this.style];
+    const realmFont = `${L_.realm.weight} {px} ${L_.realm.font}`;
     const strength = realmNameStrength(cam.zoom);
     const glyphs: {
       ch: string;
@@ -354,9 +560,9 @@ export class LabelLayer {
       const alpha = Math.min(fadeIn, fadeOut) * 0.85 * strength;
       if (alpha <= 0.02) continue;
       const [ax, ay] = toScreen(L.cx, L.cy);
-      const text = L.text.toUpperCase();
-      const widths = glyphWidths(ctx, text);
-      const spacing = 0.16; // em
+      const text = L_.realm.upper ? L.text.toUpperCase() : L.text.charAt(0).toUpperCase() + L.text.slice(1);
+      const widths = glyphWidths(ctx, realmFont, text);
+      const spacing = L_.realm.spacing; // em
       const total = widths.reduce((sum, w) => sum + w + spacing, -spacing) * L.size; // map units
       const half = total / 2;
       if (!onScreen(ax, ay, half * cam.zoom + 50)) continue;
@@ -380,46 +586,69 @@ export class LabelLayer {
       }
     }
 
-    // Sea names
+    // Sea names, spaced out as the old engravers did.
+    const spaced = 'letterSpacing' in ctx;
     if (cam.zoom > 0.16) {
-      const fs = 12 * dpr;
-      ctx.font = `italic 700 ${fs}px ${FONT}`;
-      ctx.fillStyle = 'rgba(214, 228, 238, 0.62)';
+      const fs = 12.5 * dpr;
+      const sea = L_.sea;
+      const seaFont = `${sea.weight} {px} ${sea.font}`;
+      ctx.font = seaFont.replace('{px}', `${fs}px`);
+      if (spaced) ctx.letterSpacing = `${sea.spacing * fs}px`;
+      ctx.fillStyle = sea.color;
       for (const { r, sx, sy } of this.candidates(cam, 'sea', 150 * dpr, toScreen, onScreen)) {
-        const w = this.nameWidth(ctx, r, 'italic 700') * fs;
-        if (!occ.place(sx - w / 2, sy - fs * 0.6, sx + w / 2, sy + fs * 0.6)) continue;
-        ctx.fillText(r.name, sx, sy);
+        const name = this.nameOf(r);
+        // The oceans' names stand in cartouches on the old maps, a size larger.
+        const framed = this.style !== 'modern' && /Ocean/.test(name);
+        const k = framed ? 1.3 : 1;
+        const w = this.nameWidth(ctx, r, seaFont, spaced ? sea.spacing : 0) * fs * k;
+        const padX = framed ? fs * 1.6 : 0,
+          padY = framed ? fs * 0.75 : 0;
+        if (!occ.place(sx - w / 2 - padX, sy - fs * 0.6 * k - padY, sx + w / 2 + padX, sy + fs * 0.6 * k + padY))
+          continue;
+        if (framed) {
+          cartouche(ctx, this.style, sx, sy, w / 2 + padX, fs * 0.62 * k + padY, dpr);
+          ctx.font = seaFont.replace('{px}', `${fs * k}px`);
+          if (spaced) ctx.letterSpacing = `${sea.spacing * fs * k}px`;
+          ctx.fillStyle = sea.color;
+          ctx.fillText(name, sx, sy);
+          ctx.font = seaFont.replace('{px}', `${fs}px`);
+          if (spaced) ctx.letterSpacing = `${sea.spacing * fs}px`;
+        } else ctx.fillText(name, sx, sy);
       }
+      if (spaced) ctx.letterSpacing = '0px';
     }
 
     // Province names, a little larger for larger provinces
     if (showProvinceNames && cam.zoom > 0.42) {
       let drawn = 0;
+      const prov = L_.province;
+      const provFont = `${prov.weight} {px} ${prov.font}`;
       for (const { r, sx, sy, size } of this.candidates(cam, 'land', 60 * dpr, toScreen, onScreen)) {
-        const fs = Math.min(15, Math.max(10.5, size / dpr / 9)) * dpr;
-        const w = this.nameWidth(ctx, r, '500') * fs;
+        const fs = Math.min(15.5, Math.max(11, size / dpr / 9)) * dpr;
+        const w = this.nameWidth(ctx, r, provFont) * fs;
         if (!occ.place(sx - w / 2 - 2 * dpr, sy - fs * 0.62, sx + w / 2 + 2 * dpr, sy + fs * 0.62)) continue;
-        ctx.font = `500 ${fs}px ${FONT}`;
+        ctx.font = provFont.replace('{px}', `${fs}px`);
         ctx.lineWidth = 3 * dpr;
-        ctx.strokeStyle = 'rgba(240, 230, 205, 0.55)';
-        ctx.strokeText(r.name, sx, sy);
-        ctx.fillStyle = 'rgba(38, 26, 14, 0.92)';
-        ctx.fillText(r.name, sx, sy);
+        ctx.strokeStyle = prov.halo;
+        const name = this.nameOf(r);
+        ctx.strokeText(name, sx, sy);
+        ctx.fillStyle = prov.color;
+        ctx.fillText(name, sx, sy);
         if (++drawn > 600) break;
       }
     }
 
+    const realm = L_.realm;
     for (const g of glyphs) {
-      ctx.font = `700 ${g.px}px ${FONT}`;
+      ctx.font = realmFont.replace('{px}', `${g.px}px`);
       ctx.lineWidth = Math.max(1, g.px * 0.08);
       ctx.save();
       ctx.translate(g.sx, g.sy);
       ctx.rotate(g.ang);
       ctx.globalAlpha = g.alpha;
-      ctx.strokeStyle = 'rgba(245, 236, 214, 0.35)';
+      ctx.strokeStyle = realm.halo;
       ctx.strokeText(g.ch, 0, 0);
-      ctx.fillStyle =
-        g.kind === 'realm' ? 'rgb(30, 22, 14)' : g.kind === 'unknown' ? 'rgb(112, 84, 52)' : 'rgb(52, 38, 24)';
+      ctx.fillStyle = g.kind === 'realm' ? realm.color : g.kind === 'unknown' ? realm.unknown : realm.vassal;
       ctx.fillText(g.ch, 0, 0);
       ctx.restore();
     }

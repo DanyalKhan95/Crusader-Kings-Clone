@@ -243,6 +243,8 @@ export function applyMapMode(
     r.setCountryColor(country.index, ...country.color);
   }
   r.fillBoost = mode === 'diplomacy' ? 0.6 : 0;
+  r.political = mode === 'realms' || mode === 'countries';
+  r.symbolAlpha = r.political || mode === 'terrain' ? 1 : 0.55;
   r.hasUnknown = unknown;
   r.markFillDirty();
 }

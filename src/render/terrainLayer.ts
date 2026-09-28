@@ -1,10 +1,23 @@
 /**
  * Terrain texture: a low-res image of the whole world (always resident) plus high-res tiles that
- * stream in when zoomed in, kept in a small LRU cache to bound GPU memory.
+ * stream in when zoomed in, kept in a small LRU cache to bound GPU memory. Three textures of detail
+ * for the map's styles lie over the whole world beside it: the hillshade, the steepness of the land
+ * and the distance from the coast (mapgen's `details` step).
  */
 import type { Camera } from './camera';
 import { createProgram, type Program } from './gl';
 import { TERRAIN_FS, TERRAIN_VS } from './shaders';
+import { ROSES, type StyleWeights } from './styles';
+
+/** How a pass of the terrain is drawn: the land or the waters, in the map style of the moment. */
+export interface TerrainPass {
+  land: boolean;
+  style: StyleWeights;
+  /** device pixels per CSS pixel, for patterns that keep their size on screen */
+  px: number;
+  /** the texture unit holding the noise texture */
+  noiseUnit: number;
+}
 
 interface Tile {
   tex: WebGLTexture | null;
@@ -12,6 +25,9 @@ interface Tile {
   failed: boolean;
   lastUsed: number;
 }
+
+/** The roses as the shader takes them: x, y, reach, 0. */
+const ROSE_DATA = new Float32Array(ROSES.flatMap((r) => [r.x, r.y, r.reach, 0]));
 
 const HI_ZOOM = 0.34; // device px per map unit at which low-res texels (4 units) start to blur
 const MAX_TILES = 16;
@@ -21,6 +37,8 @@ export class TerrainLayer {
   private vao: WebGLVertexArrayObject;
   private buf: WebGLBuffer;
   private lo: WebGLTexture | null = null;
+  /** Hillshade, steepness and distance from the coast, on texture units 5, 6 and 7. */
+  private details: WebGLTexture[] = [];
   private tiles = new Map<string, Tile>();
   private aniso: number;
   private anisoExt: EXT_texture_filter_anisotropic | null;
@@ -48,22 +66,42 @@ export class TerrainLayer {
   }
 
   async loadBase(): Promise<void> {
-    this.lo = await this.loadTexture(`${this.baseUrl}/lo.webp`);
+    const [lo, ...details] = await Promise.all([
+      this.loadTexture(`${this.baseUrl}/lo.webp`),
+      // Without its details the map still draws, in plainer styles.
+      ...['shade', 'slope', 'coast'].map((name, i) =>
+        this.loadTexture(`${this.baseUrl}/${name}.webp`, true).catch(() => this.flat(i === 1 ? 0 : 128)),
+      ),
+    ]);
+    this.lo = lo;
+    this.details = details;
   }
 
-  private async loadTexture(url: string): Promise<WebGLTexture> {
-    const res = await fetch(url);
-    if (!res.ok) throw new Error(`Failed to load ${url}: ${res.status}`);
-    const bmp = await createImageBitmap(await res.blob());
+  /** A texture of one grey value, standing in for a detail that did not load. */
+  private flat(value: number): WebGLTexture {
     const gl = this.gl;
     const tex = gl.createTexture()!;
     gl.bindTexture(gl.TEXTURE_2D, tex);
     gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);
-    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB8, gl.RGB, gl.UNSIGNED_BYTE, bmp);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.R8, 1, 1, 0, gl.RED, gl.UNSIGNED_BYTE, new Uint8Array([value]));
+    return tex;
+  }
+
+  /** A texture from an image: colour, or (`gray`) one channel of data that wraps round the world. */
+  private async loadTexture(url: string, gray = false): Promise<WebGLTexture> {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`Failed to load ${url}: ${res.status}`);
+    const bmp = await createImageBitmap(await res.blob(), { colorSpaceConversion: 'none', premultiplyAlpha: 'none' });
+    const gl = this.gl;
+    const tex = gl.createTexture()!;
+    gl.bindTexture(gl.TEXTURE_2D, tex);
+    gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);
+    if (gray) gl.texImage2D(gl.TEXTURE_2D, 0, gl.R8, gl.RED, gl.UNSIGNED_BYTE, bmp);
+    else gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB8, gl.RGB, gl.UNSIGNED_BYTE, bmp);
     gl.generateMipmap(gl.TEXTURE_2D);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gray ? gl.REPEAT : gl.CLAMP_TO_EDGE);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
     if (this.anisoExt) gl.texParameterf(gl.TEXTURE_2D, this.anisoExt.TEXTURE_MAX_ANISOTROPY_EXT, this.aniso);
     bmp.close();
@@ -112,7 +150,7 @@ export class TerrainLayer {
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
   }
 
-  render(cam: Camera, frame: number) {
+  render(cam: Camera, frame: number, pass: TerrainPass) {
     const gl = this.gl;
     if (!this.lo) return;
     gl.useProgram(this.prog.prog);
@@ -120,9 +158,23 @@ export class TerrainLayer {
     gl.uniform1f(this.prog.u.u_zoom, cam.zoom);
     gl.uniform2f(this.prog.u.u_viewport, cam.width, cam.height);
     gl.uniform1i(this.prog.u.u_tex, 0);
+    gl.uniform1i(this.prog.u.u_noise, pass.noiseUnit);
+    gl.uniform1i(this.prog.u.u_land, pass.land ? 1 : 0);
+    gl.uniform1f(this.prog.u.u_px, pass.px);
+    gl.uniform3f(this.prog.u.u_style, pass.style[0], pass.style[1], pass.style[2]);
     // Paper tone fades in when zoomed far out.
     const paper = Math.min(0.55, Math.max(0, (0.16 - cam.zoom) / 0.16) * 0.9);
     gl.uniform1f(this.prog.u.u_paper, paper);
+    gl.uniform2f(this.prog.u.u_world, this.worldW, this.worldH);
+    gl.uniform4fv(this.prog.u.u_roses, ROSE_DATA);
+    gl.uniform1i(this.prog.u.u_roseCount, ROSES.length);
+    this.details.forEach((tex, i) => {
+      gl.activeTexture(gl.TEXTURE5 + i);
+      gl.bindTexture(gl.TEXTURE_2D, tex);
+    });
+    gl.uniform1i(this.prog.u.u_shade, 5);
+    gl.uniform1i(this.prog.u.u_slope, 6);
+    gl.uniform1i(this.prog.u.u_coast, 7);
     gl.activeTexture(gl.TEXTURE0);
     gl.bindVertexArray(this.vao);
     const [vx0, vy0, vx1, vy1] = cam.viewRect();

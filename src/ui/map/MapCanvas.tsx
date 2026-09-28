@@ -1,6 +1,9 @@
 import { useEffect, useRef } from 'react';
+import { letteringFonts } from '../../render/labels';
+import { styleOfEra, type MapStyle } from '../../render/styles';
 import type { UnitStyle } from '../../render/units';
 import { latToY, lonToX } from '../../shared/projection';
+import { eraOf } from '../../sim/tech';
 import { orderArmy, pickRealmAt, secondaryClick, selectArmy, selectFleet, selectProvince } from '../actions';
 import { emblemKey, emblemSvg } from '../CoatOfArms';
 import { useGame, type Game, type UIState } from '../game';
@@ -14,12 +17,12 @@ const HOME = { lon: 16, lat: 45, zoom: 0.3 };
 /** Map units per second of the slow drift behind the title screen. */
 const MENU_DRIFT = 26;
 
+/** The map's lettering in every style, loaded before the first frame so that names are measured right. */
 async function loadFonts(labelText: string) {
   if (!document.fonts) return;
+  const sample = `${labelText} Sea Ocean Gulf Bay Province`;
   await Promise.all([
-    document.fonts.load('700 32px "Alegreya SC"', labelText),
-    document.fonts.load('italic 700 16px "Alegreya SC"', 'Sea Ocean Gulf Bay'),
-    document.fonts.load('500 16px "Alegreya SC"', 'Province'),
+    ...letteringFonts().map((font) => document.fonts.load(font, sample)),
     document.fonts.load('600 32px "Grenze Gotisch"', 'Crowns & Centuries'),
   ]).catch(() => undefined);
 }
@@ -28,6 +31,16 @@ function outlineFor(s: UIState): number {
   if (s.phase === 'playing') return s.player;
   if (s.phase === 'choose') return s.selectedCountry;
   return 0;
+}
+
+/** The map's style: the one the settings pin, or the style of the player's era (of 1066 before a campaign). */
+function mapStyleFor(game: Game, s: UIState): MapStyle {
+  const pinned = settings.get().mapStyle;
+  if (pinned !== 'era') return pinned;
+  const c = s.phase === 'playing' ? game.state.countries[s.player] : undefined;
+  // This runs outside React's error boundaries: a realm whose technology is missing (a damaged
+  // save) must not stop the store, so it is taken for medieval.
+  return styleOfEra(c?.tech ? eraOf(c) : 0);
 }
 
 function onMapClick(game: Game, id: number) {
@@ -119,6 +132,8 @@ export function MapCanvas({ onError }: { onError: (message: string) => void }) {
       map.setSelectedArmy(s.phase === 'playing' && s.panel === 'army' ? s.selectedArmy : 0);
       map.setSelectedFleet(s.phase === 'playing' && s.panel === 'fleet' ? s.selectedFleet : 0);
       map.setFog(s.phase === 'playing' ? s.player : 0);
+      // A new era fades in; a campaign loaded in another era starts in its style.
+      map.setMapStyle(mapStyleFor(game, s), !!prev && prev.phase === 'playing' && s.phase === 'playing');
       host.classList.toggle('ordering', s.orderMode);
       map.drift = s.phase === 'menu' ? MENU_DRIFT : 0;
       prev = s;
@@ -131,6 +146,7 @@ export function MapCanvas({ onError }: { onError: (message: string) => void }) {
       map.setLetteringScale(uiScale());
       map.frameCap = s.frameCap;
       map.animations = s.animations;
+      map.setMapStyle(mapStyleFor(game, game.ui.get()), true);
       if (s.unitLayers !== map.unitLayers || s.portFleets !== map.portFleets) {
         map.unitLayers = s.unitLayers;
         map.portFleets = s.portFleets;

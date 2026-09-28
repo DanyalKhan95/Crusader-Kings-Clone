@@ -58,6 +58,20 @@ export interface ReligionDef {
   color: string;
 }
 
+/** symbols.json: where the map's symbols stand (mapgen's `details` step). */
+export interface SymbolFile {
+  version: 1;
+  /** the kinds of symbol, by code */
+  kinds: string[];
+  /** the spacing of each tier in map units, for relief (mountains, hills) and forests */
+  tiers: { relief: number[]; forest: number[] };
+  count: number;
+  /** base64 Uint16, four a symbol: x, y, kind << 8 | tier << 4 | variant, size (0–255) */
+  symbols: string;
+  /** base64 Uint16, two a region id: where its town stands (0, 0: none) */
+  towns: string;
+}
+
 /** world.json */
 export interface WorldData {
   width: number;
