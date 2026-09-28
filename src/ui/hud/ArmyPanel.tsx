@@ -14,6 +14,7 @@ import { useGame } from '../game';
 import { Icon } from '../Icon';
 import { Portrait, Skills } from '../people';
 import { Term } from '../encyclopedia/Term';
+import { placeName } from '../../sim/places';
 
 export function ArmyView({ id }: { id: number }) {
   const game = useGame();
@@ -25,7 +26,8 @@ export function ArmyView({ id }: { id: number }) {
   const mine = army.owner === state.player;
   const hostile = !mine && atWar(state, army.owner, state.player);
   const commander = character(state, army.commander);
-  const here = game.world.region(army.location);
+  const here = placeName(state, army.location);
+  const onLand = game.world.region(army.location)?.kind === 'land';
   const fighting = inBattle(state, army);
   const size = armySize(army);
   const supply = supplyLimit(state, game.world, army.location);
@@ -33,13 +35,13 @@ export function ArmyView({ id }: { id: number }) {
   const siege = state.provinces[army.location]?.siege;
   const others = state.armies.filter((a) => a !== army && a.owner === army.owner && a.location === army.location);
   let status: string;
-  if (fighting) status = `Fighting at ${here.name}`;
-  else if (army.retreating) status = `Retreating to ${game.world.region(army.path[0]).name}`;
+  if (fighting) status = `Fighting at ${here}`;
+  else if (army.retreating) status = `Retreating to ${placeName(state, army.path[0])}`;
   else if (dest)
-    status = `Marching to ${game.world.region(dest).name}, ${pathDays(game.world, army.location, army.path) - army.progress} days`;
+    status = `Marching to ${placeName(state, dest)}, ${pathDays(game.world, army.location, army.path) - army.progress} days`;
   else if (siege && siege.by === army.owner)
-    status = `Besieging ${here.name}: ${Math.floor(siege.progress * 100)}%, about ${Math.max(0, Math.ceil(siegeDays(state, army.location, [army]) * (1 - siege.progress)))} days left`;
-  else status = `Encamped at ${here.name}`;
+    status = `Besieging ${here}: ${Math.floor(siege.progress * 100)}%, about ${Math.max(0, Math.ceil(siegeDays(state, army.location, [army]) * (1 - siege.progress)))} days left`;
+  else status = `Encamped at ${here}`;
   return (
     <div className="sp-body">
       <div className="sp-head">
@@ -76,7 +78,7 @@ export function ArmyView({ id }: { id: number }) {
           <span className={`num ${size > supply ? 'bad' : ''}`}>{formatMen(supply)}</span>
         </div>
       </div>
-      {size > supply && here.kind === 'land' && (
+      {size > supply && onLand && (
         <p className="alert">This province cannot feed so many. The army loses men to hunger and disease.</p>
       )}
       <section className="sp-section">
@@ -155,7 +157,7 @@ function BattleBox({ province }: { province: number }) {
     d = game.state.countries[battle.defender.country];
   return (
     <section className="sp-section battle-box">
-      <h3 className="section-title">Battle of {game.world.region(province).name}</h3>
+      <h3 className="section-title">Battle of {placeName(game.state, province)}</h3>
       <div className="battle-sides">
         <div>
           <CoatOfArms country={a} size={26} />

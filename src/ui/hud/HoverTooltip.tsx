@@ -13,6 +13,7 @@ import { cultureName } from '../realm';
 import { capitalize } from '../format';
 import { plagueName } from '../../sim/plague';
 import { useStore } from '../store';
+import { placeName } from '../../sim/places';
 
 /** Follows the pointer over the map; the map writes its position directly (see moveTooltip). */
 export function HoverTooltip() {
@@ -55,7 +56,7 @@ export function HoverTooltip() {
     <div ref={ref} className={`panel tooltip ${r ? 'show' : ''}`} role="tooltip">
       {r && (
         <>
-          <div className="tt-name">{r.name}</div>
+          <div className="tt-name">{placeName(game.state, r.id)}</div>
           {r.kind !== 'land' ? (
             <div className="tt-line dim">
               {r.kind === 'lake' ? 'Lake' : isOpenOcean(game.world, r.id) ? 'Open ocean' : 'Sea zone'}

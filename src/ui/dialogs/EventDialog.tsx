@@ -9,6 +9,7 @@ import { useGame } from '../game';
 import { Icon } from '../Icon';
 import { useStore } from '../store';
 import { Modal } from './Modal';
+import { placeName } from '../../sim/places';
 
 /** Something has happened to the realm, and the crown must choose what to do about it. */
 export function EventDialog() {
@@ -19,7 +20,7 @@ export function EventDialog() {
   const def = e ? EVENT_BY_ID[e.event] : undefined;
   const c = e ? state.countries[e.country] : undefined;
   if (!e || !def || !c) return null;
-  const { title, text } = eventText(state, game.world, e);
+  const { title, text } = eventText(state, e);
   const options = openOptions(eventContext(state, game.world, c), def);
   const scope = { province: e.province, other: e.other };
   const other = e.other ? state.countries[e.other] : undefined;
@@ -45,7 +46,7 @@ export function EventDialog() {
           )}
           {e.province > 0 && (
             <button className="chip" onClick={() => flyToProvince(game, e.province)}>
-              <Icon name="flag-objective" /> {game.world.region(e.province).name}
+              <Icon name="flag-objective" /> {placeName(game.state, e.province)}
             </button>
           )}
         </div>
@@ -54,7 +55,7 @@ export function EventDialog() {
         {options.map((i) => {
           const o = def.options[i];
           const check = canChoose(state, game.world, e, i);
-          const lines = effectLines(state, game.world, c, o.effects, scope);
+          const lines = effectLines(state, c, o.effects, scope);
           return (
             <li key={i}>
               <button className="event-option" disabled={!check.ok} onClick={() => choose(i)}>

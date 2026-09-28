@@ -30,6 +30,7 @@ import { armiesOf, atWar, menIn, provincesOf, tributariesOf, vassalsOf } from '.
 import { chance } from './rng';
 import type { BuildingType, Country, GameState, ProvinceState, ShipType, UnitType } from './types';
 import type { SimWorld } from './world';
+import { placeName } from './places';
 
 export interface Part {
   label: string;
@@ -355,13 +356,13 @@ export function startBuilding(state: GameState, world: SimWorld, country: number
   return check;
 }
 
-export function dailyConstruction(state: GameState, world: SimWorld) {
+export function dailyConstruction(state: GameState) {
   state.provinces.forEach((p, id) => {
     if (!p?.construction || p.construction.done > state.day) return;
     const { type, level } = p.construction;
     p.buildings[type] = level;
     p.construction = undefined;
-    log(state, [p.owner], 'building', `${BUILDINGS[type].levels[level - 1]} completed in ${world.region(id).name}.`, {
+    log(state, [p.owner], 'building', `${BUILDINGS[type].levels[level - 1]} completed in ${placeName(state, id)}.`, {
       province: id,
     });
   });
@@ -488,7 +489,7 @@ export function monthlyGrowth(state: GameState, world: SimWorld) {
     const rate = growthOf(c) * (1 - p.dev / cap) * (1 + buildingEffect(p, 'growth'));
     if (p.controller === p.owner && chance(state, rate)) {
       p.dev++;
-      log(state, [p.owner], 'economy', `${world.region(id).name} has grown to development ${p.dev}.`, { province: id });
+      log(state, [p.owner], 'economy', `${placeName(state, id)} has grown to development ${p.dev}.`, { province: id });
     }
   });
 }

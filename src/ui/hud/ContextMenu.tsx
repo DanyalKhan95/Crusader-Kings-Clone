@@ -40,6 +40,7 @@ import { Icon } from '../Icon';
 import { cultureName } from '../realm';
 import { uiScale } from '../settings';
 import { useStore } from '../store';
+import { placeName } from '../../sim/places';
 
 export type MenuPage = 'main' | 'build' | 'recruit' | 'treaties';
 
@@ -78,7 +79,7 @@ const back: MenuItem = { key: 'back', icon: 'return-arrow', label: 'Back', page:
 const look = (game: Game, id: number): MenuItem => ({
   key: 'look',
   icon: 'magnifying-glass',
-  label: `Look at ${game.world.region(id).name}`,
+  label: `Look at ${placeName(game.state, id)}`,
   act: () => selectProvince(game, id),
 });
 
@@ -93,11 +94,12 @@ export function menuFor(game: Game, region: number, page: MenuPage = 'main'): Me
   if (!knows(world, me, region)) return { title: 'Unknown lands', sub: 'Your people know nothing of them', groups: [] };
   if (r.kind !== 'land')
     return {
-      title: r.name,
+      title: placeName(state, region),
       sub: r.kind === 'lake' ? 'A lake' : isOpenOcean(world, region) ? 'The open ocean' : 'A sea zone',
       groups: [[look(game, region)]],
     };
-  if (r.impassable) return { title: r.name, sub: 'Wilderness no one can cross', groups: [[look(game, region)]] };
+  if (r.impassable)
+    return { title: placeName(state, region), sub: 'Wilderness no one can cross', groups: [[look(game, region)]] };
   const owner = state.countries[state.provinces[region]?.owner ?? 0];
   if (!owner) return wildMenu(game, region, me);
   if (owner.index === me.index) {
@@ -138,7 +140,7 @@ function wildMenu(game: Game, id: number, me: Country): Menu {
   }
   const n = natives(state, world, id);
   return {
-    title: world.region(id).name,
+    title: placeName(state, id),
     sub: n && p?.culture ? `Tribal lands of the ${cultureName(game, p.culture)} people` : 'Empty land',
     groups: [[look(game, id)], colony],
   };
@@ -181,7 +183,7 @@ function homeMenu(game: Game, id: number, me: Country): Menu {
       label: at ? 'Missionaries at work' : 'Send missionaries',
       note: at ? `${Math.floor((at.progress / at.needed) * 100)}% of the way` : 'Your chaplain turns to this province',
       reason: check && !check.ok ? check.reason : undefined,
-      act: at ? undefined : () => run(game, cmd.convert(state, world, id)),
+      act: at ? undefined : () => run(game, cmd.convert(state, id)),
     });
   }
   const cs = cultureStanding(me, p);
@@ -194,11 +196,11 @@ function homeMenu(game: Game, id: number, me: Country): Menu {
       label: at ? 'Schools at work' : 'Found schools',
       note: at ? `${Math.floor((at.progress / at.needed) * 100)}% of the way` : 'Your steward teaches them your ways',
       reason: check && !check.ok ? check.reason : undefined,
-      act: at ? undefined : () => run(game, cmd.assimilate(state, world, id)),
+      act: at ? undefined : () => run(game, cmd.assimilate(state, id)),
     });
   }
   return {
-    title: world.region(id).name,
+    title: placeName(state, id),
     sub: 'Your province',
     arms: me.index,
     groups: [[look(game, id)], work, missions].filter((g) => g.length),
@@ -254,7 +256,7 @@ function buildPage(game: Game, id: number, me: Country): Menu {
       });
     }
   return {
-    title: world.region(id).name,
+    title: placeName(state, id),
     sub: 'Build',
     arms: me.index,
     groups: [[back], land, ships].filter((g) => g.length),
@@ -265,9 +267,9 @@ function recruitPage(game: Game, id: number, me: Country): Menu {
   const { state, world } = game;
   const men = me.manpower + reserveMen(me);
   const era = militaryEra(me);
-  const capitalName = world.region(me.capital)?.name;
+  const capitalName = me.capital ? placeName(state, me.capital) : undefined;
   return {
-    title: world.region(id).name,
+    title: placeName(state, id),
     sub: 'Recruit',
     arms: me.index,
     groups: [
@@ -362,7 +364,7 @@ function foreignMenu(game: Game, id: number, me: Country, owner: Country): Menu 
       key: 'declare',
       icon: 'crossed-swords',
       label: `Declare war on ${theName(top.short)}`,
-      note: me.claims.includes(id) ? `For your claim on ${world.region(id).name}` : undefined,
+      note: me.claims.includes(id) ? `For your claim on ${placeName(state, id)}` : undefined,
       tone: 'danger',
       reason:
         general.ok || throne
@@ -444,7 +446,7 @@ function foreignMenu(game: Game, id: number, me: Country, owner: Country): Menu 
   }
 
   return {
-    title: world.region(id).name,
+    title: placeName(state, id),
     sub,
     arms: owner.index,
     groups: [first, arms, talk].filter((g) => g.length),

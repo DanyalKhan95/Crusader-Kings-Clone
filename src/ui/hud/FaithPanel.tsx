@@ -38,6 +38,7 @@ import { Swatch } from '../realm';
 import { goToProvince } from './SidePanel';
 import { OpinionValue } from './DiplomacyPanel';
 import { WithTip } from './Tip';
+import { placeName } from '../../sim/places';
 
 /** The icon of a faith's house of worship. */
 export function faithIcon(faith: string): IconName {
@@ -169,8 +170,8 @@ function HolyWar({ c }: { c: Country }) {
   let text: string;
   if (war)
     text = war.attackers.includes(c.index)
-      ? `You fight in ${war.name} for ${game.world.region(war.goal).name}.`
-      : `${war.name} is being fought for ${game.world.region(war.goal).name}, by ${war.attackers.length} realms.`;
+      ? `You fight in ${war.name} for ${placeName(game.state, war.goal)}.`
+      : `${war.name} is being fought for ${placeName(game.state, war.goal)}, by ${war.attackers.length} realms.`;
   else if (year > def.until) text = `The age of the great holy wars has passed. No ${name} will be called again.`;
   else if (!target) text = `${def.site} is in the hands of the faithful. There is no call for a ${name}.`;
   else {
@@ -232,7 +233,7 @@ function HolySites({ c }: { c: Country }) {
             <li key={id} className="diplo-row">
               <button className="diplo-row-main" onClick={() => goToProvince(game, id)}>
                 {holder ? <CoatOfArms country={holder} size={22} /> : <Icon name="pine-tree" />}
-                <span className="diplo-row-name">{game.world.region(id).name}</span>
+                <span className="diplo-row-name">{placeName(game.state, id)}</span>
                 <span className={`diplo-row-what small ${ours ? 'good' : lost ? 'bad' : 'dim'}`}>
                   {ours ? 'yours' : holder ? (lost ? `unbelievers: ${holder.short}` : holder.short) : 'unclaimed'}
                 </span>
@@ -304,7 +305,7 @@ function RealmFaiths({ c }: { c: Country }) {
           <Icon name={faithIcon(c.religion)} />
           <span>
             <button className="link" onClick={() => goToProvince(game, job.province)}>
-              {game.world.region(job.province).name}
+              {placeName(game.state, job.province)}
             </button>
             {c.tasks.chaplain === 'convert' ? ': missionaries at work' : ': the mission waits for the chaplain'}
             <span className="bar">
@@ -390,7 +391,7 @@ function Peoples({ c }: { c: Country }) {
           <Icon name="scroll-quill" />
           <span>
             <button className="link" onClick={() => goToProvince(game, job.province)}>
-              {game.world.region(job.province).name}
+              {placeName(game.state, job.province)}
             </button>
             {c.tasks.steward === 'assimilate' ? ': schools at work' : ': the schools wait for the steward'}
             <span className="bar">

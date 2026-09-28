@@ -18,6 +18,7 @@ import { useGame } from '../game';
 import { Icon } from '../Icon';
 import { goToProvince } from '../hud/SidePanel';
 import { BreakdownList, fmtSigned } from '../hud/Tip';
+import { placeName } from '../../sim/places';
 
 /** The chart palette (see charts.tsx): checked against every era's panels. */
 export const CHART = { income: '#3987e5', expenses: '#d95926', gold: '#c98500', men: '#3987e5' };
@@ -136,7 +137,7 @@ function Provinces({ c }: { c: Country }) {
     const f = provinceFactor(c, p).value;
     return {
       id,
-      name: game.world.region(id).name,
+      name: placeName(game.state, id),
       p,
       dev: p.dev,
       cap: devCap(game.world, c, id),

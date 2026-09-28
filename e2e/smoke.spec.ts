@@ -809,7 +809,9 @@ test('shows a new ruler around with the guided tour, and explains the game', asy
   expect(errors).toEqual([]);
 });
 
-test('draws the map of each age: its three styles near and far', async ({ page }, info) => {
+test('draws the map of each age: its three styles near and far, and places named by era and master', async ({
+  page,
+}, info) => {
   const errors = watchErrors(page);
   await page.goto('/?debug');
   await page.getByRole('button', { name: 'New Campaign' }).click({ timeout: 120_000 });
@@ -886,6 +888,19 @@ test('draws the map of each age: its three styles near and far', async ({ page }
     g.ui.set({ tick: Date.now() });
   });
   await expect.poll(style).toBe('modern');
+
+  // Constantinople is Istanbul under the Turks; the admin-style names are gone.
+  const names = await page.evaluate(() => {
+    const g = (window as unknown as { game: G }).game;
+    const find = (name: string) => g.world.regions.find((r) => (r.mapName ?? r.name) === name)!;
+    const city = find('Constantinople').id;
+    const turks = g.state.countries.find((c) => c?.alive && c.culture === 'oghuz')!;
+    g.state.provinces[city]!.owner = turks.index;
+    g.ui.set({ panel: 'province', selectedProvince: city });
+    return { aktobe: find('North-West Aktobe').name };
+  });
+  expect(names.aktobe).toBe('Ilek');
+  await expect(page.locator('.side-panel .sp-title')).toHaveText('Istanbul');
 
   expect(errors).toEqual([]);
 });

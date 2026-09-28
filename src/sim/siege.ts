@@ -14,6 +14,7 @@ import type { Army, GameState, UnitType } from './types';
 import { unitDef } from '../data/units';
 import { battleAt } from './combat';
 import type { SimWorld } from './world';
+import { placeName } from './places';
 
 export const GARRISON_PER_FORT = 400;
 const OPEN_DAYS = 8;
@@ -90,17 +91,17 @@ export function dailySieges(state: GameState, world: SimWorld) {
     let rate = dailyRate(state, id, armies);
     if (rate > 0 && fortLevel(state, id) && chance(state, 0.012)) rate += 0.1; // a breach, disease in the garrison…
     p.siege.progress += rate;
-    if (p.siege.progress >= 1) occupy(state, world, id, armies[0]);
+    if (p.siege.progress >= 1) occupy(state, id, armies[0]);
   }
 }
 
-function occupy(state: GameState, world: SimWorld, id: number, army: Army) {
+function occupy(state: GameState, id: number, army: Army) {
   const p = state.provinces[id];
   const before = p.controller;
   p.controller = newController(state, id, army);
   p.siege = undefined;
   state.mapVersion++;
-  const name = world.region(id).name;
+  const name = placeName(state, id);
   const taker = state.countries[p.controller];
   const loser = state.countries[before];
   const fort = fortLevel(state, id);

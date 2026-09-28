@@ -45,6 +45,7 @@ import { destroyCountry, fixCapitals } from './realm';
 import { endRevolt, factionWar } from './revolts';
 import type { CasusBelli, Country, GameState, PeaceOffer, PeaceTerms, War } from './types';
 import { distanceKm, type SimWorld } from './world';
+import { placeName } from './places';
 
 export { destroyCountry } from './realm';
 
@@ -163,14 +164,14 @@ export function borderProvinces(state: GameState, world: SimWorld, attacker: num
   return realmProvinces(state, defender).filter((id) => touchesRealm(state, world, attacker, id));
 }
 
-export function warName(world: SimWorld, cb: CasusBelli, attacker: Country, defender: Country, goal: number): string {
+export function warName(state: GameState, cb: CasusBelli, attacker: Country, defender: Country, goal: number): string {
   switch (cb) {
     case 'throne':
       return `${attacker.adj} Claim on ${defender.short}`;
     case 'claim':
-      return `${attacker.adj}–${defender.adj} War over ${world.region(goal).name}`;
+      return `${attacker.adj}–${defender.adj} War over ${placeName(state, goal)}`;
     case 'holy':
-      return `${attacker.adj} Holy War for ${world.region(goal).name}`;
+      return `${attacker.adj} Holy War for ${placeName(state, goal)}`;
     case 'independence':
       return `${attacker.adj} War of Independence`;
     case 'coalition':
@@ -199,7 +200,7 @@ export function declareWar(
   if (cb === 'independence') for (const w of [...state.wars]) dropFromWar(state, w, attackers);
   const war: War = {
     id: state.nextId++,
-    name: warName(world, cb, a, d, goal),
+    name: warName(state, cb, a, d, goal),
     cb,
     goal: cb === 'throne' ? defender : cb === 'claim' || cb === 'holy' ? goal : 0,
     attacker,
@@ -416,7 +417,7 @@ export function callToArms(
       [ally],
       'diplomacy',
       reason === 'crusade'
-        ? `${war.name} is called: take the cross and free ${world.region(war.goal).name}!`
+        ? `${war.name} is called: take the cross and free ${placeName(state, war.goal)}!`
         : `${leader.name} calls you to arms in ${war.name}.`,
       { important: true },
     );
@@ -891,7 +892,7 @@ export function endWar(
   state.mapVersion++;
   state.diploVersion++;
   if (changed) state.borderVersion++;
-  const names = terms.provinces.map((id) => world.region(id).name);
+  const names = terms.provinces.map((id) => placeName(state, id));
   const what = terms.white
     ? 'a white peace'
     : [

@@ -36,6 +36,7 @@ import { useGame } from '../game';
 import { Icon } from '../Icon';
 import { goToProvince } from './SidePanel';
 import { BreakdownList, fmtSigned, WithTip } from './Tip';
+import { placeName } from '../../sim/places';
 
 /** A number coloured by whether it is friendly, with its reasons on hover. */
 export function OpinionValue({ b, title, more = 'rule:opinion' }: { b: Breakdown; title: string; more?: string }) {
@@ -586,7 +587,7 @@ function ClaimsSection({ c }: { c: Country }) {
         <div className="construction">
           <Icon name="scroll-quill" />
           <span>
-            Forging a claim on {game.world.region(f.province).name}
+            Forging a claim on {placeName(game.state, f.province)}
             <span className="bar">
               <span style={{ width: `${Math.min(100, ((state.day - f.start) / (f.done - f.start)) * 100)}%` }} />
             </span>
@@ -604,7 +605,7 @@ function ClaimsSection({ c }: { c: Country }) {
             return (
               <li key={id}>
                 <button className="ranked-row" onClick={() => goToProvince(game, id)}>
-                  <span>{game.world.region(id).name}</span>
+                  <span>{placeName(game.state, id)}</span>
                   <span className="dim small">{owner?.short}</span>
                 </button>
               </li>

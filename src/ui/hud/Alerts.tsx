@@ -17,6 +17,7 @@ import { useGame, type Game, type RealmScreen } from '../game';
 import { Icon } from '../Icon';
 import { useStore } from '../store';
 import { WithTip } from './Tip';
+import { placeName } from '../../sim/places';
 
 export interface Alert {
   /** what it is about: hiding lasts until this changes */
@@ -122,7 +123,7 @@ export function alertsFor(game: Game): Alert[] {
       title: hungry.length === 1 ? 'An army is starving' : `${hungry.length} armies are starving`,
       lines: hungry.map(
         (a) =>
-          `${a.name}: ${formatMen(armySize(a))} men where ${world.region(a.location).name} feeds ${formatMen(supplyLimit(state, world, a.location))}`,
+          `${a.name}: ${formatMen(armySize(a))} men where ${placeName(state, a.location)} feeds ${formatMen(supplyLimit(state, world, a.location))}`,
       ),
       tone: 'bad',
       action: 'Go to the army',
@@ -192,7 +193,7 @@ export function alertsFor(game: Game): Alert[] {
       key: `claims:${ready.join(',')}`,
       icon: 'wax-seal',
       title: ready.length === 1 ? 'A claim to press' : `${ready.length} claims to press`,
-      lines: ready.map((id) => `${world.region(id).name}, held by ${state.countries[state.provinces[id].owner]?.name}`),
+      lines: ready.map((id) => `${placeName(state, id)}, held by ${state.countries[state.provinces[id].owner]?.name}`),
       tone: 'good',
       action: 'Declare war for it',
       onClick: () => openDeclareWar(game, topLiege(state, state.provinces[ready[0]].owner), ready[0]),

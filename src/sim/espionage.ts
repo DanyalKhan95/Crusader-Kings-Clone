@@ -19,6 +19,7 @@ import { techCost } from './tech';
 import { ESTATES, type Country, type EstateId, type GameState } from './types';
 import { borderProvinces } from './war';
 import { distanceKm, type SimWorld } from './world';
+import { placeName } from './places';
 
 type Check = { ok: true } | { ok: false; reason: string };
 
@@ -196,7 +197,7 @@ export function carryOut(
       case 'claim': {
         const id = claimTarget(state, world, c, target);
         c.claims.push(id);
-        deed = `Forged charters give ${c.name} a claim on ${world.region(id).name}.`;
+        deed = `Forged charters give ${c.name} a claim on ${placeName(state, id)}.`;
         break;
       }
       case 'steal': {
@@ -212,7 +213,7 @@ export function carryOut(
         for (const [id, p] of state.provinces.entries())
           if (p?.owner === target && p.construction) {
             p.construction = undefined;
-            burnt = world.region(id).name;
+            burnt = placeName(state, id);
             break;
           }
         deed = `Fires rage in the workshops of ${t.name}${burnt ? `, and the works at ${burnt} have burnt down` : ''}.`;

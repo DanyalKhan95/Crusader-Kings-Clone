@@ -27,6 +27,7 @@
     "mapgen:download": "node --use-env-proxy --import tsx tools/mapgen/download.ts",
     "mapgen": "node --max-old-space-size=12288 --import tsx tools/mapgen/build.ts",
     "mapgen:validate": "node --import tsx tools/mapgen/validate.ts",
+    "mapgen:names": "node --max-old-space-size=4096 --import tsx tools/mapgen/names.ts",
     "artifact": "node --import tsx tools/artifact/prepare.ts",
     "icons": "node --import tsx tools/icons/extract.ts && node --import tsx tools/icons/app-icon.ts",
     "simulate": "node --import tsx tools/simulate.ts",

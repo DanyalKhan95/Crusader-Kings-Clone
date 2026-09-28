@@ -7,6 +7,7 @@ import { applyMapMode, unitLayerOf, type MapMode, type UnitLayer as Layer } from
 import { townMarks } from '../../game/mapSymbols';
 import type { StaticWorld } from '../../game/world';
 import { knows } from '../../sim/exploration';
+import { placeName } from '../../sim/places';
 import { realmHead } from '../../sim/queries';
 import type { GameState } from '../../sim/types';
 import { Camera } from '../../render/camera';
@@ -150,6 +151,7 @@ export class MapController {
     this.towns = decodeTowns(world.symbols);
     this.renderer.terrain.onTileLoaded = () => (this.glDirty = true);
     this.labels = new LabelLayer(labelCanvas, world.regions, width);
+    this.labels.nameOf = (r) => placeName(this.state, r.id);
     this.units = new UnitLayer(unitCanvas, world.region, width);
     this.picker = new Picker(bundle.picking, world.regions.length, width, height);
     this.resize();

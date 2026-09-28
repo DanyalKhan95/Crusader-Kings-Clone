@@ -70,8 +70,8 @@ export function advanceDay(state: GameState, world: SimWorld) {
   dailyUpkeep(state, world);
   dailyFleets(state, world);
   mark('supply and upkeep');
-  dailyConstruction(state, world);
-  dailyFabrication(state, world);
+  dailyConstruction(state);
+  dailyFabrication(state);
   dailyModifiers(state);
   if (state.offers.length) expireOffers(state);
   runScheduled(state, world);

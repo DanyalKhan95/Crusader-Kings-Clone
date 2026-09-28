@@ -36,6 +36,7 @@ import { Icon } from '../Icon';
 import { Portrait, Skills } from '../people';
 import { cultureName } from '../realm';
 import { WithTip } from './Tip';
+import { placeName } from '../../sim/places';
 
 // ── A fleet ───────────────────────────────────────────────────────
 
@@ -56,15 +57,16 @@ export function FleetView({ id }: { id: number }) {
   const blockading = here.kind !== 'land' ? here.adj.filter(([n]) => blockades(state).get(n) === fleet.owner) : [];
   const days = dest ? pathDays(world, fleet.location, fleet.path, true) - fleet.progress : 0;
   let status: string;
-  if (fighting) status = `Fighting in the ${here.name}`;
-  else if (fleet.retreating && dest) status = `Making for port at ${world.region(dest).name}`;
+  const hereName = placeName(state, fleet.location);
+  if (fighting) status = `Fighting in the ${hereName}`;
+  else if (fleet.retreating && dest) status = `Making for port at ${placeName(state, dest)}`;
   else if (fleet.mission === 'explore')
-    status = dest ? `Charting the unknown, bound for the ${world.region(dest).name}` : 'Charting the unknown';
-  else if (dest) status = `Sailing to ${world.region(dest).kind === 'land' ? '' : 'the '}${world.region(dest).name}`;
-  else if (docked) status = `In port at ${here.name}`;
+    status = dest ? `Charting the unknown, bound for the ${placeName(state, dest)}` : 'Charting the unknown';
+  else if (dest) status = `Sailing to ${world.region(dest).kind === 'land' ? '' : 'the '}${placeName(state, dest)}`;
+  else if (docked) status = `In port at ${hereName}`;
   else if (blockading.length)
-    status = `Blockading ${blockading.length} ${blockading.length === 1 ? 'province' : 'provinces'} from the ${here.name}`;
-  else status = `At sea in the ${here.name}`;
+    status = `Blockading ${blockading.length} ${blockading.length === 1 ? 'province' : 'provinces'} from the ${hereName}`;
+  else status = `At sea in the ${hereName}`;
   const others = state.fleets.filter((f) => f !== fleet && f.owner === fleet.owner && f.location === fleet.location);
   const era = militaryEra(owner);
   return (
@@ -216,7 +218,7 @@ function SeaBattleBox({ zone }: { zone: number }) {
     d = game.state.countries[battle.defender.country];
   return (
     <section className="sp-section battle-box">
-      <h3 className="section-title">Battle of the {game.world.region(zone).name}</h3>
+      <h3 className="section-title">Battle of the {placeName(game.state, zone)}</h3>
       <div className="battle-sides">
         <div>
           <CoatOfArms country={a} size={26} />
@@ -376,7 +378,7 @@ export function NavySection({ c }: { c: Country }) {
                 <Icon name={shipLook(c, 'heavy').icon} />
                 <span className="army-row-name">
                   {f.name}
-                  <span className="dim small"> · {game.world.region(f.location).name}</span>
+                  <span className="dim small"> · {placeName(game.state, f.location)}</span>
                 </span>
                 <span className="num">{Math.round(fleetSize(f))}</span>
               </button>
@@ -473,7 +475,7 @@ export function ColoniesSection({ c }: { c: Country }) {
           {c.colonies.map((m) => (
             <li key={m.province}>
               <button className="ranked-row" onClick={() => flyToProvince(game, m.province, 1)}>
-                <span>{game.world.region(m.province).name}</span>
+                <span>{placeName(game.state, m.province)}</span>
                 <span className="num dim">
                   {m.progress} of {m.needed} months
                 </span>

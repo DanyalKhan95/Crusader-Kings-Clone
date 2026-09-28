@@ -31,6 +31,7 @@ import { changeGovernment, eraOf, knowsId, researchPoints } from './tech';
 import { ESTATES, type Country, type EstateId, type GameState, type PendingEvent, type Skill } from './types';
 import { borderProvinces } from './war';
 import type { SimWorld } from './world';
+import { placeName } from './places';
 
 type Check = { ok: true } | { ok: false; reason: string };
 const yes: Check = { ok: true };
@@ -152,7 +153,6 @@ function capitalise(s: string): string {
 /** An event's title and story with the blanks filled in. */
 export function eventText(
   state: GameState,
-  world: SimWorld,
   e: Pick<PendingEvent, 'event' | 'country' | 'province' | 'other'>,
 ): { title: string; text: string } {
   const def = EVENT_BY_ID[e.event];
@@ -164,8 +164,8 @@ export function eventText(
     land: c.short,
     adj: c.adj,
     ruler: character(state, c.ruler)?.name ?? 'The ruler',
-    capital: c.capital ? world.region(c.capital).name : c.name,
-    province: e.province ? world.region(e.province).name : c.capital ? world.region(c.capital).name : '',
+    capital: c.capital ? placeName(state, c.capital) : c.name,
+    province: e.province ? placeName(state, e.province) : c.capital ? placeName(state, c.capital) : '',
     other: state.countries[e.other]?.name ?? 'A neighbour',
     faith: faithName(c.religion),
     plague: plague || 'the pestilence',
@@ -216,13 +216,7 @@ export interface EffectLine {
 const signed = (v: number) => `${v > 0 ? '+' : '−'}${Math.abs(Math.round(v))}`;
 
 /** What an option would do, line by line, for the player to read before choosing. */
-export function effectLines(
-  state: GameState,
-  world: SimWorld,
-  c: Country,
-  effects: EventEffects,
-  scope: EventScope,
-): EffectLine[] {
+export function effectLines(state: GameState, c: Country, effects: EventEffects, scope: EventScope): EffectLine[] {
   const out: EffectLine[] = [];
   const gold = goldOf(state, c, effects);
   if (gold) out.push({ text: `${signed(gold)} gold`, good: gold > 0 });
@@ -236,7 +230,7 @@ export function effectLines(
   }
   if (effects.dev && scope.province)
     out.push({
-      text: `Development of ${world.region(scope.province).name} ${signed(effects.dev)}`,
+      text: `Development of ${placeName(state, scope.province)} ${signed(effects.dev)}`,
       good: effects.dev > 0,
     });
   for (const e of ESTATES) {

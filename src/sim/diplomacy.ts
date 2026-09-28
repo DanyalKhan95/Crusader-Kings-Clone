@@ -29,6 +29,7 @@ import {
 } from './queries';
 import type { CasusBelli, Country, GameState, MemoryKind, Pact, PactKind } from './types';
 import { distanceKm, type SimWorld } from './world';
+import { placeName } from './places';
 
 export type Check = { ok: true } | { ok: false; reason: string };
 const yes: Check = { ok: true };
@@ -458,7 +459,7 @@ export function canFabricate(state: GameState, world: SimWorld, index: number, p
   if (isInRealm(state, p.owner, topLiege(state, index))) return no('It is already part of your realm');
   if (c.claims.includes(province)) return no('You already claim it');
   if (c.fabricating)
-    return no(`Your chancellor is already forging a claim on ${world.region(c.fabricating.province).name}`);
+    return no(`Your chancellor is already forging a claim on ${placeName(state, c.fabricating.province)}`);
   if (!touchesRealm(state, world, index, province)) return no('It must border your realm');
   const cost = fabricationCost(state, province);
   if (c.gold < cost) return no(`It costs ${cost} gold`);
@@ -473,7 +474,7 @@ export function startFabrication(state: GameState, world: SimWorld, index: numbe
   return true;
 }
 
-export function dailyFabrication(state: GameState, world: SimWorld) {
+export function dailyFabrication(state: GameState) {
   for (const c of state.countries) {
     if (!c?.alive || !c.fabricating || c.fabricating.done > state.day) continue;
     const id = c.fabricating.province;
@@ -486,7 +487,7 @@ export function dailyFabrication(state: GameState, world: SimWorld) {
       state,
       [c.index, topLiege(state, p.owner)],
       'diplomacy',
-      `${c.name} now holds a claim on ${world.region(id).name}.`,
+      `${c.name} now holds a claim on ${placeName(state, id)}.`,
       {
         province: id,
         important: c.index === state.player,

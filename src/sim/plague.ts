@@ -15,6 +15,7 @@ import { chance, pick, randInt, random } from './rng';
 import { knowsId } from './tech';
 import type { Country, GameState } from './types';
 import { distanceKm, type SimWorld } from './world';
+import { placeName } from './places';
 
 /** Monthly chance that a province emptied by pestilence wins back a point of development. */
 const REGROWTH = 0.01;
@@ -113,8 +114,8 @@ export function breakOut(state: GameState, world: SimWorld, id: string, province
   state.plague = { id: def.id, since: state.day };
   const player = state.countries[state.player];
   const near = !!player?.capital && distanceKm(world.region(player.capital), world.region(province)) < 3000;
-  chronicle(state, `${capitalise(def.name)} breaks out in ${world.region(province).name}.`, { province });
-  log(state, 'all', 'plague', `${capitalise(def.name)} has broken out in ${world.region(province).name}.`, {
+  chronicle(state, `${capitalise(def.name)} breaks out in ${placeName(state, province)}.`, { province });
+  log(state, 'all', 'plague', `${capitalise(def.name)} has broken out in ${placeName(state, province)}.`, {
     province,
     important: near,
   });

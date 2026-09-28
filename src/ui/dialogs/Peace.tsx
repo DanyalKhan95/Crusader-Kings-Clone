@@ -13,6 +13,7 @@ import { Icon } from '../Icon';
 import { useStore } from '../store';
 import { fmtSigned } from '../hud/Tip';
 import { Modal } from './Modal';
+import { placeName } from '../../sim/places';
 
 /** Terms of peace for a war the player leads. */
 export function Peace() {
@@ -157,7 +158,7 @@ export function Peace() {
                         <li key={id}>
                           <label className={`choice compact ${picked.includes(id) ? 'active' : ''}`}>
                             <input type="checkbox" checked={picked.includes(id)} onChange={() => toggle(id)} />
-                            <span className="choice-name">{game.world.region(id).name}</span>
+                            <span className="choice-name">{placeName(game.state, id)}</span>
                             <span className="dim small num">
                               dev {state.provinces[id].dev}
                               {id === war.goal ? ' · war goal' : ''}
@@ -214,7 +215,7 @@ function HolyLandChoice({ checked, onChange }: { checked: boolean; onChange: (v:
   const war = game.state.wars.find((w) => w.id === game.ui.get().selectedWar);
   if (!war) return null;
   const def = greatHolyWarOf(war.faith);
-  const land = holyLandOf(game.state, game.world, war).map((id) => game.world.region(id).name);
+  const land = holyLandOf(game.state, game.world, war).map((id) => placeName(game.state, id));
   return (
     <label className={`choice ${checked ? 'active' : ''}`}>
       <input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} />
@@ -287,8 +288,8 @@ export function Offer() {
         <div className="offer-from">
           <CoatOfArms country={from} size={46} />
           <p>
-            {from.name} calls every realm of the faith to take the cross and free {game.world.region(war.goal).name}{' '}
-            from {enemy.name}, who can raise {formatMen(realmStrength(state, enemy.index))} men. {war.attackers.length}{' '}
+            {from.name} calls every realm of the faith to take the cross and free {placeName(game.state, war.goal)} from{' '}
+            {enemy.name}, who can raise {formatMen(realmStrength(state, enemy.index))} men. {war.attackers.length}{' '}
             realms have answered so far.
           </p>
         </div>
@@ -337,8 +338,8 @@ export function Offer() {
   if (t.throne) items.push(`Their ruler takes your crown, and ${from.name} joins your realm under them.`);
   if (t.independence) items.push(`${from.name} goes free.`);
   if (t.tributary) items.push(`You pay tribute to ${from.name}, and give up your alliances.`);
-  if (t.holyLand && war) items.push(`You give up the land around ${game.world.region(war.goal).name}.`);
-  for (const id of t.provinces) items.push(`You cede ${game.world.region(id).name}.`);
+  if (t.holyLand && war) items.push(`You give up the land around ${placeName(game.state, war.goal)}.`);
+  for (const id of t.provinces) items.push(`You cede ${placeName(game.state, id)}.`);
   if (t.gold) items.push(`You pay ${Math.round(t.gold)} gold.`);
   return (
     <Modal title={`${from.name} proposes peace`} kicker={war?.name} onClose={() => answer(false)}>

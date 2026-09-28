@@ -22,6 +22,7 @@ import { useMapInsets } from '../map/useMapInsets';
 import { withKey } from '../keys';
 import { readPref, writePref } from '../prefs';
 import { createStore, useStore } from '../store';
+import { placeName } from '../../sim/places';
 
 type SectionId = 'armies' | 'fleets' | 'sieges' | 'wars' | 'buildings' | 'colonies' | 'missions' | 'spies';
 
@@ -82,35 +83,35 @@ function goTo(game: Game, id: number, select: () => void) {
 export function armyStatus(game: Game, a: Army): string {
   const { state, world } = game;
   const here = world.region(a.location);
+  const hereName = placeName(state, a.location);
   const dest = a.path.at(-1);
-  if (inBattle(state, a)) return `Fighting at ${here.name}`;
-  if (a.retreating) return `Retreating to ${world.region(a.path[0] ?? a.location).name}`;
-  if (dest) return `To ${world.region(dest).name}, ${Math.max(1, pathDays(world, a.location, a.path) - a.progress)} d`;
+  if (inBattle(state, a)) return `Fighting at ${hereName}`;
+  if (a.retreating) return `Retreating to ${placeName(state, a.path[0] ?? a.location)}`;
+  if (dest) return `To ${placeName(state, dest)}, ${Math.max(1, pathDays(world, a.location, a.path) - a.progress)} d`;
   const siege = state.provinces[a.location]?.siege;
-  if (siege && siege.by === a.owner) return `Besieging ${here.name}, ${percent(siege.progress)}`;
-  return here.kind === 'land' ? `At ${here.name}` : `At sea in the ${here.name}`;
+  if (siege && siege.by === a.owner) return `Besieging ${hereName}, ${percent(siege.progress)}`;
+  return here.kind === 'land' ? `At ${hereName}` : `At sea in the ${hereName}`;
 }
 
 export function fleetStatus(game: Game, f: Fleet): string {
   const { state, world } = game;
-  const here = world.region(f.location);
+  const here = placeName(state, f.location);
   const dest = f.path.at(-1);
-  if (fleetInBattle(state, f)) return `Fighting in the ${here.name}`;
+  if (fleetInBattle(state, f)) return `Fighting in the ${here}`;
   if (f.retreating) return 'Making for port';
   if (f.mission === 'explore') return 'Charting the unknown';
   if (dest) {
     const to = world.region(dest);
-    return `To ${to.kind === 'land' ? '' : 'the '}${to.name}, ${Math.max(1, Math.round(pathDays(world, f.location, f.path, true) - f.progress))} d`;
+    return `To ${to.kind === 'land' ? '' : 'the '}${placeName(state, dest)}, ${Math.max(1, Math.round(pathDays(world, f.location, f.path, true) - f.progress))} d`;
   }
-  return inPort(world, f) ? `In port at ${here.name}` : `In the ${here.name}`;
+  return inPort(world, f) ? `In port at ${here}` : `In the ${here}`;
 }
 
 /** Everything the outliner shows, worked out afresh each time the world moves on. */
 function sections(game: Game, me: Country): Section[] {
   const state: GameState = game.state;
-  const world = game.world;
   const ui = game.ui.get();
-  const name = (id: number) => world.region(id).name;
+  const name = (id: number) => placeName(state, id);
   const out: Section[] = [];
 
   out.push({

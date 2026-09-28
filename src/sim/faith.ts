@@ -17,6 +17,7 @@ import { chance, pick } from './rng';
 import { nationalist, techEffect } from './tech';
 import type { Country, GameState, ProvinceState } from './types';
 import { distanceKm, type SimWorld } from './world';
+import { placeName } from './places';
 
 type Check = { ok: true } | { ok: false; reason: string };
 const yes: Check = { ok: true };
@@ -270,7 +271,7 @@ export function monthlyFaith(state: GameState, world: SimWorld) {
               state,
               [c.index],
               'event',
-              `${world.region(job.province).name} has turned from ${faithName(old)} to ${faithName(c.religion)}.`,
+              `${placeName(state, job.province)} has turned from ${faithName(old)} to ${faithName(c.religion)}.`,
               {
                 province: job.province,
               },
@@ -302,7 +303,7 @@ export function monthlyFaith(state: GameState, world: SimWorld) {
               state,
               [c.index],
               'event',
-              `The ${cultureName(old)} of ${world.region(job.province).name} have taken up ${cultureName(c.culture)} ways.`,
+              `The ${cultureName(old)} of ${placeName(state, job.province)} have taken up ${cultureName(c.culture)} ways.`,
               {
                 province: job.province,
               },
@@ -369,8 +370,8 @@ export function monthlyHeresies(state: GameState, world: SimWorld) {
       state.provinces[seed].religion = id;
       state.mapVersion++;
       if (firstTime(state, `heresy_${id}`))
-        chronicle(state, `The ${h.name} faith is first preached in ${world.region(seed).name}.`, { province: seed });
-      log(state, 'all', 'event', `A ${h.name} heresy has taken hold in ${world.region(seed).name}.`, {
+        chronicle(state, `The ${h.name} faith is first preached in ${placeName(state, seed)}.`, { province: seed });
+      log(state, 'all', 'event', `A ${h.name} heresy has taken hold in ${placeName(state, seed)}.`, {
         province: seed,
         important: state.provinces[seed].owner === state.player,
       });

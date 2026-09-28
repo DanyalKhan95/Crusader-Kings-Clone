@@ -206,7 +206,7 @@ describe('claims', () => {
     expect(cmd.fabricate(s, world, goal).ok).toBe(true);
     expect(cmd.fabricate(s, world, goal).ok).toBe(false);
     s.day = hun.fabricating!.done;
-    dailyFabrication(s, world);
+    dailyFabrication(s);
     expect(hun.claims).toContain(goal);
     expect(opinion(s, world, pol.index, hun.index).parts.map((p) => p.label)).toContain('Claims on our land');
     expect(cmd.declare(s, world, pol.index, 'claim', goal).ok).toBe(true);

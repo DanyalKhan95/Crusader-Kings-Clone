@@ -13,6 +13,7 @@ import { goToProvince } from '../hud/SidePanel';
 import { Advice } from './Advice';
 import { BreakdownList } from '../hud/Tip';
 import { CountryFacts, CountryHeader } from '../realm';
+import { placeName } from '../../sim/places';
 
 export function RealmScreen({ c }: { c: Country }) {
   const game = useGame();
@@ -66,7 +67,7 @@ export function RealmScreen({ c }: { c: Country }) {
               {best.map((id) => (
                 <li key={id}>
                   <button className="ranked-row" onClick={() => goToProvince(game, id)}>
-                    <span>{game.world.region(id).name}</span>
+                    <span>{placeName(game.state, id)}</span>
                     <span className="num dim">{state.provinces[id].dev}</span>
                   </button>
                 </li>

@@ -17,6 +17,7 @@ import { ForeignDiplomacy } from './DiplomacyPanel';
 import { ColoniesSection } from './NavyPanel';
 import { IntrigueSection, ModifiersSection } from './RealmAffairs';
 import { goToProvince } from './SidePanel';
+import { placeName } from '../../sim/places';
 
 export function CountryView({ index }: { index: number }) {
   const game = useGame();
@@ -86,7 +87,7 @@ function RealmFacts({ c }: { c: Country }) {
             {best.map((id) => (
               <li key={id}>
                 <button className="ranked-row" onClick={() => goToProvince(game, id)}>
-                  <span>{game.world.region(id).name}</span>
+                  <span>{placeName(game.state, id)}</span>
                   <span className="num dim">{game.state.provinces[id].dev}</span>
                 </button>
               </li>

@@ -18,6 +18,7 @@ import { chance, randInt } from './rng';
 import { techEffect } from './tech';
 import type { Country, GameState, Mission } from './types';
 import { distanceKm, type SimWorld } from './world';
+import { placeName } from './places';
 
 /** How far from its land a realm without the technology for more may found a colony, in km. */
 export const BASE_RANGE = 400;
@@ -136,7 +137,7 @@ export function monthlyColonies(state: GameState, world: SimWorld) {
     if (!c?.alive || !c.colonies.length) continue;
     for (const m of [...c.colonies]) {
       const p = state.provinces[m.province];
-      const name = world.region(m.province).name;
+      const name = placeName(state, m.province);
       if (p.owner) {
         abandonColony(c, m.province);
         log(state, [c.index], 'colony', `The colony at ${name} was given up: the land now has a ruler.`);
@@ -172,7 +173,7 @@ function foundColony(state: GameState, world: SimWorld, c: Country, m: Mission) 
   state.mapVersion++;
   state.borderVersion++;
   revealAround(state, world, c.index, id);
-  log(state, [c.index], 'colony', `A colony has been founded at ${world.region(id).name}.`, { province: id });
+  log(state, [c.index], 'colony', `A colony has been founded at ${placeName(state, id)}.`, { province: id });
   governColony(state, world, c, id);
 }
 

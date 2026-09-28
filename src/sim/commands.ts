@@ -98,6 +98,7 @@ import {
   winnerSide,
 } from './war';
 import type { SimWorld } from './world';
+import { placeName } from './places';
 
 export type Result = { ok: true; message?: string } | { ok: false; reason: string };
 
@@ -154,7 +155,7 @@ export function returnToPort(state: GameState, world: SimWorld, fleetId: number)
   if (!home) return no('No port of yours can be reached');
   fleet.mission = undefined;
   if (!orderFleet(state, world, fleet, home.port)) return no('No port of yours can be reached');
-  return ok(`${fleet.name} makes for ${world.region(home.port).name}.`);
+  return ok(`${fleet.name} makes for ${placeName(state, home.port)}.`);
 }
 
 /** Sends a fleet to chart unknown waters on its own, or calls it back. */
@@ -223,7 +224,7 @@ export function colonise(state: GameState, world: SimWorld, province: number): R
   const c = state.countries[state.player];
   const check = startColony(state, world, c, province);
   if (!check.ok) return no(check.reason);
-  return ok(`Colonists set out for ${world.region(province).name}. The colony will take about ${check.months} months.`);
+  return ok(`Colonists set out for ${placeName(state, province)}. The colony will take about ${check.months} months.`);
 }
 
 export function abandonColonyCmd(state: GameState, province: number): Result {
@@ -234,7 +235,7 @@ export function abandonColonyCmd(state: GameState, province: number): Result {
 export function raise(state: GameState, world: SimWorld): Result {
   const c = state.countries[state.player];
   const army = raiseArmy(state, world, c);
-  return army ? ok(`${army.name} gathers at ${world.region(army.location).name}.`) : no('No men to raise');
+  return army ? ok(`${army.name} gathers at ${placeName(state, army.location)}.`) : no('No men to raise');
 }
 
 export function disbandArmy(state: GameState, armyId: number): Result {
@@ -391,7 +392,7 @@ export function fabricate(state: GameState, world: SimWorld, province: number): 
   const check = canFabricate(state, world, state.player, province);
   if (!check.ok) return no(check.reason);
   startFabrication(state, world, state.player, province);
-  return ok(`Your chancellor begins to forge a claim on ${world.region(province).name}.`);
+  return ok(`Your chancellor begins to forge a claim on ${placeName(state, province)}.`);
 }
 
 export function cancelFabrication(state: GameState): Result {
@@ -460,21 +461,21 @@ export function privilege(state: GameState, estate: EstateId, grant: boolean): R
 // ── Faith and peoples ─────────────────────────────────────────────
 
 /** The court chaplain takes up a mission to one province. */
-export function convert(state: GameState, world: SimWorld, province: number): Result {
+export function convert(state: GameState, province: number): Result {
   const c = state.countries[state.player];
   const check = canConvert(state, c, province);
   if (!check.ok) return no(check.reason);
   startConversion(state, c, province);
-  return ok(`Missionaries set out for ${world.region(province).name}.`);
+  return ok(`Missionaries set out for ${placeName(state, province)}.`);
 }
 
 /** The steward founds schools in one province. */
-export function assimilate(state: GameState, world: SimWorld, province: number): Result {
+export function assimilate(state: GameState, province: number): Result {
   const c = state.countries[state.player];
   const check = canAssimilate(state, c, province);
   if (!check.ok) return no(check.reason);
   startAssimilation(state, c, province);
-  return ok(`Schools open in ${world.region(province).name}.`);
+  return ok(`Schools open in ${placeName(state, province)}.`);
 }
 
 export function accept(state: GameState, culture: string): Result {

@@ -9,6 +9,7 @@ import { formatDate } from '../format';
 import { useGame } from '../game';
 import { Icon } from '../Icon';
 import { BreakdownList, fmtSigned } from './Tip';
+import { placeName } from '../../sim/places';
 
 export function WarView({ id }: { id: number }) {
   const game = useGame();
@@ -20,9 +21,9 @@ export function WarView({ id }: { id: number }) {
   const leader = war.attacker === state.player || war.defender === state.player;
   const shown = mySide === 'defender' ? -score.total : score.total;
   const goalText: Record<string, string> = {
-    claim: `the province of ${game.world.region(war.goal)?.name}`,
-    holy: `the province of ${game.world.region(war.goal)?.name}`,
-    crusade: `to free ${game.world.region(war.goal)?.name} and the land around it`,
+    claim: `the province of ${placeName(state, war.goal)}`,
+    holy: `the province of ${placeName(state, war.goal)}`,
+    crusade: `to free ${placeName(state, war.goal)} and the land around it`,
     throne: `the crown of ${state.countries[war.goal]?.short}`,
     independence: `the freedom of ${state.countries[war.attacker]?.short}`,
     coalition: `to humble ${state.countries[war.defender]?.short}`,

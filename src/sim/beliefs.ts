@@ -4,6 +4,7 @@
  * `loadWorld`); the data never changes during a game.
  */
 import { HERESIES, HOLY_SITES } from '../data/faiths';
+import { registerPlaces } from './places';
 import type { RegionData, WorldData } from '../shared/dataTypes';
 
 interface FaithDef {
@@ -19,6 +20,10 @@ let sites: Record<string, number[]> = {};
 let holyMap: Map<number, string[]> = new Map();
 let named: Map<string, number> = new Map();
 
+/**
+ * Registers the world's faiths, cultures and holy sites, and the names of its places (places.ts):
+ * run whenever a world is built.
+ */
 export function registerBeliefs(world: WorldData, regions: RegionData[]) {
   faiths = { ...world.religions };
   for (const [id, h] of Object.entries(HERESIES)) faiths[id] = { name: h.name, family: h.family, color: h.color };
@@ -28,8 +33,11 @@ export function registerBeliefs(world: WorldData, regions: RegionData[]) {
     groups[id] = c.group;
     cultureNames[id] = c.name;
   }
+  registerPlaces(regions, groups);
+  // Places are found by the map's names as well as their own (holy sites and events name them).
   const byName = new Map<string, number>();
-  for (const r of regions) if (r.kind === 'land' && !byName.has(r.name)) byName.set(r.name, r.id);
+  for (const r of regions)
+    if (r.kind === 'land') for (const n of [r.mapName ?? r.name, r.name]) if (!byName.has(n)) byName.set(n, r.id);
   named = byName;
   sites = {};
   holyMap = new Map();

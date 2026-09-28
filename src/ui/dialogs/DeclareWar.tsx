@@ -13,6 +13,7 @@ import { useGame } from '../game';
 import { Icon } from '../Icon';
 import { useStore } from '../store';
 import { Modal } from './Modal';
+import { placeName } from '../../sim/places';
 
 const ANSWER: Record<CallPreview['answer'], string> = {
   join: 'will come',
@@ -144,7 +145,7 @@ export function DeclareWar() {
           <select value={goal} onChange={(e) => setGoal(Number(e.target.value))}>
             {claims.map((id) => (
               <option key={id} value={id}>
-                {game.world.region(id).name} (development {state.provinces[id].dev})
+                {placeName(game.state, id)} (development {state.provinces[id].dev})
               </option>
             ))}
           </select>
@@ -156,7 +157,7 @@ export function DeclareWar() {
           <select value={holyGoal} onChange={(e) => setHolyGoal(Number(e.target.value))}>
             {holy.map((id) => (
               <option key={id} value={id}>
-                {game.world.region(id).name}
+                {placeName(game.state, id)}
                 {holySite(id) ? ', a holy site' : ''} (development {state.provinces[id].dev})
               </option>
             ))}

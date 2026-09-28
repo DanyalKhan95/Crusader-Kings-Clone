@@ -88,13 +88,13 @@ describe('events', () => {
     expect(fireEvent(s, world, eng, 'tournament')).toBe(true);
     const e = playerEvent(s)!;
     expect(e.event).toBe('tournament');
-    const { title, text } = eventText(s, world, e);
+    const { title, text } = eventText(s, e);
     expect(title).toBe('A Great Tournament');
     expect(text).toContain(`The knights of ${eng.short}`);
     expect(text).not.toContain('{');
     // Holding it costs two months of income and makes the lords keen for war.
     const cost = Math.round(2 * Math.max(5, income(s, eng).total));
-    const lines = effectLines(s, world, eng, EVENTS.find((x) => x.id === 'tournament')!.options[0].effects, {});
+    const lines = effectLines(s, eng, EVENTS.find((x) => x.id === 'tournament')!.options[0].effects, {});
     expect(lines.map((l) => l.text)).toContain(`−${cost} gold`);
     const gold = eng.gold;
     const nobles = eng.estates.nobles.mood;
@@ -161,7 +161,7 @@ describe('pestilence', () => {
     // The news opens with a capital, whatever the name of the plague.
     s.player = byz.index;
     const e = { event: 'plague_arrives', country: byz.index, province: cap, other: 0 };
-    expect(eventText(s, world, e).text.startsWith('The Black Death has reached')).toBe(true);
+    expect(eventText(s, e).text.startsWith('The Black Death has reached')).toBe(true);
     expect(provinceFactor(byz, s.provinces[cap]).value).toBeLessThanOrEqual(0.5);
     // The realm hears of it once.
     expect(byz.history['plague:black_death']).toBe(s.day);

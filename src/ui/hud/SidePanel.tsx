@@ -39,6 +39,7 @@ import { MoreAbout } from '../encyclopedia/Term';
 import { CountryView } from './CountryPanel';
 import { faithIcon } from './FaithPanel';
 import { WarView } from './WarPanel';
+import { placeName } from '../../sim/places';
 
 export function SidePanel() {
   const game = useGame();
@@ -112,7 +113,7 @@ function LandView({ r }: { r: RegionData }) {
     <div className="sp-body">
       <div className="sp-head">
         <p className="caps sp-kicker">{r.impassable ? 'Impassable' : `${terrain.name} province`}</p>
-        <h2 className="display sp-title">{r.name}</h2>
+        <h2 className="display sp-title">{placeName(state, r.id)}</h2>
         {r.modern && <p className="sp-sub">Today in {r.modern[1]}</p>}
       </div>
 
@@ -386,11 +387,7 @@ function FaithSection({ id }: { id: number }) {
               </p>
             }
           >
-            <button
-              className="btn small"
-              disabled={!convertCheck.ok}
-              onClick={() => run(game, cmd.convert(state, game.world, id))}
-            >
+            <button className="btn small" disabled={!convertCheck.ok} onClick={() => run(game, cmd.convert(state, id))}>
               <Icon name={faithIcon(me.religion)} /> Send missionaries
             </button>
           </WithTip>
@@ -408,7 +405,7 @@ function FaithSection({ id }: { id: number }) {
             <button
               className="btn small"
               disabled={!schoolCheck.ok}
-              onClick={() => run(game, cmd.assimilate(state, game.world, id))}
+              onClick={() => run(game, cmd.assimilate(state, id))}
             >
               <Icon name="scroll-quill" /> Found schools
             </button>
@@ -613,7 +610,7 @@ function WaterView({ r }: { r: RegionData }) {
     <div className="sp-body">
       <div className="sp-head">
         <p className="caps sp-kicker">{r.kind === 'lake' ? 'Lake' : 'Sea zone'}</p>
-        <h2 className="display sp-title">{r.name}</h2>
+        <h2 className="display sp-title">{placeName(game.state, r.id)}</h2>
       </div>
       <dl className="facts">
         <div>
@@ -648,7 +645,7 @@ function Neighbours({ r }: { r: RegionData }) {
           return (
             <li key={n}>
               <button className={`chip ${nr.kind !== 'land' ? 'water' : ''}`} onClick={() => goToProvince(game, n)}>
-                {nr.name}
+                {placeName(game.state, n)}
               </button>
             </li>
           );

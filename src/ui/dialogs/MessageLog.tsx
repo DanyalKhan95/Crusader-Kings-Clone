@@ -13,6 +13,7 @@ import { KIND_ICON, logged, MESSAGE_KINDS } from '../messages';
 import { useSettings } from '../settings';
 import { useStore } from '../store';
 import { Modal } from './Modal';
+import { placeName } from '../../sim/places';
 
 /** Lines shown at once; the search reaches the rest. */
 const SHOWN = 400;
@@ -70,7 +71,7 @@ export function MessageLog() {
                 {place ? (
                   <button
                     className="log-text"
-                    title={`Go to ${game.world.region(place).name}`}
+                    title={`Go to ${placeName(game.state, place)}`}
                     onClick={() => {
                       game.ui.set({ modal: 'none' });
                       flyToProvince(game, place, 1.2);

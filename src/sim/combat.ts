@@ -15,6 +15,7 @@ import { modifierEffect } from './modifiers';
 import { militaryEra, techEffect } from './tech';
 import type { Army, Battle, BattleSide, GameState, UnitType, Units } from './types';
 import type { SimWorld } from './world';
+import { placeName } from './places';
 
 /** Damage multiplier for attackers by the defender's terrain. */
 const TERRAIN_DEFENCE: Record<string, number> = {
@@ -296,7 +297,7 @@ function endBattle(state: GameState, world: SimWorld, battle: Battle, winner: 'a
     const c = state.countries[side.country];
     if (c) c.warExhaustion = Math.min(20, c.warExhaustion + side.losses / 2500);
   }
-  const place = world.region(battle.province).name;
+  const place = placeName(state, battle.province);
   const wc = state.countries[W.country],
     lc = state.countries[L.country];
   const text = `Battle of ${place}: ${wc.adj} victory over ${lc?.adj ?? 'enemy'} forces. Losses: ${grouped(W.losses)} against ${grouped(L.losses)}.`;

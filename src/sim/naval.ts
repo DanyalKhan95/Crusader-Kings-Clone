@@ -27,6 +27,7 @@ import { chance, jitter } from './rng';
 import { knowsId, militaryEra, techEffect } from './tech';
 import type { Army, Country, Fleet, FleetSide, GameState, NavalBattle, Ships, ShipType, UnitType } from './types';
 import type { SimWorld } from './world';
+import { placeName } from './places';
 
 // ── Ships ─────────────────────────────────────────────────────────
 
@@ -398,7 +399,7 @@ function reportDiscovery(state: GameState, world: SimWorld, f: Fleet) {
     .region(f.location)
     .adj.map(([n]) => world.region(n))
     .find((r) => r.kind === 'land');
-  const where = coast ? `the coast of ${coast.name}` : `the ${world.region(f.location).name}`;
+  const where = coast ? `the coast of ${coast.name}` : `the ${placeName(state, f.location)}`;
   log(state, [f.owner], 'discovery', `${f.name} has charted ${where}.`, { province: f.location });
 }
 
@@ -623,7 +624,7 @@ function endNavalBattle(state: GameState, world: SimWorld, battle: NavalBattle, 
     const sign = sideOf(war, W.country) === 'attacker' ? 1 : -1;
     war.battleScore = Math.max(-40, Math.min(40, war.battleScore + sign * swing));
   }
-  const place = world.region(battle.zone).name;
+  const place = placeName(state, battle.zone);
   const wc = state.countries[W.country],
     lc = state.countries[L.country];
   const n = (x: number) => Math.round(x);
@@ -729,7 +730,7 @@ export function dailyInterception(state: GameState, world: SimWorld) {
         state,
         [army.owner, hostile[0].owner],
         'naval',
-        `${army.name} was caught at sea in the ${world.region(army.location).name} by the ${enemy?.adj ?? 'enemy'} fleet.`,
+        `${army.name} was caught at sea in the ${placeName(state, army.location)} by the ${enemy?.adj ?? 'enemy'} fleet.`,
         { province: army.location, important: army.owner === state.player },
       );
     }

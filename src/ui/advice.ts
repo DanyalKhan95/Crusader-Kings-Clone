@@ -43,6 +43,7 @@ import {
 } from '../sim/types';
 import { openDeclareWar, run } from './actions';
 import type { Game } from './game';
+import { placeName } from '../sim/places';
 
 export interface Counsel {
   /** the same from month to month while it stands, for keys and for setting it aside */
@@ -228,7 +229,7 @@ export function counsel(game: Game): Counsel[] {
     if (best) {
       const level = (state.provinces[best.id].buildings[best.type] ?? 0) + 1;
       const name = BUILDINGS[best.type].levels[level - 1];
-      const where = world.region(best.id).name;
+      const where = placeName(state, best.id);
       out.push({
         id: `build:${best.id}:${best.type}:${level}`,
         seat: 'steward',
@@ -248,7 +249,7 @@ export function counsel(game: Game): Counsel[] {
       if (o.value > 0 && (!best || o.value > best.value)) best = o;
     }
     if (best) {
-      const where = world.region(best.id).name;
+      const where = placeName(state, best.id);
       const id = best.id;
       out.push({
         id: `develop:${id}`,
@@ -287,7 +288,7 @@ export function counsel(game: Game): Counsel[] {
     const war = claimWars(state, world, c)[0];
     if (war) {
       const t = state.countries[war.target];
-      const where = world.region(war.goal).name;
+      const where = placeName(state, war.goal);
       out.push({
         id: `press:${war.goal}`,
         seat: 'chancellor',
@@ -300,7 +301,7 @@ export function counsel(game: Game): Counsel[] {
     if (!c.fabricating && c.claims.length < 2 && c.stability >= 0 && !c.loans.length) {
       const best = claimCandidates(state, world, c).sort((a, b) => b.value - a.value)[0];
       if (best) {
-        const where = world.region(best.id).name;
+        const where = placeName(state, best.id);
         out.push({
           id: `forge:${best.id}`,
           seat: 'chancellor',

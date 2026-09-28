@@ -43,6 +43,8 @@ export interface RegionData {
   impassable?: boolean;
   /** Modern country code and admin-1 region, for flavour text */
   modern?: [string, string];
+  /** the name in the map data, where a period name has replaced it (sim/places.ts) */
+  mapName?: string;
 }
 
 export interface CultureDef {

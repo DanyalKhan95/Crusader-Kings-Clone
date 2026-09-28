@@ -20,6 +20,7 @@ import {
   type Succession,
 } from './types';
 import type { SimWorld } from './world';
+import { placeName } from './places';
 
 export const SEAT_SKILL: Record<CouncilSeat, Skill> = {
   chancellor: 'dip',
@@ -94,7 +95,7 @@ export function makeCharacter(state: GameState, world: SimWorld, country: Countr
   let name = opts.name ?? pick(state, female ? names.female : names.male);
   if (!opts.name && opts.place) {
     const own = provincesOf(state, country.index);
-    if (own.length && !name.includes(' ')) name += ` of ${world.region(pick(state, own)).name}`;
+    if (own.length && !name.includes(' ')) name += ` of ${placeName(state, pick(state, own))}`;
   }
   const talent = opts.talent ?? 0;
   const skills = {} as Record<Skill, number>;

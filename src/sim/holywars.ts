@@ -28,6 +28,7 @@ import { hexToRgb } from './setup';
 import type { Country, GameState, War } from './types';
 import { callToArms, endWar } from './war';
 import { distanceKm, type SimWorld } from './world';
+import { placeName } from './places';
 
 type Check = { ok: true } | { ok: false; reason: string };
 const yes: Check = { ok: true };
@@ -329,7 +330,7 @@ export function grantHolyLand(state: GameState, world: SimWorld, war: War): Coun
     p.siege = undefined;
   }
   if (founded) {
-    chronicle(state, `The crusaders take ${world.region(war.goal).name} and found ${theName(heir.name)}.`, {
+    chronicle(state, `The crusaders take ${placeName(state, war.goal)} and found ${theName(heir.name)}.`, {
       province: war.goal,
       realm: heir.index,
     });
@@ -340,7 +341,7 @@ export function grantHolyLand(state: GameState, world: SimWorld, war: War): Coun
   state.mapVersion++;
   state.borderVersion++;
   state.diploVersion++;
-  const where = world.region(war.goal).name;
+  const where = placeName(state, war.goal);
   log(
     state,
     'all',

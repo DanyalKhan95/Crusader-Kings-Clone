@@ -7,6 +7,7 @@ import { GOVERNMENT_NAMES, RANK_NAMES, formatNumber, ordinal } from './format';
 import { ranking, standing } from '../sim/score';
 import { BreakdownList, WithTip } from './hud/Tip';
 import { countryStats, useGame, type CountryStats, type Game } from './game';
+import { placeName } from '../sim/places';
 
 export function cultureName(_game: Game, id: string | null | undefined): string {
   return nameOfCulture(id);
@@ -66,7 +67,7 @@ export function CountryFacts({ country, stats }: { country: Country; stats?: Cou
   const game = useGame();
   const s = stats ?? countryStats(game, country.index);
   const culture = game.world.world.cultures[country.culture];
-  const capital = country.capital ? game.world.region(country.capital) : null;
+  const capital = country.capital ? placeName(game.state, country.capital) : null;
   const withVassals = s.realmProvinces > s.provinces;
   return (
     <dl className="facts">
@@ -76,7 +77,7 @@ export function CountryFacts({ country, stats }: { country: Country; stats?: Cou
       </div>
       <div>
         <dt>Capital</dt>
-        <dd>{capital?.name ?? '—'}</dd>
+        <dd>{capital ?? '—'}</dd>
       </div>
       <div>
         <dt>Provinces</dt>
